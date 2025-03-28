@@ -2,8 +2,6 @@
 set -e  # Exit on error
 
 # Set container names and paths
-KROKI_CONTAINER="kroki"
-NGINX_CONTAINER="nginx-kroki"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CERTS_DIR="${SCRIPT_DIR}/nginx-certs"
 NGINX_CONF="${SCRIPT_DIR}/nginx.conf"
