@@ -48,8 +48,7 @@ services:
       - "8006"
     networks:
       - kroki_network
-
-  nginx:
+    nginx:
     image: nginx
     container_name: nginx-kroki
     depends_on:
@@ -61,22 +60,18 @@ services:
       - kroki_network
     restart: always
     command: >
-      bash -c "
-        # Create certificates directory
-        mkdir -p /etc/nginx/certs &&
-        
-        # Generate ECDSA self-signed SSL certificate
-        echo 'Generating ECDSA self-signed SSL certificate...' &&
+      bash -c '
+        mkdir -p /etc/nginx/certs && 
+        echo "Generating ECDSA self-signed SSL certificate..." &&
         openssl ecparam -name prime256v1 -genkey -noout -out /etc/nginx/certs/nginx.key &&
-        openssl req -new -key /etc/nginx/certs/nginx.key -out /etc/nginx/certs/nginx.csr -subj '/CN=localhost' &&
+        openssl req -new -key /etc/nginx/certs/nginx.key -out /etc/nginx/certs/nginx.csr -subj "/CN=localhost" &&
         openssl x509 -req -in /etc/nginx/certs/nginx.csr -signkey /etc/nginx/certs/nginx.key -out /etc/nginx/certs/nginx.crt &&
         rm /etc/nginx/certs/nginx.csr &&  
         chmod 400 /etc/nginx/certs/nginx.key &&
         chmod 444 /etc/nginx/certs/nginx.crt &&
         
-        # Create nginx config file
-        cat > /etc/nginx/nginx.conf << 'EOF'
-        events{}
+        cat << EOF > /etc/nginx/nginx.conf
+        events {}
         http {
             server {
                 listen 0.0.0.0:8443 ssl;
@@ -111,12 +106,9 @@ services:
             }
         }
         EOF
-        &&
-        
-        # Start nginx
-        nginx -g 'daemon off;'
-      "
 
+        nginx -g "daemon off;"
+      '  
 networks:
   kroki_network:
     driver: bridge
