@@ -8,15 +8,11 @@ ENV PORT=8006
 WORKDIR /app
 
 # Copy the HTML files
-COPY index.html /app/
-COPY examples/ /app/examples/
+COPY index.html .
+COPY examples/ examples/
 
-# Create start script that uses the PORT environment variable
-RUN echo '#!/bin/sh\npython -m http.server $PORT' > /app/start.sh && \
-    chmod +x /app/start.sh
+# Expose the port (for documentation)
+EXPOSE ${PORT}
 
-# Expose the default port (for documentation)
-EXPOSE 8006
-
-# Start the HTTP server
-CMD ["/app/start.sh"]
+# Start the HTTP server directly (no need for a separate script)
+CMD python -m http.server ${PORT}
