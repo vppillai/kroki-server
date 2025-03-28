@@ -443,32 +443,45 @@ Bob --> Alice: Hi there
         document.getElementById('downloadButton').addEventListener('click', downloadDiagram);
 
         // Add copy button listener for image link
-        document.getElementById('copy-link-btn').addEventListener('click', function() {
-            const imageLinkText = document.getElementById('image-link-text');
-            imageLinkText.select();
-            document.execCommand('copy');
-            
-            // Give visual feedback
-            const originalText = this.textContent;
-            this.textContent = 'Copied!';
-            setTimeout(() => {
-                this.textContent = originalText;
-            }, 1500);
-        });
+        const copyLinkBtn = document.getElementById('copy-link-btn');
+        if (copyLinkBtn) {
+            copyLinkBtn.addEventListener('click', function() {
+                const imageLinkText = document.getElementById('image-link-text');
+                if (imageLinkText) {
+                    imageLinkText.select();
+                    document.execCommand('copy');
+                    
+                    // Give visual feedback
+                    const originalText = this.textContent;
+                    this.textContent = 'Copied!';
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                    }, 1500);
+                }
+            });
+        }
 
         // Add decode button listener
-        document.getElementById('decode-btn').addEventListener('click', handleDecode);
+        const decodeBtn = document.getElementById('decode-btn');
+        if (decodeBtn) {
+            decodeBtn.addEventListener('click', handleDecode);
+        }
 
         // Allow decoding when pressing Enter in the encoded text input
-        document.getElementById('encoded-text').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                handleDecode();
-            }
-        });
+        const encodedTextInput = document.getElementById('encoded-text');
+        if (encodedTextInput) {
+            encodedTextInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleDecode();
+                }
+            });
+        }
 
-        // Initialize format dropdown
-        updateFormatDropdown();
-        
-        // Initialize line numbers and diagram
-        updateLineNumbers();
-        updateDiagram();
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize format dropdown
+            updateFormatDropdown();
+            
+            // Initialize line numbers and diagram
+            updateLineNumbers();
+            updateDiagram();
+        });

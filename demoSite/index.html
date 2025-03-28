@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="Vysakh P Pillai">
     <title>Kroki Diagram Editor</title>
-    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="css/main.css">
     <!-- Include pako library for deflate compression -->
-    <script src="/js/pako.min.js"></script>
-    <script src="/js/main.js"></script>
+    <script src="js/pako.min.js" defer></script>
+    <script src="js/main.js" defer></script>
 
 </head>
 <body>
@@ -30,38 +30,14 @@
                         <option value="plantuml" selected>plantuml</option>
                         <option value="mermaid">mermaid</option>
                         <option value="bytefield">bytefield</option>
-                        <option value="excalidraw">excalidraw</option>
-                        <option value="actdiag">actdiag</option>
-                        <option value="blockdiag">blockdiag</option>
-                        <option value="diagramsnet">diagramsnet</option>
-                        <option value="graphviz">graphviz</option>
-                        <option value="wavedrom">wavedrom</option>
-                        <option value="packetdiag">packetdiag</option>
-                        <option value="rackdiag">rackdiag</option>
-                        <option value="bpmn">bpmn</option>
-                        <option value="pikchr">pikchr</option>
-                        <option value="nwdiag">nwdiag</option>
-                        <option value="c4plantuml">c4plantuml</option>
-                        <option value="dot">dot</option>
-                        <option value="symbolator">symbolator</option>
-                        <option value="d2">d2</option>
-                        <option value="tikz">tikz</option>
-                        <option value="erd">erd</option>
-                        <option value="vegalite">vegalite</option>
-                        <option value="ditaa">ditaa</option>
-                        <option value="seqdiag">seqdiag</option>
-                        <option value="nomnoml">nomnoml</option>
-                        <option value="structurizr">structurizr</option>
-                        <option value="wireviz">wireviz</option>
-                        <option value="dbml">dbml</option>
-                        <option value="svgbob">svgbob</option>
-                        <option value="vega">vega</option>
+                        <!-- Other diagram types can be added here -->
                     </select>
                 </div>
                 <div class="format-controls">
                     <label for="outputFormat">Output Format:</label>
                     <select id="outputFormat">
                         <option value="svg" selected>SVG</option>
+                        <!-- Other output formats will be populated by JavaScript -->
                     </select>
                 </div>
             </div>
