@@ -393,6 +393,42 @@ Bob --> Alice: Hi there
             }
         }
 
+        /**
+         * Initializes the diagram type dropdown with all available diagram types
+         * from the formatCompatibility object
+         */
+        function initializeDiagramTypeDropdown() {
+            const diagramTypeDropdown = document.getElementById('diagramType');
+            if (!diagramTypeDropdown) {
+                console.error('Diagram type dropdown not found');
+                return;
+            }
+            
+            // Clear current options
+            diagramTypeDropdown.innerHTML = '';
+            
+            // Get all diagram types from formatCompatibility
+            const diagramTypes = Object.keys(formatCompatibility);
+            
+            // Sort diagram types alphabetically for better UX
+            diagramTypes.sort();
+            
+            // Add options for each diagram type
+            diagramTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                diagramTypeDropdown.appendChild(option);
+            });
+            
+            // Set default to PlantUML
+            if (diagramTypes.includes('plantuml')) {
+                diagramTypeDropdown.value = 'plantuml';
+            } else {
+                diagramTypeDropdown.value = diagramTypes[0];
+            }
+        }
+
         // Add event listeners
         const codeTextarea = document.getElementById('code');
 
@@ -478,7 +514,10 @@ Bob --> Alice: Hi there
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize format dropdown
+            // Initialize diagram type dropdown first
+            initializeDiagramTypeDropdown();
+            
+            // Initialize format dropdown based on selected diagram type
             updateFormatDropdown();
             
             // Initialize line numbers and diagram
