@@ -298,6 +298,7 @@ case "$COMMAND" in
             if [ "$HOSTNAME" != "localhost" ]; then
                 echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
             fi
+            sleep 5
             show_status
         else
             echo "Error: docker-compose.yml file not found at $DOCKER_COMPOSE_FILE"
@@ -329,11 +330,13 @@ case "$COMMAND" in
         create_nginx_config
         echo "Starting services with Docker Compose..."
         $DOCKER_COMPOSE up -d
+        sleep 5
         check_services
         echo "Kroki is available at https://localhost:8443"
         if [ "$HOSTNAME" != "localhost" ]; then
             echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
         fi
+        sleep 5
         show_status
         ;;
     logs)
