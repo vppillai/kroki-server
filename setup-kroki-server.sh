@@ -57,7 +57,7 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    location /try {
+    location = / {
         proxy_pass http://demosite:8006/index.html;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
