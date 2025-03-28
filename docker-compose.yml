@@ -48,7 +48,7 @@ services:
       - "8006"
     networks:
       - kroki_network
-    nginx:
+  nginx:
     image: nginx
     container_name: nginx-kroki
     depends_on:
