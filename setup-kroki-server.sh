@@ -92,8 +92,16 @@ case "$1" in
         echo "Stopping services with Docker Compose..."
         docker-compose down
         ;;
+    clean)
+        echo "Cleaning up Docker containers and images..."
+        docker-compose down --rmi all
+        docker volume prune -f
+        docker network prune -f
+        rm -rf "$CERTS_DIR"
+        rm -f "$NGINX_CONF"
+        ;;
     *)
-        echo "Usage: $0 {start|stop}"
+        echo "Usage: $0 {start|stop|clean}"
         exit 1
         ;;
 esac
