@@ -48,21 +48,19 @@ services:
       - "8006"
     networks:
       - kroki_network
+
   nginx:
     image: nginx
     container_name: nginx-kroki
     depends_on:
       - core
-      - demosite
     ports:
       - "8443:8443"
+    volumes:
+      - ./nginx-certs:/etc/nginx/certs:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - kroki_network
-    restart: always
-    volumes:
-      - ./entrypoint.sh:/entrypoint.sh
-    entrypoint: ["/bin/sh", "/entrypoint.sh"]
-
 
 networks:
   kroki_network:
