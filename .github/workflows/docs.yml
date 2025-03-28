@@ -1,0 +1,27 @@
+name: Update Documentation
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '**.md'
+      - 'demoSite/**'
+
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@v1.5.4
+        with:
+          args: --verbose --no-progress '*.md' 'demoSite/**/*.html'
+          
+      - name: Create Issue (Failed Links)
+        if: env.lychee_exit_code != 0
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: Link Checker Report
+          content-filepath: ./lychee/out.md
+          labels: documentation, bug

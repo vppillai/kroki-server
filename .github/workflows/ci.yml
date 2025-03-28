@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './setup-kroki-server.sh'
+          
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Test setup script
+        run: |
+          chmod +x ./setup-kroki-server.sh
+          ./setup-kroki-server.sh start
+          sleep 30
+          curl -k -s -o /dev/null -w "%{http_code}" https://localhost:8443 | grep -q "200"
+          ./setup-kroki-server.sh stop
