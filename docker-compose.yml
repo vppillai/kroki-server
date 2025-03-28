@@ -1,0 +1,66 @@
+version: "3.3" # Downgraded Compose file format version
+
+services:
+  core:
+    image: yuzutech/kroki
+    environment:
+      - KROKI_MERMAID_HOST=mermaid
+      - KROKI_BPMN_HOST=bpmn
+      - KROKI_EXCALIDRAW_HOST=excalidraw
+    ports:
+      - "8000:8000"
+    networks:
+      - kroki_network
+
+  mermaid:
+    image: yuzutech/kroki-mermaid
+    expose:
+      - "8002"
+    networks:
+      - kroki_network
+
+  bpmn:
+    image: yuzutech/kroki-bpmn
+    expose:
+      - "8003"
+    networks:
+      - kroki_network
+
+  excalidraw:
+    image: yuzutech/kroki-excalidraw
+    expose:
+      - "8004"
+    networks:
+      - kroki_network
+
+  # experimental!
+  diagramsnet:
+    image: yuzutech/kroki-diagramsnet
+    expose:
+      - "8005"
+    networks:
+      - kroki_network
+
+  demosite:
+    image: kroki-demosite:latest
+    expose:
+      - "8006"
+    networks:
+      - kroki_network
+
+  nginx:
+    image: nginx
+    container_name: nginx-kroki
+    depends_on:
+      - core
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./nginx-certs:/etc/nginx/certs:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - kroki_network
+
+networks:
+  kroki_network:
+    driver: bridge

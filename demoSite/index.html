@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kroki Diagram Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .editor {
+            width: 35%;
+            padding: 10px;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+        }
+        .preview {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+        /* Controls row */
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        /* Editor controls */
+        .editor-controls {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .editor-controls select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            margin-left: 10px;
+            flex-grow: 1;
+        }
+        .editor-controls label {
+            font-size: 14px;
+            margin-right: 5px;
+            white-space: nowrap;
+        }
+        /* Format controls */
+        .format-controls {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        .format-controls select {
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            margin-left: 10px;
+            flex-grow: 1;
+        }
+        .format-controls label {
+            font-size: 14px;
+            margin-right: 5px;
+            white-space: nowrap;
+        }
+        /* Editor container for line numbers */
+        .editor-container {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+        .line-numbers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 30px;
+            height: 100%;
+            padding: 10px 5px 10px 0;
+            text-align: right;
+            background-color: #f5f5f5;
+            border-right: 1px solid #ddd;
+            font-family: monospace;
+            font-size: 14px;
+            color: #999;
+            overflow: hidden;
+            user-select: none;
+            z-index: 1;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 10px 10px 10px 40px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .download-btn {
+            padding: 6px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .download-btn:hover {
+            background-color: #45a049;
+        }
+        #diagram-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        #diagram {
+            max-width: 100%;
+            max-height: calc(100vh - 180px);
+            object-fit: contain;
+            border: 1px solid #eee;
+            padding: 10px;
+            background-color: white;
+            display: block;
+            margin: 0 auto;
+        }
+        #text-preview {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #eee;
+            padding: 10px;
+            background-color: white;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow: auto;
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+        .loading {
+            display: none;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        .utility-container {
+            display: flex;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-top: 1px solid #ddd;
+        }
+        .utility-row {
+            display: flex;
+            align-items: center;
+            background-color: #f8f8f8;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 8px 10px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        .utility-row label {
+            font-size: 12px;
+            color: #555;
+            margin-right: 10px;
+            white-space: nowrap;
+        }
+        .utility-row input[type="text"] {
+            flex-grow: 1;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .utility-row button {
+            margin-left: 10px;
+            padding: 6px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .utility-row button:hover {
+            background-color: #45a049;
+        }
+        .placeholder-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            border: 1px dashed #ccc;
+            background-color: #f9f9f9;
+            text-align: center;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .placeholder-text {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        .placeholder-btn {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .placeholder-btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <!-- Include pako library for deflate compression -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="editor">
+            <h2>Diagram Code</h2>
+            <div class="controls-row">
+                <div class="editor-controls">
+                    <label for="diagramType">Diagram Type:</label>
+                    <select id="diagramType">
+                        <option value="actdiag">actdiag</option>
+                        <option value="bpmn">bpmn</option>
+                        <option value="pikchr">pikchr</option>
+                        <option value="nwdiag">nwdiag</option>
+                        <option value="c4plantuml">c4plantuml</option>
+                        <option value="rackdiag">rackdiag</option>
+                        <option value="dot">dot</option>
+                        <option value="symbolator">symbolator</option>
+                        <option value="d2">d2</option>
+                        <option value="tikz">tikz</option>
+                        <option value="mermaid">mermaid</option>
+                        <option value="erd">erd</option>
+                        <option value="graphviz">graphviz</option>
+                        <option value="vegalite">vegalite</option>
+                        <option value="ditaa">ditaa</option>
+                        <!--option value="diagramsnet">diagramsnet</option-->
+                        <option value="plantuml" selected>plantuml</option>
+                        <option value="seqdiag">seqdiag</option>
+                        <option value="nomnoml">nomnoml</option>
+                        <option value="wavedrom">wavedrom</option>
+                        <option value="structurizr">structurizr</option>
+                        <option value="bytefield">bytefield</option>
+                        <option value="wireviz">wireviz</option>
+                        <option value="excalidraw">excalidraw</option>
+                        <option value="dbml">dbml</option>
+                        <option value="packetdiag">packetdiag</option>
+                        <option value="svgbob">svgbob</option>
+                        <option value="vega">vega</option>
+                        <option value="blockdiag">blockdiag</option>
+                    </select>
+                </div>
+                <div class="format-controls">
+                    <label for="outputFormat">Output Format:</label>
+                    <select id="outputFormat">
+                        <option value="svg" selected>SVG</option>
+                    </select>
+                </div>
+            </div>
+            <div class="editor-container">
+                <div id="lineNumbers" class="line-numbers"></div>
+                <textarea id="code" placeholder="Enter your diagram code here...">@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there
+@enduml</textarea>
+            </div>
+            <div id="loadingMessage" class="loading">Loading example...</div>
+            <div id="errorMessage" class="error"></div>
+        </div>
+        <div class="preview">
+            <div class="preview-header">
+                <h2>Diagram Preview</h2>
+                <button id="downloadButton" class="download-btn">Download</button>
+            </div>
+            <div id="diagram-container">
+                <img id="diagram" src="" alt="Diagram preview will appear here">
+                <pre id="text-preview"></pre>
+                <div id="placeholder-container" class="placeholder-container" style="display: none;">
+                    <p class="placeholder-text">This format can't be previewed directly in the browser.</p>
+                    <a id="placeholder-download" href="#" class="placeholder-btn">Download to View</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Utility container (outside of main container, at bottom of page) -->
+    <div class="utility-container">
+        <div id="decode-row" class="utility-row">
+            <label for="encoded-text">Decode:</label>
+            <input type="text" id="encoded-text" placeholder="Paste encoded diagram string here..." />
+            <button id="decode-btn">Decode</button>
+        </div>
+        <div id="image-link-row" class="utility-row" style="display: none;">
+            <label for="image-link-text">Image Link:</label>
+            <input type="text" id="image-link-text" readonly />
+            <button id="copy-link-btn">Copy</button>
+        </div>
+    </div>
+
+    <script>
+        // Default example (plantuml) to start with
+        const defaultExample = `@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there
+@enduml`;
+
+        // Format compatibility for each diagram type
+        const formatCompatibility = {
+            blockdiag: ['png', 'svg', 'pdf'],
+            bpmn: ['svg'],
+            bytefield: ['svg'],
+            seqdiag: ['png', 'svg', 'pdf'],
+            actdiag: ['png', 'svg', 'pdf'],
+            nwdiag: ['png', 'svg', 'pdf'],
+            packetdiag: ['png', 'svg', 'pdf'],
+            rackdiag: ['png', 'svg', 'pdf'],
+            c4plantuml: ['png', 'svg', 'pdf', 'txt', 'base64'],
+            d2: ['svg'],
+            dbml: ['svg'],
+            ditaa: ['png', 'svg'],
+            erd: ['png', 'svg', 'jpeg', 'pdf'],
+            excalidraw: ['svg'],
+            graphviz: ['png', 'svg', 'jpeg', 'pdf'],
+            mermaid: ['png', 'svg'],
+            nomnoml: ['svg'],
+            pikchr: ['svg'],
+            plantuml: ['png', 'svg', 'pdf', 'txt', 'base64'],
+            structurizr: ['png', 'svg', 'pdf', 'txt', 'base64'],
+            svgbob: ['svg'],
+            symbolator: ['svg'],
+            tikz: ['png', 'svg', 'jpeg', 'pdf'],
+            umlet: ['png', 'svg', 'jpeg'],
+            vega: ['png', 'svg', 'pdf'],
+            vegalite: ['png', 'svg', 'pdf'],
+            wavedrom: ['svg'],
+            wireviz: ['png', 'svg']
+        };
+
+        // Format display types
+        const formatDisplayTypes = {
+            svg: 'image',
+            png: 'image',
+            jpeg: 'image',
+            pdf: 'download',
+            txt: 'text',
+            base64: 'text'
+        };
+
+        // Track if the user has edited the content
+        let userHasEditedContent = false;
+
+        // Cache for examples we've already loaded
+        const exampleCache = {
+            plantuml: defaultExample
+        };
+
+        // Current diagram data for download
+        let currentDiagramData = null;
+        let currentDiagramType = 'plantuml';
+        let currentOutputFormat = 'svg';
+        let currentDiagramUrl = '';
+
+        // Function to update the format dropdown based on the selected diagram type
+        function updateFormatDropdown() {
+            const diagramType = document.getElementById('diagramType').value;
+            const formatDropdown = document.getElementById('outputFormat');
+            const currentFormat = formatDropdown.value;
+            
+            // Get supported formats for the selected diagram type
+            const supportedFormats = formatCompatibility[diagramType] || ['svg'];
+            
+            // Clear current options
+            formatDropdown.innerHTML = '';
+            
+            // Add options for each supported format
+            supportedFormats.forEach(format => {
+                const option = document.createElement('option');
+                option.value = format;
+                option.textContent = format.toUpperCase();
+                formatDropdown.appendChild(option);
+            });
+            
+            // Always prefer SVG as default when changing diagram types
+            if (supportedFormats.includes('svg')) {
+                formatDropdown.value = 'svg';
+            } else {
+                formatDropdown.value = supportedFormats[0];
+            }
+        }
+
+        // Function to load an example for a diagram type
+        async function loadExampleForDiagramType(type) {
+            // Check if we already have this example cached
+            if (exampleCache[type]) {
+                return exampleCache[type];
+            }
+
+            // Show loading message
+            document.getElementById('loadingMessage').style.display = 'block';
+
+            try {
+                // Try to fetch the example from a file
+                const response = await fetch(`examples/${type}.txt`);
+
+                if (response.ok) {
+                    const text = await response.text();
+                    // Cache the result
+                    exampleCache[type] = text;
+                    return text;
+                } else {
+                    // If file not found, return a generic placeholder
+                    return `Enter your ${type} diagram code here...`;
+                }
+            } catch (error) {
+                console.warn(`Could not load example for ${type}:`, error);
+                return `Enter your ${type} diagram code here...`;
+            } finally {
+                // Hide loading message
+                document.getElementById('loadingMessage').style.display = 'none';
+            }
+        }
+
+        // Function to encode text to UTF-8
+        function textEncode(str) {
+            if (window.TextEncoder) {
+                return new TextEncoder('utf-8').encode(str);
+            }
+            var utf8 = unescape(encodeURIComponent(str));
+            var result = new Uint8Array(utf8.length);
+            for (var i = 0; i < utf8.length; i++) {
+                result[i] = utf8.charCodeAt(i);
+            }
+            return result;
+        }
+
+        // Function to convert Uint8Array to string
+        function uint8ArrayToString(array) {
+            let result = '';
+            for (let i = 0; i < array.length; i++) {
+                result += String.fromCharCode(array[i]);
+            }
+            return result;
+        }
+
+        // Function to encode the diagram text for Kroki
+        function encodeKrokiDiagram(text) {
+            // 1. Convert string to UTF-8 using the provided function
+            const bytes = textEncode(text);
+
+            // 2. Compress the UTF-8 encoded data with deflate
+            const compressed = pako.deflate(bytes);
+
+            // 3. Convert compressed data to string for base64 encoding
+            const strData = uint8ArrayToString(compressed);
+
+            // 4. Base64 encode and make URL safe
+            return btoa(strData)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_');
+        }
+
+        // Function to decode a Kroki diagram string
+        function decodeKrokiDiagram(encodedString) {
+            try {
+                // 1. Make the string base64 compatible again
+                const base64String = encodedString
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/');
+                
+                // 2. Base64 decode
+                const binaryString = atob(base64String);
+                
+                // 3. Convert binary string to Uint8Array
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // 4. Inflate (decompress) the data
+                const decompressed = pako.inflate(bytes);
+                
+                // 5. Convert to string
+                const decoder = new TextDecoder('utf-8');
+                return decoder.decode(decompressed);
+            } catch (error) {
+                throw new Error(`Failed to decode: ${error.message}`);
+            }
+        }
+
+        // Function to update the image link text
+        function updateImageLink() {
+            const imageLinkText = document.getElementById('image-link-text');
+            const imageLinkRow = document.getElementById('image-link-row');
+            
+            // Only show for image formats
+            if (formatDisplayTypes[currentOutputFormat] === 'image') {
+                // For a generic image link, we just use the URL directly
+                imageLinkText.value = currentDiagramUrl;
+                imageLinkRow.style.display = 'flex';
+            } else {
+                imageLinkRow.style.display = 'none';
+            }
+        }
+
+        // Function to update the diagram
+        async function updateDiagram() {
+            const code = document.getElementById('code').value;
+            const diagramType = document.getElementById('diagramType').value;
+            const outputFormat = document.getElementById('outputFormat').value;
+            
+            currentDiagramType = diagramType;
+            currentOutputFormat = outputFormat;
+
+            try {
+                // Encode the diagram
+                const encodedDiagram = encodeKrokiDiagram(code);
+                
+                // Get server from window location instead of hardcoding
+                const protocol = window.location.protocol;
+                const hostname = window.location.hostname;
+                const port = window.location.port ? `:${window.location.port}` : '';
+                
+                // Construct URL using current server information
+                const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}`;
+                currentDiagramUrl = url;
+                
+                // Determine how to display the result based on the format
+                const displayType = formatDisplayTypes[outputFormat] || 'download';
+                const diagramImg = document.getElementById('diagram');
+                const textPreview = document.getElementById('text-preview');
+                const placeholderContainer = document.getElementById('placeholder-container');
+                const placeholderDownload = document.getElementById('placeholder-download');
+                
+                // Hide all preview elements initially
+                diagramImg.style.display = 'none';
+                textPreview.style.display = 'none';
+                placeholderContainer.style.display = 'none';
+                
+                if (displayType === 'image') {
+                    // Display as image
+                    diagramImg.src = url;
+                    diagramImg.style.display = 'block';
+                    currentDiagramData = url;
+                } else if (displayType === 'text') {
+                    // Fetch and display as text
+                    const response = await fetch(url);
+                    const text = await response.text();
+                    textPreview.textContent = text;
+                    textPreview.style.display = 'block';
+                    currentDiagramData = text;
+                } else {
+                    // For download-only formats like PDF, show the placeholder with download link
+                    placeholderContainer.style.display = 'flex';
+                    placeholderDownload.href = url;
+                    placeholderDownload.download = `diagram.${outputFormat}`;
+                    currentDiagramData = url;
+                }
+
+                // Update image link
+                updateImageLink();
+
+                // Hide error message if any
+                document.getElementById('errorMessage').style.display = 'none';
+            } catch (error) {
+                // Show error message
+                const errorMessage = document.getElementById('errorMessage');
+                errorMessage.textContent = `Error: ${error.message}`;
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        // Function to download the current diagram
+        function downloadDiagram() {
+            if (!currentDiagramData) return;
+            
+            const displayType = formatDisplayTypes[currentOutputFormat] || 'download';
+            const format = currentOutputFormat.toLowerCase();
+            const filename = `diagram.${format}`;
+            
+            // Create a download link
+            const a = document.createElement('a');
+            
+            if (displayType === 'text') {
+                // For text content, create a blob and download
+                const blob = new Blob([currentDiagramData], { type: 'text/plain' });
+                a.href = URL.createObjectURL(blob);
+            } else {
+                // For images or other formats, use the URL directly
+                a.href = currentDiagramData;
+            }
+            
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Function to update the line numbers
+        function updateLineNumbers() {
+            const codeLines = document.getElementById('code').value.split('\n');
+            const lineCount = codeLines.length;
+            const lineNumbersDiv = document.getElementById('lineNumbers');
+
+            // Generate the line numbers
+            let lineNumbersHtml = '';
+            for (let i = 1; i <= lineCount; i++) {
+                lineNumbersHtml += i + '<br>';
+            }
+
+            // Update the line numbers div
+            lineNumbersDiv.innerHTML = lineNumbersHtml;
+        }
+
+        // Function to handle the decode button click
+        function handleDecode() {
+            const encodedTextInput = document.getElementById('encoded-text');
+            const encodedText = encodedTextInput.value.trim();
+            
+            if (!encodedText) {
+                return; // Nothing to decode
+            }
+            
+            try {
+                // Extract the last part of a URL if it's a full Kroki URL
+                let encodedDiagram = encodedText;
+                if (encodedText.includes('/')) {
+                    encodedDiagram = encodedText.split('/').pop();
+                }
+                
+                // Decode the diagram
+                const decodedText = decodeKrokiDiagram(encodedDiagram);
+                
+                // Update the code textarea
+                document.getElementById('code').value = decodedText;
+                userHasEditedContent = true;
+                
+                // Update line numbers and preview
+                updateLineNumbers();
+                updateDiagram();
+                
+                // Clear the input field
+                encodedTextInput.value = '';
+            } catch (error) {
+                // Show error message
+                const errorMessage = document.getElementById('errorMessage');
+                errorMessage.textContent = `Decode Error: ${error.message}`;
+                errorMessage.style.display = 'block';
+            }
+        }
+
+        // Add event listeners
+        const codeTextarea = document.getElementById('code');
+
+        // Mark content as edited when user types
+        codeTextarea.addEventListener('input', function () {
+            userHasEditedContent = true;
+            updateDiagram();
+            updateLineNumbers();
+        });
+
+        codeTextarea.addEventListener('scroll', function () {
+            // Sync line numbers scroll position with textarea
+            document.getElementById('lineNumbers').scrollTop = this.scrollTop;
+        });
+
+        // Add diagram type change listener
+        document.getElementById('diagramType').addEventListener('change', async function () {
+            const diagramType = this.value;
+            const currentCode = codeTextarea.value;
+
+            // Update the format dropdown based on the selected diagram type
+            updateFormatDropdown();
+
+            // Check if the current code is one of our examples
+            const isCurrentCodeAnExample = Object.values(exampleCache).includes(currentCode);
+
+            // Only update if user hasn't edited or is viewing an example
+            if (!userHasEditedContent || isCurrentCodeAnExample) {
+                // Load the example for this diagram type
+                const example = await loadExampleForDiagramType(diagramType);
+
+                // Update textarea with the example
+                codeTextarea.value = example;
+                updateLineNumbers();
+                updateDiagram();
+            } else {
+                // Just update the diagram with the current code
+                updateDiagram();
+            }
+        });
+
+        // Add format change listener
+        document.getElementById('outputFormat').addEventListener('change', updateDiagram);
+
+        // Add download button listener
+        document.getElementById('downloadButton').addEventListener('click', downloadDiagram);
+
+        // Add copy button listener for image link
+        document.getElementById('copy-link-btn').addEventListener('click', function() {
+            const imageLinkText = document.getElementById('image-link-text');
+            imageLinkText.select();
+            document.execCommand('copy');
+            
+            // Give visual feedback
+            const originalText = this.textContent;
+            this.textContent = 'Copied!';
+            setTimeout(() => {
+                this.textContent = originalText;
+            }, 1500);
+        });
+
+        // Add decode button listener
+        document.getElementById('decode-btn').addEventListener('click', handleDecode);
+
+        // Allow decoding when pressing Enter in the encoded text input
+        document.getElementById('encoded-text').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleDecode();
+            }
+        });
+
+        // Initialize format dropdown
+        updateFormatDropdown();
+        
+        // Initialize line numbers and diagram
+        updateLineNumbers();
+        updateDiagram();
+    </script>
+</body>
+</html>
