@@ -9,6 +9,11 @@ CERTS_DIR="${SCRIPT_DIR}/nginx-certs"
 NGINX_CONF="${SCRIPT_DIR}/nginx.conf"
 DOCKER_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
+# Default configuration
+HOSTNAME="localhost"
+CUSTOM_CERT_KEY=""
+CUSTOM_CERT_CRT=""
+
 # Check if docker is installed
 check_dependencies() {
     echo "Checking dependencies..."
@@ -32,7 +37,7 @@ check_dependencies() {
     fi
 }
 
-# Function to generate ECDSA self-signed SSL certs
+# Function to generate ECDSA self-signed SSL certs or use existing ones
 generate_certs() {
     echo "Checking SSL certificates..."
     if [ ! -d "$CERTS_DIR" ]; then
@@ -40,6 +45,21 @@ generate_certs() {
         echo "Created certificates directory: $CERTS_DIR"
     fi
 
+    # If custom certificates were provided, use them
+    if [ -n "$CUSTOM_CERT_KEY" ] && [ -n "$CUSTOM_CERT_CRT" ]; then
+        if [ -f "$CUSTOM_CERT_KEY" ] && [ -f "$CUSTOM_CERT_CRT" ]; then
+            echo "Using provided SSL certificates"
+            cp "$CUSTOM_CERT_KEY" "$CERTS_DIR/nginx.key"
+            cp "$CUSTOM_CERT_CRT" "$CERTS_DIR/nginx.crt"
+            # Set proper permissions for private key
+            chmod 600 "$CERTS_DIR/nginx.key"
+            return 0
+        else
+            echo "Warning: Specified certificate files not found. Falling back to self-signed certificates."
+        fi
+    fi
+
+    # Generate self-signed certificate if needed
     if [ ! -f "$CERTS_DIR/nginx.crt" ]; then
         echo "Generating ECDSA self-signed SSL certificate..."
         # Generate the private key using ECDSA
@@ -47,7 +67,7 @@ generate_certs() {
         # Set proper permissions for private key
         chmod 600 "$CERTS_DIR/nginx.key"
         # Generate the self-signed certificate
-        openssl req -new -key "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.csr" -subj "/CN=localhost"
+        openssl req -new -key "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.csr" -subj "/CN=${HOSTNAME}"
         openssl x509 -req -days 365 -in "$CERTS_DIR/nginx.csr" -signkey "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.crt"
         rm "$CERTS_DIR/nginx.csr"  # Clean up CSR file
         echo "SSL certificate generated successfully."
@@ -108,7 +128,7 @@ http {
 
     server {
         listen 0.0.0.0:8443 ssl;
-        server_name localhost;
+        server_name ${HOSTNAME};
 
         ssl_certificate /etc/nginx/certs/nginx.crt;
         ssl_certificate_key /etc/nginx/certs/nginx.key;
@@ -201,10 +221,68 @@ show_status() {
     $DOCKER_COMPOSE ps
 }
 
+# Function to parse command-line arguments
+parse_args() {
+    local POSITIONAL=()
+    while [[ $# -gt 0 ]]; do
+        key="$1"
+        case $key in
+            --hostname)
+                HOSTNAME="$2"
+                shift 2
+                ;;
+            --cert)
+                CUSTOM_CERT_CRT="$2"
+                shift 2
+                ;;
+            --key)
+                CUSTOM_CERT_KEY="$2"
+                shift 2
+                ;;
+            --help)
+                show_help
+                exit 0
+                ;;
+            *)
+                POSITIONAL+=("$1")
+                shift
+                ;;
+        esac
+    done
+    set -- "${POSITIONAL[@]}"
+    COMMAND="$1"
+}
+
+# Function to display help message
+show_help() {
+    echo "╔════════════════════════════════════════════════════════════════════╗"
+    echo "║                     Kroki Server Management                        ║"
+    echo "╚════════════════════════════════════════════════════════════════════╝"
+    echo "Usage: $0 [options] {start|stop|restart|status|logs|clean}"
+    echo ""
+    echo "Options:"
+    echo "  --hostname <name>  Set the hostname for SSL certificate and Nginx config"
+    echo "  --cert <path>      Path to SSL certificate file"
+    echo "  --key <path>       Path to SSL private key file"
+    echo "  --help             Show this help message"
+    echo ""
+    echo "Commands:"
+    echo "  start    - Start the Kroki server"
+    echo "  stop     - Stop all services"
+    echo "  restart  - Restart all services"
+    echo "  status   - Show status of services"
+    echo "  logs     - Show logs from all services"
+    echo "  clean    - Remove all containers, images, and generated files"
+    echo ""
+}
+
 # Main logic
 check_dependencies
 
-case "$1" in
+# Parse command-line arguments first
+parse_args "$@"
+
+case "$COMMAND" in
     start)
         generate_certs
         create_nginx_config
@@ -217,6 +295,9 @@ case "$1" in
             sleep 5
             check_services
             echo "Kroki is available at https://localhost:8443"
+            if [ "$HOSTNAME" != "localhost" ]; then
+                echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
+            fi
             show_status
         else
             echo "Error: docker-compose.yml file not found at $DOCKER_COMPOSE_FILE"
@@ -250,6 +331,9 @@ case "$1" in
         $DOCKER_COMPOSE up -d
         check_services
         echo "Kroki is available at https://localhost:8443"
+        if [ "$HOSTNAME" != "localhost" ]; then
+            echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
+        fi
         show_status
         ;;
     logs)
@@ -260,19 +344,7 @@ case "$1" in
         show_status
         ;;
     *)
-        echo "╔════════════════════════════════════════════════════════════════════╗"
-        echo "║                     Kroki Server Management                        ║"
-        echo "╚════════════════════════════════════════════════════════════════════╝"
-        echo "Usage: $0 {start|stop|restart|status|logs|clean}"
-        echo ""
-        echo "Commands:"
-        echo "  start    - Start the Kroki server"
-        echo "  stop     - Stop all services"
-        echo "  restart  - Restart all services"
-        echo "  status   - Show status of services"
-        echo "  logs     - Show logs from all services"
-        echo "  clean    - Remove all containers, images, and generated files"
-        echo ""
+        show_help
         exit 1
         ;;
 esac
