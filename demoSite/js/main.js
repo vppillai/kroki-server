@@ -127,7 +127,7 @@ Bob --> Alice: Hi there
 
             try {
                 // Try to fetch the example from a file
-                const response = await fetch(`examples/${type}.txt`);
+                const response = await fetch(`/examples/${type}.txt`);
 
                 if (response.ok) {
                     const text = await response.text();

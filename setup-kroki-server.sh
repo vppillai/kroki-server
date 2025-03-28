@@ -49,6 +49,7 @@ http {
     # Performance settings
     sendfile on;
     tcp_nopush on;
+    tcp_nodelay on;
     keepalive_timeout 65;
 
 server {
@@ -57,15 +58,6 @@ server {
 
     ssl_certificate /etc/nginx/certs/nginx.crt;
     ssl_certificate_key /etc/nginx/certs/nginx.key;
-
-    # Demo site resources (handle all common static asset directories)
-    location ~* ^/(css|js|examples)/ {
-        proxy_pass http://demosite:8006\$request_uri;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto https;
-    }
 
     # Root path (serves the demo site index)
     location = / {
@@ -76,18 +68,44 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # Favicon and other common static files at root level
-    location ~* ^/.*\.(html|ico)$ {
-        proxy_pass http://demosite:8006\$request_uri;
+    # Static resources in static directories
+    location ~* ^/(css|js|images|examples|fonts|resources)/ {
+        proxy_pass http://demosite:8006\$uri;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        
+        # Add caching headers for static assets
+        expires 1d;
+        add_header Cache-Control "public";
+    }
+
+    # Static files at root level
+    location ~* ^/[^/]+\.(html|css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        proxy_pass http://demosite:8006\$uri;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        
+        # Add caching headers for static assets
+        expires 1d;
+        add_header Cache-Control "public";
+    }
+
+    # Match Kroki API pattern (diagram-type/format/encoded-diagram)
+    location ~* ^/[^/]+/[^/]+/[^/]+$ {
+        proxy_pass http://core:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    # All other paths go to Kroki core service
+    # Fallback for any other paths
     location / {
-        proxy_pass http://core:8000;
+        proxy_pass http://demosite:8006;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
