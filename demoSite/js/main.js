@@ -29,7 +29,7 @@ Bob --> Alice: Hi there
             svgbob: ['svg'],
             symbolator: ['svg'],
             tikz: ['png', 'svg', 'jpeg', 'pdf'],
-            umlet: ['png', 'svg', 'jpeg'],
+            //umlet: ['png', 'svg', 'jpeg'],
             vega: ['png', 'svg', 'pdf'],
             vegalite: ['png', 'svg', 'pdf'],
             wavedrom: ['svg'],

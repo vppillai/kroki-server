@@ -116,6 +116,17 @@ server {
 EOF
 }
 
+#if docker-compose is not installed, try docker compose. then assign the result to DOCKER_COMPOSE so that we can use it for alter commands
+if ! command -v docker-compose &> /dev/null; then
+    if command -v docker compose &> /dev/null; then
+        DOCKER_COMPOSE="docker compose"
+    else
+        echo "docker-compose or docker compose not found. Please install Docker Compose."
+        exit 1
+    fi
+else
+    DOCKER_COMPOSE="docker-compose"
+fi
 
 # Main logic
 case "$1" in
@@ -124,16 +135,16 @@ case "$1" in
         create_nginx_config
         build_demo_site
         echo "Starting services with Docker Compose..."
-        docker-compose up -d
+        $DOCKER_COMPOSE up -d
         echo "Kroki is available at https://localhost:8443"
         ;;
     stop)
         echo "Stopping services with Docker Compose..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         ;;
     clean)
         echo "Cleaning up Docker containers and images..."
-        docker-compose down --rmi all
+        $DOCKER_COMPOSE down --rmi all
         docker volume prune -f
         docker network prune -f
         rm -rf "$CERTS_DIR"
@@ -142,17 +153,17 @@ case "$1" in
         ;;
     restart)
         echo "Restarting services with Docker Compose..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         build_demo_site
         generate_certs
         create_nginx_config
         echo "Starting services with Docker Compose..."
-        docker-compose up -d
+        $DOCKER_COMPOSE up -d
         echo "Kroki is available at https://localhost:8443"
         ;;
     logs)
         echo "Displaying logs for all services..."
-        docker-compose logs -f
+        $DOCKER_COMPOSE logs -f
         ;;
     *)
         echo "Usage: $0 {start|stop|clean|restart|logs}"
