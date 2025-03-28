@@ -42,6 +42,15 @@ create_nginx_config() {
     cat > "$NGINX_CONF" <<EOF
 events{}
 http {
+    # Include basic MIME types
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Performance settings
+    sendfile on;
+    tcp_nopush on;
+    keepalive_timeout 65;
+
 server {
     listen 0.0.0.0:8443 ssl;
     server_name localhost;
@@ -49,14 +58,16 @@ server {
     ssl_certificate /etc/nginx/certs/nginx.crt;
     ssl_certificate_key /etc/nginx/certs/nginx.key;
 
-    location / {
-        proxy_pass http://core:8000;
+    # Demo site resources (handle all common static asset directories)
+    location ~* ^/(css|js|examples)/ {
+        proxy_pass http://demosite:8006\$request_uri;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
     }
 
+    # Root path (serves the demo site index)
     location = / {
         proxy_pass http://demosite:8006/index.html;
         proxy_set_header Host \$host;
@@ -65,8 +76,18 @@ server {
         proxy_set_header X-Forwarded-Proto https;
     }
 
-    location /examples {
-        proxy_pass http://demosite:8006/examples;
+    # Favicon and other common static files at root level
+    location ~* ^/.*\.(html|ico)$ {
+        proxy_pass http://demosite:8006\$request_uri;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    # All other paths go to Kroki core service
+    location / {
+        proxy_pass http://core:8000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
