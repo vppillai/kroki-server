@@ -10,6 +10,8 @@ WORKDIR /app
 # Copy the HTML files
 COPY index.html .
 COPY examples/ examples/
+COPY css/ css/
+COPY js/ js/
 
 # Expose the port (for documentation)
 EXPOSE ${PORT}

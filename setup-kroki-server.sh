@@ -69,7 +69,7 @@ server {
     }
 
     # Static resources in static directories
-    location ~* ^/(css|js|images|examples|fonts|resources)/ {
+    location ~* ^/(css|js|examples)/ {
         proxy_pass http://demosite:8006\$uri;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -82,7 +82,7 @@ server {
     }
 
     # Static files at root level
-    location ~* ^/[^/]+\.(html|css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    location ~* ^/[^/]+\.(html|ico)$ {
         proxy_pass http://demosite:8006\$uri;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
