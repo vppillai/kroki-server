@@ -2,6 +2,8 @@
 
 A complete setup for running a local Kroki diagram rendering server with a custom interactive demo site.
 
+![](./images/demoSite.png)
+
 ## Quick Start
 
 ```bash
@@ -25,21 +27,93 @@ This project provides a complete solution for running a [Kroki](https://kroki.io
 - HTTPS support via self-signed certificates
 - Comprehensive deployment scripts and utilities
 
+## DemoSite
+
+The demo site, accessible at https://localhost:8443/, provides an interactive interface for creating and previewing diagrams.
+
+### Features
+
+- Supports all diagram types provided by Kroki
+- Real-time diagram preview
+- Format conversion (SVG, PNG, PDF, etc.)
+- Diagram code examples for all supported formats
+- Download rendered diagrams
+- Line numbers in the editor
+- Responsive design for different screen sizes
+
+### URL Parameter Functionality
+
+The demo site supports URL parameters for sharing and bookmarking diagrams:
+
+- `diag` - Sets the diagram type (e.g., plantuml, mermaid, graphviz)
+- `fm`t  - Sets the output format (e.g., svg, png, pdf)
+- `im`   - Contains the encoded diagram content
+
+These URL parameters work seamlessly:
+
+- When changing diagram types in the UI, the URL is automatically updated
+- If an empty editor is loaded with a diagram type, the default example is shown
+- When you edit diagram code, the URL updates in real-time for sharing
+- If you specify an unsupported format for a diagram type, it automatically defaults to a supported one
+- When the code editor is emptied, the im parameter is removed from the URL
+
+Formats are preserved when switching diagram types if the format is supported
+
+Example URL:
+
+```
+https://localhost:8443/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ4dyAh--P0aAaKv0D06i__ztEH1KuA9EXc_S4KWqKIcTLqxzf4a_WjRinoqZX4-cUk7PbSvMjuopdAzjOJCpudPeEoVb5PA0q4hoKbQ2X_uhSYLDP7xDyzXZjwqKPMz0fYwsRquxLiuxYHH7y-K7-4fV3rbfQbI%3D
+```
+
+### Supported Diagram Types
+- PlantUML
+- Mermaid
+- GraphViz
+- BPMN
+- BlockDiag
+- C4 (with PlantUML)
+- DBM
+- D2
+- Excalidraw
+- ERD
+
+And many more...
+
+### Supported Output Formats
+
+Format support varies by diagram type, but generally includes:
+
+- `SVG` - Scalable Vector Graphics
+- `PNG` - Portable Network Graphics
+- `PDF` - Portable Document Format
+- `JPEG` - For selected diagram types
+- `TXT` - Text output (for selected diagram types)
+- `Base64` - Encoded output (for selected diagram types)
+
+### Interactive Tools
+
+- `Code Editor`: Create and edit diagram code with line numbering
+- `Format Selector`: Choose output format based on diagram type
+- `Live Preview`: See your diagram update as you type (with debouncing)
+- `Download Button`: Save generated diagrams in various formats
+- `Image Link Copying`: Easily share direct links to generated images
+- `Decoder Tool`: Convert encoded diagrams back to source code
+
 ## Architecture
 
 The system consists of several containerized services:
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    Nginx    │     │    Core     │     │   Mermaid   │
-│   Proxy     │────▶│   Kroki     │────▶│  Renderer   │
+│  Nginx      │     │  Core       │     │  Mermaid    │
+│  Proxy      │────▶│  Kroki      │────▶│  Renderer   │
 │  Container  │     │  Container  │     │  Container  │
 └─────────────┘     └─────────────┘     └─────────────┘
        │                   │                   │
        │                   │                   │
        │                   ▼                   │
        │            ┌─────────────┐            │
-       │            │    BPMN     │            │
+       │            │  BPMN       │            │
        │            │  Renderer   │            │
        │            │  Container  │            │
        │            └─────────────┘            │
@@ -155,6 +229,7 @@ The demo site, accessible at https://localhost:8443/, provides an interactive in
 ### Nginx Configuration
 
 The Nginx proxy handles routing and SSL:
+
 - Routes diagram requests to the core Kroki server
 - Serves the demo site static files
 - Manages SSL certificates
