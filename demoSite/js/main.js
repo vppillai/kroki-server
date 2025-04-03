@@ -453,6 +453,66 @@ Bob --> Alice: Hi there
             }
         }
 
+        // Resize functionality
+        function initializeResizeHandle() {
+            const container = document.querySelector('.container');
+            const editor = document.querySelector('.editor');
+            const handle = document.getElementById('resize-handle');
+            const preview = document.querySelector('.preview');
+            let isResizing = false;
+            let startX, startWidth;
+
+            handle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = editor.offsetWidth;
+                handle.classList.add('dragging');
+                
+                // Prevent text selection during resize
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                const width = startWidth + (e.clientX - startX);
+                const containerWidth = container.offsetWidth;
+                
+                // Limit resize to reasonable bounds (10% to 90% of container)
+                const minWidth = containerWidth * 0.1;
+                const maxWidth = containerWidth * 0.9;
+                
+                if (width >= minWidth && width <= maxWidth) {
+                    editor.style.width = width + 'px';
+                    // Adjust line numbers after resize
+                    updateLineNumbers();
+                    // Check if controls need to be rearranged
+                    adjustControlsLayout();
+                }
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    handle.classList.remove('dragging');
+                    document.body.style.userSelect = '';
+                }
+            });
+        }
+
+        // Function to adjust controls layout based on available width
+        function adjustControlsLayout() {
+            const controlsContainer = document.querySelector('.controls');
+            const editor = document.querySelector('.editor');
+            const STACK_THRESHOLD = 350; // Width in pixels below which to stack controls
+            
+            if (editor.offsetWidth < STACK_THRESHOLD) {
+                controlsContainer.classList.add('stacked-controls');
+            } else {
+                controlsContainer.classList.remove('stacked-controls');
+            }
+        }
+
         // Event Listeners
         document.addEventListener('DOMContentLoaded', function() {
             initializeDiagramTypeDropdown();
@@ -460,6 +520,13 @@ Bob --> Alice: Hi there
             processUrlParameters();
             updateLineNumbers();
             updateDiagram();
+            initializeResizeHandle(); // Initialize the resize handle
+            adjustControlsLayout(); // Initial layout adjustment
+        });
+
+        // Add window resize listener
+        window.addEventListener('resize', function() {
+            adjustControlsLayout();
         });
 
         const codeTextarea = document.getElementById('code');

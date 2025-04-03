@@ -23,21 +23,17 @@
     <div class="container">
         <div class="editor">
             <h2>Diagram Code</h2>
-            <div class="controls-row">
-                <div class="editor-controls">
+            <div class="controls">
+                <div class="control-group">
                     <label for="diagramType">Diagram Type:</label>
                     <select id="diagramType">
-                        <option value="plantuml" selected>plantuml</option>
-                        <option value="mermaid">mermaid</option>
-                        <option value="bytefield">bytefield</option>
-                        <!-- Other diagram types can be added here -->
+                        <!-- Options will be populated by JavaScript -->
                     </select>
                 </div>
-                <div class="format-controls">
+                <div class="control-group">
                     <label for="outputFormat">Output Format:</label>
                     <select id="outputFormat">
-                        <option value="svg" selected>SVG</option>
-                        <!-- Other output formats will be populated by JavaScript -->
+                        <!-- Options will be populated by JavaScript -->
                     </select>
                 </div>
             </div>
@@ -51,6 +47,7 @@ Bob --> Alice: Hi there
             <div id="loadingMessage" class="loading">Loading example...</div>
             <div id="errorMessage" class="error"></div>
         </div>
+        <div id="resize-handle" class="resize-handle"></div>
         <div class="preview">
             <div class="preview-header">
                 <h2>Diagram Preview</h2>
