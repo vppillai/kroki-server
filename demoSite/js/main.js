@@ -18,6 +18,7 @@ Bob --> Alice: Hi there
             d2: ['svg'],
             dbml: ['svg'],
             ditaa: ['png', 'svg'],
+            diagramsnet: ['png', 'svg'],
             erd: ['png', 'svg', 'jpeg', 'pdf'],
             excalidraw: ['svg'],
             graphviz: ['png', 'svg', 'jpeg', 'pdf'],
