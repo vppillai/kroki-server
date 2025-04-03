@@ -1,318 +1,455 @@
+/* Modern font imports */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Reset and base styles */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     margin: 0;
     padding: 0;
     height: 100vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    background-color: #f9fafb;
+    color: #333;
+    line-height: 1.5;
 }
+
+/* Main container */
 .container {
     display: flex;
     flex: 1;
     overflow: hidden;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    background-color: white;
 }
+
+/* Editor panel */
 .editor {
     width: 35%;
-    padding: 10px;
-    border-right: 1px solid #ccc;
+    padding: 15px;
+    border-right: 1px solid #e4e7eb;
     display: flex;
     flex-direction: column;
+    background-color: #fafbfc;
 }
+
+/* Preview panel */
 .preview {
     flex: 1;
-    padding: 10px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
     overflow: auto;
+    background-color: white;
 }
-/* Controls row */
-.controls-row {
+
+/* Controls styling */
+.controls {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-/* Editor controls */
-.editor-controls {
-    flex: 1;
-    display: flex;
+    flex-direction: row;
     align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    flex-wrap: nowrap;
+    padding: 10px 0;
 }
-.editor-controls select {
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+
+.controls select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
     font-size: 14px;
-    margin-left: 10px;
-    flex-grow: 1;
+    background-color: white;
+    color: #1f2937;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+    min-width: 140px;
 }
-.editor-controls label {
+
+.controls select:hover {
+    border-color: #9ca3af;
+}
+
+.controls select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.controls label {
     font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
     margin-right: 5px;
     white-space: nowrap;
 }
-/* Format controls */
-.format-controls {
-    flex: 1;
-    display: flex;
-    align-items: center;
+
+/* When controls need to be stacked */
+.stacked-controls {
+    flex-direction: column;
+    align-items: flex-start;
 }
-.format-controls select {
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    margin-left: 10px;
+
+.stacked-controls .control-group {
+    display: flex;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.stacked-controls .control-group label {
+    min-width: 100px;
+}
+
+.stacked-controls .control-group select {
     flex-grow: 1;
 }
-.format-controls label {
-    font-size: 14px;
-    margin-right: 5px;
-    white-space: nowrap;
-}
+
 /* Editor container for line numbers */
 .editor-container {
     position: relative;
     height: 100%;
     overflow: hidden;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
 .line-numbers {
     position: absolute;
     top: 0;
     left: 0;
-    width: 30px;
+    width: 35px;
     height: 100%;
     padding: 10px 5px 10px 0;
     text-align: right;
-    background-color: #f5f5f5;
-    border-right: 1px solid #ddd;
-    font-family: monospace;
-    font-size: 14px;
-    color: #999;
+    background-color: #f3f4f6;
+    border-right: 1px solid #e5e7eb;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #6b7280;
     overflow: hidden;
     user-select: none;
     z-index: 1;
 }
+
 #lineNumbers {
     padding-top: 10px;
-    width: 30px;
+    width: 35px;
     text-align: right;
-    border-right: 1px solid #ccc;
+    border-right: 1px solid #e5e7eb;
     overflow-y: hidden;
     user-select: none;
-    background-color: #f5f5f5;
+    background-color: #f3f4f6;
 }
+
+/* Code editor styling */
 textarea {
     width: 100%;
     height: 100%;
     resize: none;
-    font-family: monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    padding: 10px 10px 10px 40px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 10px 10px 10px 46px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
     box-sizing: border-box;
     white-space: pre;
     overflow-x: auto;
     tab-size: 4;
-}
-textarea#code {
-    white-space: pre;
-    overflow-x: scroll; /* Changed from 'auto' to always show scrollbar */
-    overflow-y: auto;
-    tab-size: 4;
-    scrollbar-width: thin; /* For Firefox */
+    background-color: #ffffff;
+    color: #1f2937;
 }
 
-/* Custom scrollbar styling for Webkit browsers (Chrome, Safari, etc.) */
+textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+textarea#code {
+    white-space: pre;
+    overflow-x: scroll;
+    overflow-y: auto;
+    tab-size: 4;
+    scrollbar-width: thin;
+}
+
+/* Custom scrollbar styling */
 textarea#code::-webkit-scrollbar {
-    height: 8px; /* Height of horizontal scrollbar */
-    width: 8px;  /* Width of vertical scrollbar */
+    height: 8px;
+    width: 8px;
 }
 
 textarea#code::-webkit-scrollbar-thumb {
-    background-color: #888; 
+    background-color: #9ca3af;
     border-radius: 4px;
 }
 
 textarea#code::-webkit-scrollbar-thumb:hover {
-    background-color: #555;
+    background-color: #6b7280;
 }
 
 textarea#code::-webkit-scrollbar-track {
-    background-color: #f1f1f1;
+    background-color: #f3f4f6;
 }
 
-h2 {
-    margin-top: 0;
-}
+/* Preview header */
 .preview-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
 }
+
+.preview-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* Download button */
 .download-btn {
-    padding: 6px 12px;
-    margin-right: 50px;
-    background-color: #4CAF50;
+    padding: 8px 16px;
+    margin-right: 10px;
+    background-color: #3b82f6;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
 }
+
 .download-btn:hover {
-    background-color: #45a049;
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
+
+.download-btn:active {
+    transform: translateY(0);
+}
+
+/* Diagram container */
 #diagram-container {
     flex: 1;
     overflow: auto;
     display: flex;
     flex-direction: column;
+    background-color: #f9fafb;
+    border-radius: 6px;
+    padding: 15px;
 }
+
 #diagram {
     max-width: 100%;
     max-height: calc(100vh - 180px);
     object-fit: contain;
-    border: 1px solid #eee;
-    padding: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 15px;
     background-color: white;
     display: block;
     margin: 0 auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
 #text-preview {
     width: 100%;
     height: 100%;
-    border: 1px solid #eee;
-    padding: 10px;
+    border: 1px solid #e5e7eb;
+    padding: 15px;
     background-color: white;
-    font-family: monospace;
+    font-family: 'JetBrains Mono', monospace;
     white-space: pre-wrap;
     overflow: auto;
     display: none;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-.error {
-    color: red;
-    margin-top: 10px;
-    display: none;
+
+/* Status messages */
+.loading, .error {
+    padding: 10px 16px;
+    margin-top: 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: opacity 0.3s ease;
 }
+
 .loading {
+    background-color: #e0f2fe;
+    color: #0369a1;
     display: none;
-    color: #666;
-    font-style: italic;
-    margin-top: 5px;
 }
+
+.error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    display: none;
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+.loading-pulse {
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Resize handle */
+.resize-handle {
+    width: 6px;
+    background-color: #e5e7eb;
+    cursor: col-resize;
+    transition: background-color 0.2s ease;
+}
+
+.resize-handle:hover, 
+.resize-handle.dragging {
+    background-color: #3b82f6;
+}
+
+/* Utility section */
 .utility-container {
     display: flex;
-    padding: 10px;
-    background-color: #f5f5f5;
-    border-top: 1px solid #ddd;
+    padding: 12px 15px;
+    background-color: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
 }
+
 .utility-row {
     display: flex;
     align-items: center;
-    background-color: #f8f8f8;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    padding: 8px 10px;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px 12px;
     flex: 1;
     margin: 0 5px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
+
 .utility-row label {
-    font-size: 12px;
-    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4b5563;
     margin-right: 10px;
     white-space: nowrap;
 }
+
 .utility-row input[type="text"] {
     flex-grow: 1;
-    padding: 6px;
-    border: 1px solid #ddd;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
     border-radius: 4px;
-    font-family: monospace;
-    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
 }
+
+.utility-row input[type="text"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 .utility-row button {
     margin-left: 10px;
-    padding: 6px 12px;
-    background-color: #4CAF50;
+    padding: 8px 12px;
+    background-color: #3b82f6;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
+
 .utility-row button:hover {
-    background-color: #45a049;
+    background-color: #2563eb;
 }
+
+/* Placeholder for downloads */
 .placeholder-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 200px;
-    border: 1px dashed #ccc;
-    background-color: #f9f9f9;
+    border: 1px dashed #d1d5db;
+    background-color: #f9fafb;
     text-align: center;
     padding: 20px;
-    border-radius: 5px;
+    border-radius: 6px;
 }
+
 .placeholder-text {
-    font-size: 13px;
-    color: #555;
+    font-size: 14px;
+    color: #6b7280;
     margin-bottom: 15px;
 }
+
 .placeholder-btn {
     padding: 8px 16px;
-    background-color: #4CAF50;
+    background-color: #3b82f6;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     text-decoration: none;
     display: inline-block;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
+
 .placeholder-btn:hover {
-    background-color: #45a049;
+    background-color: #2563eb;
+    transform: translateY(-1px);
 }
-.github-corner:hover .octo-arm {
-    animation: octocat-wave 560ms ease-in-out infinite;
+
+/* Ensure text doesn't wrap */
+.editor-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 }
-@keyframes octocat-wave {
-    0%, 100% {transform: rotate(0)}
-    20%, 60% {transform: rotate(-25deg)}
-    40%, 80% {transform: rotate(10deg)}
-}
-@media (max-width: 500px) {
-    .github-corner:hover .octo-arm {
-        animation: none
+
+/* Media queries for responsive design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
     }
-    .github-corner .octo-arm {
-        animation: octocat-wave 560ms ease-in-out
+    
+    .editor, .preview {
+        width: 100%;
+        height: 50vh;
     }
-}
-
-.loading, .error {
-    padding: 8px 12px;
-    margin-top: 10px;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: opacity 0.3s ease;
-}
-
-.loading {
-    background-color: #e7f3fe;
-    color: #2b6cb0;
-    display: none;
-}
-
-.error {
-    background-color: #fed7d7;
-    color: #c53030;
-    display: none;
+    
+    .resize-handle {
+        width: 100%;
+        height: 6px;
+        cursor: row-resize;
+    }
+    
+    .utility-container {
+        flex-direction: column;
+    }
+    
+    .utility-row {
+        margin: 5px 0;
+    }
 }
 
 /* Add pulsing animation for loading state */
