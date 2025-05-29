@@ -40,6 +40,15 @@ The demo site, accessible at https://localhost:8443/, provides an interactive in
 - Download rendered diagrams
 - Line numbers in the editor
 - Responsive design for different screen sizes
+- **Interactive zoom and pan for diagram images**
+  - Mouse wheel zoom with precise cursor positioning
+  - Click and drag to pan around large diagrams
+  - Touch support for mobile devices (pinch to zoom, drag to pan)
+  - Keyboard shortcuts (Ctrl/Cmd + +/- for zoom, Ctrl/Cmd + 0 to reset)
+  - Zoom controls with visual feedback
+  - **Zoom state preservation** - maintains zoom level and position when updating diagram code
+  - Double-click to reset zoom to fit
+  - Help modal with detailed usage instructions
 
 ### URL Parameter Functionality
 
@@ -98,6 +107,16 @@ Format support varies by diagram type, but generally includes:
 - `Download Button`: Save generated diagrams in various formats
 - `Image Link Copying`: Easily share direct links to generated images
 - `Decoder Tool`: Convert encoded diagrams back to source code
+- `Zoom and Pan Controls`: Interactive viewing for large diagrams
+  - **Mouse Controls**: Wheel to zoom, click-drag to pan, double-click to reset
+  - **Touch Controls**: Pinch to zoom, single-finger drag to pan
+  - **Keyboard Shortcuts**: 
+    - `Ctrl/Cmd + +`: Zoom in
+    - `Ctrl/Cmd + -`: Zoom out  
+    - `Ctrl/Cmd + 0`: Reset zoom
+  - **Smart State Management**: Zoom level and position are preserved when updating diagram code
+  - **Visual Feedback**: Real-time zoom percentage display
+  - **Help System**: Built-in help modal with usage instructions
 
 ## Architecture
 
