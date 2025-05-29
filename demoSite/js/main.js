@@ -79,14 +79,20 @@ let currentFile = {
     content: '',
     saved: false,
     handle: null, // For File System Access API
-    isOpen: false // Track if we actually have a file open
+    isOpen: false, // Track if we actually have a file open
+    autoSaveEnabled: false // Track auto-save state
 };
+
+// Auto-save timer
+let autoSaveTimer = null;
+const AUTO_SAVE_DELAY = 2000; // 2 seconds delay
 
 // File operations functionality
 function updateFileStatus() {
     const fileNameElement = document.getElementById('file-name');
     const saveStatusElement = document.getElementById('save-status');
     const saveBtn = document.getElementById('save-file-btn');
+    const autoSaveLabel = document.getElementById('auto-save-label');
 
     // Handle no file open state
     if (!currentFile.isOpen) {
@@ -97,7 +103,17 @@ function updateFileStatus() {
             saveBtn.disabled = true;
             saveBtn.title = 'No file to save';
         }
+        if (autoSaveLabel) {
+            autoSaveLabel.style.display = 'none';
+            autoSaveLabel.classList.remove('active');
+        }
         return;
+    }
+
+    // Show auto-save pill when file is open
+    if (autoSaveLabel) {
+        autoSaveLabel.style.display = 'inline-flex';
+        autoSaveLabel.classList.toggle('active', !!currentFile.autoSaveEnabled);
     }
 
     // Add animation class for file name changes
@@ -443,6 +459,7 @@ function initializeFileOperations() {
     const openBtn = document.getElementById('open-file-btn');
     const saveBtn = document.getElementById('save-file-btn');
     const saveAsBtn = document.getElementById('save-as-btn');
+    const autoSaveLabel = document.getElementById('auto-save-label');
     const fileInput = document.getElementById('file-input');
 
     if (newBtn) {
@@ -459,6 +476,10 @@ function initializeFileOperations() {
 
     if (saveAsBtn) {
         saveAsBtn.addEventListener('click', saveAsFile);
+    }
+
+    if (autoSaveLabel) {
+        autoSaveLabel.addEventListener('click', toggleAutoSave);
     }
 
     if (fileInput) {
@@ -479,6 +500,40 @@ function initializeFileOperations() {
                 markFileAsModified();
             }
         });
+    }
+}
+
+// Toggle auto-save functionality
+function toggleAutoSave() {
+    currentFile.autoSaveEnabled = !currentFile.autoSaveEnabled;
+    const autoSaveLabel = document.getElementById('auto-save-label');
+
+    if (autoSaveLabel) {
+        autoSaveLabel.classList.toggle('active', currentFile.autoSaveEnabled);
+    }
+
+    if (currentFile.autoSaveEnabled) {
+        startAutoSave();
+    } else {
+        stopAutoSave();
+    }
+}
+
+// Start auto-save timer
+function startAutoSave() {
+    stopAutoSave(); // Clear any existing timer
+    autoSaveTimer = setInterval(() => {
+        if (currentFile.isOpen && !currentFile.saved) {
+            saveFile();
+        }
+    }, AUTO_SAVE_DELAY);
+}
+
+// Stop auto-save timer
+function stopAutoSave() {
+    if (autoSaveTimer) {
+        clearInterval(autoSaveTimer);
+        autoSaveTimer = null;
     }
 }
 
