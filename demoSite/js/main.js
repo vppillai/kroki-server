@@ -72,6 +72,398 @@ const exampleCache = {
     plantuml: defaultExample
 };
 
+// File operations state
+let currentFile = {
+    name: 'Untitled',
+    path: null,
+    content: '',
+    saved: true,
+    handle: null // For File System Access API
+};
+
+// File operations functionality
+function updateFileStatus() {
+    const fileNameElement = document.getElementById('file-name');
+    const saveStatusElement = document.getElementById('save-status');
+    const saveBtn = document.getElementById('save-file-btn');
+
+    // Add animation class for file name changes
+    if (fileNameElement.textContent !== currentFile.name) {
+        fileNameElement.classList.add('changed');
+        setTimeout(() => fileNameElement.classList.remove('changed'), 300);
+    }
+
+    fileNameElement.textContent = currentFile.name;
+
+    if (currentFile.saved) {
+        saveStatusElement.textContent = 'Saved';
+        saveStatusElement.className = 'save-status saved';
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.title = 'File is saved';
+        }
+    } else {
+        saveStatusElement.textContent = '• Unsaved changes';
+        saveStatusElement.className = 'save-status';
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.title = 'Save file (Ctrl+S)';
+        }
+    }
+}
+
+function markFileAsModified() {
+    if (currentFile.saved) {
+        currentFile.saved = false;
+        updateFileStatus();
+
+        // Visual feedback for modification
+        const editor = document.getElementById('code');
+        if (editor) {
+            editor.style.borderLeftColor = 'var(--warning-color)';
+            setTimeout(() => {
+                editor.style.borderLeftColor = '';
+            }, 1000);
+        }
+    }
+}
+
+function markFileAsSaved() {
+    currentFile.saved = true;
+    updateFileStatus();
+
+    // Visual feedback for save
+    const saveStatusElement = document.getElementById('save-status');
+    if (saveStatusElement) {
+        saveStatusElement.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            saveStatusElement.style.transform = '';
+        }, 200);
+    }
+}
+
+// Check if File System Access API is supported
+function isFileSystemAccessSupported() {
+    return 'showOpenFilePicker' in window;
+}
+
+// Open file using File System Access API or fallback to input
+async function openFile() {
+    try {
+        if (isFileSystemAccessSupported()) {
+            const [fileHandle] = await window.showOpenFilePicker({
+                types: [{
+                    description: 'Diagram files',
+                    accept: {
+                        'text/*': ['.puml', '.plantuml', '.uml', '.txt', '.md', '.py', '.js', '.json', '.xml', '.yaml', '.yml', '.dot', '.gv', '.mmd', '.mermaid', '.d2', '.bpmn', '.erd', '.tikz', '.svg', '.drawio']
+                    }
+                }]
+            });
+
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+
+            currentFile.name = file.name;
+            currentFile.handle = fileHandle;
+            currentFile.content = content;
+            currentFile.saved = true;
+
+            const codeTextarea = document.getElementById('code');
+            codeTextarea.value = content;
+            updateLineNumbers();
+            updateDiagram();
+            updateFileStatus();
+
+            // Detect diagram type from content or filename
+            detectDiagramType(content, file.name);
+
+        } else {
+            // Fallback to file input
+            const fileInput = document.getElementById('file-input');
+            fileInput.click();
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Error opening file:', error);
+            showErrorMessage('Failed to open file: ' + error.message);
+        }
+    }
+}
+
+// Handle file input change (fallback method)
+function handleFileInputChange(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        const content = e.target.result;
+
+        currentFile.name = file.name;
+        currentFile.handle = null;
+        currentFile.content = content;
+        currentFile.saved = true;
+
+        const codeTextarea = document.getElementById('code');
+        codeTextarea.value = content;
+        updateLineNumbers();
+        updateDiagram();
+        updateFileStatus();
+
+        // Detect diagram type from content or filename
+        detectDiagramType(content, file.name);
+    };
+    reader.readAsText(file);
+
+    // Reset the input
+    event.target.value = '';
+}
+
+// Detect diagram type from content or filename
+function detectDiagramType(content, filename) {
+    const diagramTypeSelect = document.getElementById('diagramType');
+    const lowerContent = content.toLowerCase();
+    const lowerFilename = filename.toLowerCase();
+
+    // Try to detect from content
+    if (lowerContent.includes('@startuml') || lowerContent.includes('@enduml')) {
+        diagramTypeSelect.value = 'plantuml';
+    } else if (lowerContent.includes('graph') && (lowerContent.includes('mermaid') || lowerFilename.includes('.mmd'))) {
+        diagramTypeSelect.value = 'mermaid';
+    } else if (lowerContent.includes('digraph') || lowerFilename.includes('.dot') || lowerFilename.includes('.gv')) {
+        diagramTypeSelect.value = 'graphviz';
+    } else if (lowerFilename.includes('.d2')) {
+        diagramTypeSelect.value = 'd2';
+    } else if (lowerFilename.includes('.py')) {
+        diagramTypeSelect.value = 'structurizr';
+    }
+
+    // Update format dropdown and trigger diagram update
+    updateFormatDropdown();
+    currentDiagramType = diagramTypeSelect.value;
+}
+
+// Save file using File System Access API or fallback to download
+async function saveFile() {
+    const content = document.getElementById('code').value;
+
+    try {
+        if (currentFile.handle && isFileSystemAccessSupported()) {
+            // Use existing file handle
+            const writable = await currentFile.handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+
+            currentFile.content = content;
+            markFileAsSaved();
+            showSuccessMessage('File saved successfully!');
+        } else {
+            // No handle available, prompt for save as
+            await saveAsFile();
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Error saving file:', error);
+            showErrorMessage('Failed to save file: ' + error.message);
+        }
+    }
+}
+
+// Save as new file
+async function saveAsFile() {
+    const content = document.getElementById('code').value;
+
+    try {
+        if (isFileSystemAccessSupported()) {
+            const fileHandle = await window.showSaveFilePicker({
+                suggestedName: getDefaultFileName(),
+                types: [{
+                    description: 'Diagram files',
+                    accept: {
+                        'text/plain': ['.puml', '.plantuml', '.uml', '.txt', '.md', '.py', '.js', '.json', '.xml', '.yaml', '.yml', '.dot', '.gv', '.mmd', '.mermaid', '.d2', '.bpmn', '.erd', '.tikz', '.svg', '.drawio']
+                    }
+                }]
+            });
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+
+            currentFile.name = fileHandle.name || getDefaultFileName();
+            currentFile.handle = fileHandle;
+            currentFile.content = content;
+            markFileAsSaved();
+            updateFileStatus();
+            showSuccessMessage('File saved successfully!');
+        } else {
+            // Fallback to download
+            downloadAsFile(content);
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Error saving file:', error);
+            showErrorMessage('Failed to save file: ' + error.message);
+        }
+    }
+}
+
+// Get default filename based on diagram type
+function getDefaultFileName() {
+    const extensions = {
+        plantuml: '.puml',
+        mermaid: '.mmd',
+        graphviz: '.dot',
+        d2: '.d2',
+        structurizr: '.py',
+        ditaa: '.txt',
+        erd: '.erd',
+        pikchr: '.txt',
+        kroki: '.txt'
+    };
+
+    const extension = extensions[currentDiagramType] || '.txt';
+    return `diagram${extension}`;
+}
+
+// Fallback download function
+function downloadAsFile(content) {
+    const filename = getDefaultFileName();
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Update current file info
+    currentFile.name = filename;
+    currentFile.content = content;
+    markFileAsSaved();
+    updateFileStatus();
+    showSuccessMessage('File downloaded successfully!');
+}
+
+// Show success message
+function showSuccessMessage(message) {
+    const saveStatus = document.getElementById('save-status');
+    const originalClass = saveStatus.className;
+    const originalText = saveStatus.textContent;
+
+    saveStatus.textContent = message;
+    saveStatus.className = 'save-status saved';
+
+    setTimeout(() => {
+        saveStatus.textContent = originalText;
+        saveStatus.className = originalClass;
+    }, 2000);
+}
+
+// Show error message
+function showErrorMessage(message) {
+    const errorElement = document.getElementById('errorMessage');
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+
+    setTimeout(() => {
+        errorElement.style.display = 'none';
+    }, 5000);
+}
+
+// New file function
+function newFile() {
+    if (!currentFile.saved) {
+        if (!confirm('You have unsaved changes. Are you sure you want to create a new file?')) {
+            return;
+        }
+    }
+
+    currentFile.name = 'Untitled';
+    currentFile.handle = null;
+    currentFile.content = '';
+    currentFile.saved = true;
+
+    const codeTextarea = document.getElementById('code');
+    codeTextarea.value = defaultExample;
+    updateLineNumbers();
+    updateDiagram();
+    updateFileStatus();
+}
+
+// Keyboard shortcuts for file operations
+function handleFileShortcuts(event) {
+    if (event.ctrlKey || event.metaKey) {
+        switch (event.key) {
+            case 'o':
+                event.preventDefault();
+                openFile();
+                break;
+            case 's':
+                event.preventDefault();
+                if (event.shiftKey) {
+                    saveAsFile();
+                } else {
+                    saveFile();
+                }
+                break;
+            case 'n':
+                event.preventDefault();
+                newFile();
+                break;
+        }
+    }
+}
+
+// Initialize file operations
+function initializeFileOperations() {
+    // Set up event listeners
+    const newBtn = document.getElementById('new-file-btn');
+    const openBtn = document.getElementById('open-file-btn');
+    const saveBtn = document.getElementById('save-file-btn');
+    const saveAsBtn = document.getElementById('save-as-btn');
+    const fileInput = document.getElementById('file-input');
+
+    if (newBtn) {
+        newBtn.addEventListener('click', newFile);
+    }
+
+    if (openBtn) {
+        openBtn.addEventListener('click', openFile);
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveFile);
+    }
+
+    if (saveAsBtn) {
+        saveAsBtn.addEventListener('click', saveAsFile);
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileInputChange);
+    }
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', handleFileShortcuts);
+
+    // Initial file status update
+    updateFileStatus();
+
+    // Track content changes
+    const codeTextarea = document.getElementById('code');
+    if (codeTextarea) {
+        codeTextarea.addEventListener('input', function () {
+            if (currentFile.saved && this.value !== currentFile.content) {
+                markFileAsModified();
+            }
+        });
+    }
+}
+
 // Parse URL parameters
 function getUrlParameters() {
     const params = new URLSearchParams(window.location.search);
@@ -309,6 +701,21 @@ function initializeZoomPan() {
     const zoomOutBtn = document.getElementById('zoom-out');
     const resetZoomBtn = document.getElementById('reset-zoom');
     const zoomLevelSpan = document.getElementById('zoom-level');
+
+    // Check if all required elements exist
+    if (!viewport || !canvas || !diagram || !zoomControls || !zoomInBtn || !zoomOutBtn || !resetZoomBtn || !zoomLevelSpan) {
+        console.error('Zoom Pan: Missing required elements', {
+            viewport: !!viewport,
+            canvas: !!canvas,
+            diagram: !!diagram,
+            zoomControls: !!zoomControls,
+            zoomInBtn: !!zoomInBtn,
+            zoomOutBtn: !!zoomOutBtn,
+            resetZoomBtn: !!resetZoomBtn,
+            zoomLevelSpan: !!zoomLevelSpan
+        });
+        return { resetZoom: () => { }, updateTransform: () => { } };
+    }
 
     let isPanning = false;
     let lastMouseX = 0;
@@ -885,9 +1292,18 @@ function initializeResizeHandle() {
 
 // Function to adjust controls layout based on available width
 function adjustControlsLayout() {
-    const controlsContainer = document.querySelector('.controls');
+    const controlsContainer = document.querySelector('.diagram-controls');
     const editor = document.querySelector('.editor');
     const STACK_THRESHOLD = 350; // Width in pixels below which to stack controls
+
+    // Check if elements exist before accessing their properties
+    if (!controlsContainer || !editor) {
+        console.warn('adjustControlsLayout: Required elements not found', {
+            controlsContainer: !!controlsContainer,
+            editor: !!editor
+        });
+        return;
+    }
 
     if (editor.offsetWidth < STACK_THRESHOLD) {
         controlsContainer.classList.add('stacked-controls');
@@ -1003,6 +1419,76 @@ function initializeFullscreenMode() {
     };
 }
 
+// Theme system
+const ThemeManager = {
+    themes: ['light', 'dark', 'auto'],
+    currentTheme: 'light', // Default to light mode
+
+    init() {
+        // Load saved theme or default to light
+        this.currentTheme = localStorage.getItem('kroki-theme') || 'light';
+        this.applyTheme(this.currentTheme);
+        this.setupToggleButton();
+    },
+
+    applyTheme(theme) {
+        const body = document.body;
+
+        // Remove existing theme classes
+        body.classList.remove('light-theme', 'dark-theme');
+
+        // Apply new theme
+        if (theme === 'light') {
+            body.classList.add('light-theme');
+        } else if (theme === 'dark') {
+            body.classList.add('dark-theme');
+        }
+        // 'auto' theme uses neither class, relying on CSS media queries
+
+        this.currentTheme = theme;
+        this.updateToggleButton();
+
+        // Save theme preference
+        localStorage.setItem('kroki-theme', theme);
+    },
+
+    getNextTheme() {
+        const currentIndex = this.themes.indexOf(this.currentTheme);
+        return this.themes[(currentIndex + 1) % this.themes.length];
+    },
+
+    toggleTheme() {
+        const nextTheme = this.getNextTheme();
+        this.applyTheme(nextTheme);
+    },
+
+    updateToggleButton() {
+        const button = document.getElementById('theme-toggle');
+        if (button) {
+            const themeNames = {
+                light: 'Light Mode',
+                dark: 'Dark Mode',
+                auto: 'Auto (System)'
+            };
+
+            const nextTheme = this.getNextTheme();
+            button.title = `Current: ${themeNames[this.currentTheme]} - Click for ${themeNames[nextTheme]}`;
+        }
+    },
+
+    setupToggleButton() {
+        const toggleButton = document.getElementById('theme-toggle');
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => {
+                this.toggleTheme();
+            });
+
+            // Update initial tooltip
+            this.updateToggleButton();
+        }
+    }
+};
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function () {
     initializeDiagramTypeDropdown();
@@ -1018,11 +1504,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize fullscreen mode functionality
     window.fullscreenMode = initializeFullscreenMode();
+
+    // Initialize file operations
+    initializeFileOperations();
+
+    // Initialize theme system
+    ThemeManager.init();
 });
 
 // Add window resize listener
 window.addEventListener('resize', function () {
     adjustControlsLayout();
+});
+
+// Warn about unsaved changes before page unload
+window.addEventListener('beforeunload', function (e) {
+    if (!currentFile.saved) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return 'You have unsaved changes. Are you sure you want to leave?';
+    }
 });
 
 const codeTextarea = document.getElementById('code');
@@ -1032,6 +1533,11 @@ codeTextarea.addEventListener('input', function () {
 
     if (code !== '') {
         userHasEditedContent = true;
+    }
+
+    // Check if file content has changed for file operations
+    if (currentFile.saved && this.value !== currentFile.content) {
+        markFileAsModified();
     }
 
     updateLineNumbers();

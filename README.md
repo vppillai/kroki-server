@@ -49,6 +49,16 @@ The demo site, accessible at https://localhost:8443/, provides an interactive in
   - **Zoom state preservation** - maintains zoom level and position when updating diagram code
   - Double-click to reset zoom to fit
   - Help modal with detailed usage instructions
+- **File Operations and Local File Support**
+  - Create new diagrams with automatic type detection
+  - Open local diagram files directly from your file system
+  - Save diagrams to local files with proper extensions
+  - Save As functionality for creating new files
+  - Keyboard shortcuts for all file operations (Ctrl/Cmd + N/O/S)
+  - Automatic file type detection from content and extensions
+  - File modification tracking with unsaved changes warnings
+  - Support for multiple diagram file formats (.puml, .mmd, .dot, .d2, etc.)
+  - Modern File System Access API with fallback for older browsers
 
 ### URL Parameter Functionality
 
@@ -117,6 +127,43 @@ Format support varies by diagram type, but generally includes:
   - **Smart State Management**: Zoom level and position are preserved when updating diagram code
   - **Visual Feedback**: Real-time zoom percentage display
   - **Help System**: Built-in help modal with usage instructions
+
+## Using File Operations
+
+The demo site includes comprehensive file operations that make it work like a standalone diagram editor:
+
+### Creating and Managing Files
+
+- **New File**: Click the "📄 New" button or use `Ctrl/Cmd + N` to create a new diagram
+- **Open File**: Click the "📁 Open" button or use `Ctrl/Cmd + O` to open existing diagram files
+- **Save File**: Click the "💾 Save" button or use `Ctrl/Cmd + S` to save your work
+- **Save As**: Click the "📄 Save As" button or use `Ctrl/Cmd + Shift + S` to save with a new name
+
+### Supported File Formats
+
+The editor automatically detects diagram types from file content and extensions:
+
+- **PlantUML**: `.puml`, `.plantuml`, `.uml`, `.txt`
+- **Mermaid**: `.mmd`, `.mermaid`
+- **GraphViz**: `.dot`, `.gv`
+- **D2**: `.d2`
+- **DBML**: `.dbml`
+- **BPMN**: `.bpmn`
+- **ERD**: `.erd`
+- **TikZ**: `.tikz`
+- **And more**: `.md`, `.py`, `.js`, `.json`, `.xml`, `.yaml`, `.yml`, `.svg`
+
+### File Status Indicators
+
+- **File Name**: Displayed in the editor header
+- **Modified Indicator**: An asterisk (*) appears next to the file name when there are unsaved changes
+- **Save Button State**: Automatically enabled/disabled based on file status
+- **Unsaved Changes Warning**: Browser warns before leaving with unsaved changes
+
+### Browser Compatibility
+
+- **Modern Browsers** (Chrome 86+, Edge 86+): Full File System Access API support for direct file system integration
+- **Other Browsers** (Firefox, Safari): Automatic fallback to download/upload methods
 
 ## Architecture
 
