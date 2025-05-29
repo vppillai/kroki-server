@@ -74,11 +74,12 @@ const exampleCache = {
 
 // File operations state
 let currentFile = {
-    name: 'Untitled',
+    name: null,
     path: null,
     content: '',
-    saved: true,
-    handle: null // For File System Access API
+    saved: false,
+    handle: null, // For File System Access API
+    isOpen: false // Track if we actually have a file open
 };
 
 // File operations functionality
@@ -87,13 +88,25 @@ function updateFileStatus() {
     const saveStatusElement = document.getElementById('save-status');
     const saveBtn = document.getElementById('save-file-btn');
 
+    // Handle no file open state
+    if (!currentFile.isOpen) {
+        fileNameElement.textContent = 'No file open';
+        saveStatusElement.textContent = '';
+        saveStatusElement.className = 'save-status';
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.title = 'No file to save';
+        }
+        return;
+    }
+
     // Add animation class for file name changes
     if (fileNameElement.textContent !== currentFile.name) {
         fileNameElement.classList.add('changed');
         setTimeout(() => fileNameElement.classList.remove('changed'), 300);
     }
 
-    fileNameElement.textContent = currentFile.name;
+    fileNameElement.textContent = currentFile.name || 'Untitled';
 
     if (currentFile.saved) {
         saveStatusElement.textContent = 'Saved';
@@ -113,7 +126,7 @@ function updateFileStatus() {
 }
 
 function markFileAsModified() {
-    if (currentFile.saved) {
+    if (currentFile.isOpen && currentFile.saved) {
         currentFile.saved = false;
         updateFileStatus();
 
@@ -167,6 +180,7 @@ async function openFile() {
             currentFile.handle = fileHandle;
             currentFile.content = content;
             currentFile.saved = true;
+            currentFile.isOpen = true;
 
             const codeTextarea = document.getElementById('code');
             codeTextarea.value = content;
@@ -203,6 +217,7 @@ function handleFileInputChange(event) {
         currentFile.handle = null;
         currentFile.content = content;
         currentFile.saved = true;
+        currentFile.isOpen = true;
 
         const codeTextarea = document.getElementById('code');
         codeTextarea.value = content;
@@ -292,6 +307,7 @@ async function saveAsFile() {
             currentFile.name = fileHandle.name || getDefaultFileName();
             currentFile.handle = fileHandle;
             currentFile.content = content;
+            currentFile.isOpen = true;
             markFileAsSaved();
             updateFileStatus();
             showSuccessMessage('File saved successfully!');
@@ -343,6 +359,7 @@ function downloadAsFile(content) {
     // Update current file info
     currentFile.name = filename;
     currentFile.content = content;
+    currentFile.isOpen = true;
     markFileAsSaved();
     updateFileStatus();
     showSuccessMessage('File downloaded successfully!');
@@ -376,7 +393,7 @@ function showErrorMessage(message) {
 
 // New file function
 function newFile() {
-    if (!currentFile.saved) {
+    if (currentFile.isOpen && !currentFile.saved) {
         if (!confirm('You have unsaved changes. Are you sure you want to create a new file?')) {
             return;
         }
@@ -384,8 +401,9 @@ function newFile() {
 
     currentFile.name = 'Untitled';
     currentFile.handle = null;
-    currentFile.content = '';
-    currentFile.saved = true;
+    currentFile.content = defaultExample;
+    currentFile.saved = false;
+    currentFile.isOpen = true;
 
     const codeTextarea = document.getElementById('code');
     codeTextarea.value = defaultExample;
@@ -457,7 +475,7 @@ function initializeFileOperations() {
     const codeTextarea = document.getElementById('code');
     if (codeTextarea) {
         codeTextarea.addEventListener('input', function () {
-            if (currentFile.saved && this.value !== currentFile.content) {
+            if (currentFile.isOpen && currentFile.saved && this.value !== currentFile.content) {
                 markFileAsModified();
             }
         });
@@ -1519,7 +1537,7 @@ window.addEventListener('resize', function () {
 
 // Warn about unsaved changes before page unload
 window.addEventListener('beforeunload', function (e) {
-    if (!currentFile.saved) {
+    if (currentFile.isOpen && !currentFile.saved) {
         e.preventDefault();
         e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
         return 'You have unsaved changes. Are you sure you want to leave?';
@@ -1536,7 +1554,7 @@ codeTextarea.addEventListener('input', function () {
     }
 
     // Check if file content has changed for file operations
-    if (currentFile.saved && this.value !== currentFile.content) {
+    if (currentFile.isOpen && currentFile.saved && this.value !== currentFile.content) {
         markFileAsModified();
     }
 
