@@ -28,6 +28,10 @@
                 fill="currentColor" class="octo-body"></path>
         </svg>
     </a>
+    <!-- Fullscreen notification -->
+    <div id="fullscreen-notification" class="fullscreen-notification">
+        Press <strong>F</strong> or <strong>Escape</strong> to toggle fullscreen • Mouse wheel to zoom • Drag to pan
+    </div>
     <div class="container">
         <div class="editor">
             <h2>Diagram Code</h2>
@@ -66,6 +70,8 @@ Bob --> Alice: Hi there
                         <button id="zoom-in" class="zoom-btn" title="Zoom In (Ctrl/Cmd + +)">+</button>
                         <button id="reset-zoom" class="zoom-btn"
                             title="Reset Zoom (Ctrl/Cmd + 0, or double-click)">⌂</button>
+                        <button id="fullscreen-toggle" class="zoom-btn"
+                            title="Toggle Fullscreen View (F or Escape)">⛶</button>
                         <button id="zoom-help" class="zoom-btn"
                             title="Help: Mouse wheel to zoom, drag to pan, pinch on mobile">?</button>
                     </div>
@@ -111,11 +117,21 @@ Bob --> Alice: Hi there
                     <li><strong>Ctrl/Cmd + Plus (+):</strong> Zoom in</li>
                     <li><strong>Ctrl/Cmd + Minus (-):</strong> Zoom out</li>
                     <li><strong>Ctrl/Cmd + 0:</strong> Reset zoom</li>
+                    <li><strong>F key:</strong> Enter fullscreen mode</li>
+                    <li><strong>Escape key:</strong> Exit fullscreen mode</li>
                 </ul>
                 <h4>Button Controls:</h4>
                 <ul>
                     <li><strong>+ / - buttons:</strong> Zoom in/out from center</li>
                     <li><strong>⌂ (Home) button:</strong> Reset zoom and position</li>
+                    <li><strong>⛶ (Fullscreen) button:</strong> Toggle maximum screen view</li>
+                </ul>
+                <h4>Fullscreen Mode:</h4>
+                <ul>
+                    <li>Hides the code panel for maximum diagram viewing space</li>
+                    <li>Use the ⛶ button or press <strong>F</strong> to enter</li>
+                    <li>Press <strong>Escape</strong> or click ✕ to exit</li>
+                    <li>All zoom and pan controls remain available</li>
                 </ul>
             </div>
         </div>

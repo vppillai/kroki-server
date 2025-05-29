@@ -22,6 +22,7 @@ body {
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
     background-color: white;
+    transition: all 0.3s ease-in-out;
 }
 
 /* Editor panel */
@@ -32,6 +33,7 @@ body {
     display: flex;
     flex-direction: column;
     background-color: #fafbfc;
+    transition: all 0.3s ease-in-out;
 }
 
 /* Preview panel */
@@ -42,6 +44,7 @@ body {
     flex-direction: column;
     overflow: auto;
     background-color: white;
+    transition: all 0.3s ease-in-out;
 }
 
 /* Controls styling */
@@ -735,4 +738,144 @@ textarea#code::-webkit-scrollbar-track {
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+}
+
+/* Fullscreen mode styles */
+.fullscreen-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.fullscreen-mode .container {
+    height: 100vh !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+}
+
+.fullscreen-mode .editor {
+    display: none !important;
+}
+
+.fullscreen-mode .resize-handle {
+    display: none !important;
+}
+
+.fullscreen-mode .preview {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    margin: 0 !important;
+    padding: 15px !important;
+    box-sizing: border-box !important;
+}
+
+.fullscreen-mode .preview-header {
+    flex-shrink: 0 !important;
+    background: rgba(248, 249, 250, 0.95) !important;
+    padding: 10px 15px !important;
+    border-radius: 8px !important;
+    margin-bottom: 15px !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(229, 231, 235, 0.8) !important;
+}
+
+.fullscreen-mode #diagram-container {
+    flex: 1 !important;
+    height: calc(100vh - 120px) !important;
+    margin: 0 !important;
+}
+
+.fullscreen-mode .diagram-viewport {
+    height: 100% !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.fullscreen-mode .zoom-controls {
+    background: rgba(248, 249, 250, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(229, 231, 235, 0.8) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fullscreen toggle button styling */
+#fullscreen-toggle {
+    font-size: 16px !important;
+    font-weight: bold !important;
+}
+
+.fullscreen-mode #fullscreen-toggle {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.fullscreen-mode #fullscreen-toggle:hover {
+    background-color: #dc2626 !important;
+}
+
+/* Animation for smooth transitions */
+.container {
+    transition: all 0.3s ease-in-out;
+}
+
+.preview {
+    transition: all 0.3s ease-in-out;
+}
+
+.editor {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Fullscreen notification */
+.fullscreen-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(59, 130, 246, 0.95);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 10000;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.fullscreen-notification.show {
+    opacity: 1;
+}
+
+/* Mobile fullscreen adjustments */
+@media (max-width: 768px) {
+    .fullscreen-mode .preview {
+        padding: 10px !important;
+    }
+
+    .fullscreen-mode .preview-header {
+        padding: 8px 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .fullscreen-mode #diagram-container {
+        height: calc(100vh - 100px) !important;
+    }
 }
