@@ -75,7 +75,6 @@ const exampleCache = {
 // File operations state
 let currentFile = {
     name: null,
-    path: null,
     content: '',
     saved: false,
     handle: null, // For File System Access API
@@ -721,9 +720,9 @@ function textEncode(str) {
     if (window.TextEncoder) {
         return new TextEncoder('utf-8').encode(str);
     }
-    var utf8 = unescape(encodeURIComponent(str));
-    var result = new Uint8Array(utf8.length);
-    for (var i = 0; i < utf8.length; i++) {
+    const utf8 = unescape(encodeURIComponent(str));
+    const result = new Uint8Array(utf8.length);
+    for (let i = 0; i < utf8.length; i++) {
         result[i] = utf8.charCodeAt(i);
     }
     return result;
@@ -784,7 +783,7 @@ function updateImageLink() {
     }
 }
 
-// Zoom and Pan functionality
+// Initialize zoom and pan functionality
 function initializeZoomPan() {
     const viewport = document.getElementById('diagram-viewport');
     const canvas = document.getElementById('diagram-canvas');
@@ -1070,24 +1069,6 @@ function preserveZoomState() {
     };
 }
 
-function restoreZoomState(savedState) {
-    if (savedState) {
-        zoomState.scale = savedState.scale;
-        zoomState.translateX = savedState.translateX;
-        zoomState.translateY = savedState.translateY;
-
-        // Apply the transform after a short delay to ensure image is loaded
-        setTimeout(() => {
-            const canvas = document.getElementById('diagram-canvas');
-            const zoomLevelSpan = document.getElementById('zoom-level');
-            if (canvas && zoomLevelSpan) {
-                canvas.style.transform = `translate(${zoomState.translateX}px, ${zoomState.translateY}px) scale(${zoomState.scale})`;
-                zoomLevelSpan.textContent = Math.round(zoomState.scale * 100) + '%';
-            }
-        }, 100);
-    }
-}
-
 // Update the diagram
 async function updateDiagram() {
     const code = document.getElementById('code').value;
@@ -1157,7 +1138,7 @@ async function updateDiagram() {
                         } else {
                             errorMessage += `: ${response.statusText || 'Unknown error'}`;
                         }
-                    } catch (textError) {
+                    } catch {
                         errorMessage += `: ${response.statusText || 'Unknown error'}`;
                     }
 
@@ -1204,7 +1185,14 @@ async function updateDiagram() {
                         if (diagramImg.complete && diagramImg.naturalWidth > 0) {
                             // Restore zoom state or reset to fit
                             if (savedZoomState && zoomState.userHasInteracted) {
-                                restoreZoomState(savedZoomState);
+                                // Apply saved zoom state
+                                zoomState.scale = savedZoomState.scale;
+                                zoomState.translateX = savedZoomState.translateX;
+                                zoomState.translateY = savedZoomState.translateY;
+                                const zoomPanControls = window.diagramZoomPan;
+                                if (zoomPanControls) {
+                                    zoomPanControls.updateTransform();
+                                }
                             } else {
                                 // Reset zoom for new diagrams or when user hasn't interacted
                                 const zoomPanControls = window.diagramZoomPan;
@@ -1370,7 +1358,6 @@ function initializeResizeHandle() {
     const container = document.querySelector('.container');
     const editor = document.querySelector('.editor');
     const handle = document.getElementById('resize-handle');
-    const preview = document.querySelector('.preview');
     let isResizing = false;
     let startX, startWidth;
 
