@@ -465,6 +465,36 @@ body {
     outline: none;
 }
 
+/* CodeMirror container */
+#codemirror-editor {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    display: none;
+    /* Hidden by default, shown when CodeMirror loads */
+}
+
+#codemirror-editor .cm-editor {
+    height: 100%;
+    background: transparent !important;
+    border: none !important;
+}
+
+#codemirror-editor .cm-content {
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 60px !important;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+}
+
+#codemirror-editor .cm-focused {
+    outline: none !important;
+}
+
+#codemirror-editor .cm-scroller {
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace !important;
+}
+
 /* Resize handle */
 .resize-handle {
     width: 4px;
