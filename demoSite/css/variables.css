@@ -64,7 +64,6 @@
 
 .dark-theme #diagram {
     background: white;
-    border: 1px solid var(--border-color);
 }
 
 /* Auto dark mode support */
@@ -90,7 +89,6 @@
 
     body:not(.light-theme):not(.dark-theme) #diagram {
         background: white;
-        border: 1px solid var(--border-color);
     }
 }
 
