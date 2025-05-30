@@ -1,9 +1,3 @@
-// Kroki Demo Site - Main Application
-// ES Module version with CodeMirror 6 integration
-
-// Import CodeMirror setup (this also makes it available globally as window.CodeMirrorEditor)
-import './codemirror-setup.js';
-
 // Default PlantUML example
 const defaultExample = `@startuml
 Alice -> Bob: Hello
@@ -92,148 +86,6 @@ let currentFile = {
 // Auto-save timer
 let autoSaveTimer = null;
 const AUTO_SAVE_DELAY = 2000; // 2 seconds delay
-
-// CodeMirror editor instance
-let editorView = null;
-let isCodeMirrorReady = false;
-
-// Editor helper functions (works with both CodeMirror and fallback textarea)
-function getEditorContent() {
-    if (isCodeMirrorReady && window.CodeMirrorEditor) {
-        return window.CodeMirrorEditor.getEditorContent();
-    } else {
-        const textarea = document.getElementById('code');
-        return textarea ? textarea.value : '';
-    }
-}
-
-function setEditorContent(content) {
-    if (isCodeMirrorReady && window.CodeMirrorEditor) {
-        window.CodeMirrorEditor.setEditorContent(content);
-    } else {
-        const textarea = document.getElementById('code');
-        if (textarea) {
-            textarea.value = content;
-            updateLineNumbers();
-        }
-    }
-}
-
-function updateEditorLanguage(language) {
-    if (isCodeMirrorReady && window.CodeMirrorEditor) {
-        window.CodeMirrorEditor.updateEditorLanguage(language);
-    }
-    // No need to do anything for textarea - it doesn't have syntax highlighting
-}
-
-function focusEditor() {
-    if (isCodeMirrorReady && window.CodeMirrorEditor) {
-        window.CodeMirrorEditor.focusEditor();
-    } else {
-        const textarea = document.getElementById('code');
-        if (textarea) {
-            textarea.focus();
-        }
-    }
-}
-
-// Handle code changes (called from both CodeMirror and textarea)
-function handleCodeChange() {
-    const code = getEditorContent().trim();
-
-    if (code !== '') {
-        userHasEditedContent = true;
-    }
-
-    // Check if file content has changed for file operations
-    if (currentFile.isOpen && currentFile.saved && getEditorContent() !== currentFile.content) {
-        markFileAsModified();
-    }
-
-    if (!isCodeMirrorReady) {
-        updateLineNumbers(); // Only needed for textarea
-    }
-    debounceUpdateDiagram();
-    updateUrl();
-}
-
-// Make handleCodeChange available globally for CodeMirror
-window.handleCodeChange = handleCodeChange;
-
-// Initialize CodeMirror editor
-async function initializeCodeMirrorEditor() {
-    try {
-        // Wait a bit for modules to load
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Wait for CodeMirror module to be available
-        if (window.CodeMirrorEditor && window.CodeMirrorEditor.initializeCodeMirror) {
-            const container = document.getElementById('codemirror-editor');
-            const textarea = document.getElementById('code');
-
-            if (container && textarea) {
-                const initialContent = textarea.value;
-
-                console.log('Initializing CodeMirror with content:', initialContent.substring(0, 50) + '...');
-
-                // Initialize CodeMirror
-                editorView = window.CodeMirrorEditor.initializeCodeMirror(
-                    container,
-                    initialContent,
-                    currentDiagramType
-                );
-
-                // Hide the textarea and show CodeMirror
-                textarea.style.display = 'none';
-                container.style.display = 'block';
-
-                isCodeMirrorReady = true;
-
-                console.log('CodeMirror initialized successfully');
-                return true;
-            } else {
-                console.warn('CodeMirror container or textarea not found');
-            }
-        } else {
-            console.warn('CodeMirror module not available');
-        }
-    } catch (error) {
-        console.warn('Failed to initialize CodeMirror, falling back to textarea:', error);
-    }
-
-    // Fallback: show textarea and set up its event listeners
-    const textarea = document.getElementById('code');
-    const container = document.getElementById('codemirror-editor');
-
-    if (textarea && container) {
-        container.style.display = 'none';
-        textarea.style.display = 'block';
-        setupTextareaListeners();
-    }
-
-    return false;
-}
-
-// Setup textarea event listeners (fallback)
-function setupTextareaListeners() {
-    const codeTextarea = document.getElementById('code');
-
-    if (codeTextarea) {
-        // Remove any existing listeners to avoid duplicates
-        codeTextarea.removeEventListener('input', handleCodeChange);
-
-        // Add new listeners
-        codeTextarea.addEventListener('input', handleCodeChange);
-        codeTextarea.addEventListener('scroll', function () {
-            const lineNumbers = document.getElementById('lineNumbers');
-            if (lineNumbers) {
-                lineNumbers.scrollTop = this.scrollTop;
-            }
-        });
-
-        console.log('Textarea fallback listeners configured');
-    }
-}
 
 // File operations functionality
 function updateFileStatus() {
@@ -346,7 +198,9 @@ async function openFile() {
             currentFile.saved = true;
             currentFile.isOpen = true;
 
-            setEditorContent(content);
+            const codeTextarea = document.getElementById('code');
+            codeTextarea.value = content;
+            updateLineNumbers();
             updateDiagram();
             updateFileStatus();
 
@@ -381,7 +235,9 @@ function handleFileInputChange(event) {
         currentFile.saved = true;
         currentFile.isOpen = true;
 
-        setEditorContent(content);
+        const codeTextarea = document.getElementById('code');
+        codeTextarea.value = content;
+        updateLineNumbers();
         updateDiagram();
         updateFileStatus();
 
@@ -420,7 +276,7 @@ function detectDiagramType(content, filename) {
 
 // Save file using File System Access API or fallback to download
 async function saveFile() {
-    const content = getEditorContent();
+    const content = document.getElementById('code').value;
 
     try {
         if (currentFile.handle && isFileSystemAccessSupported()) {
@@ -446,7 +302,7 @@ async function saveFile() {
 
 // Save as new file
 async function saveAsFile() {
-    const content = getEditorContent();
+    const content = document.getElementById('code').value;
 
     try {
         if (isFileSystemAccessSupported()) {
@@ -585,7 +441,9 @@ function newFile() {
     currentFile.saved = false;
     currentFile.isOpen = true;
 
-    setEditorContent(defaultExample);
+    const codeTextarea = document.getElementById('code');
+    codeTextarea.value = defaultExample;
+    updateLineNumbers();
     updateDiagram();
     updateFileStatus();
 }
@@ -657,7 +515,11 @@ function initializeFileOperations() {
     // Track content changes
     const codeTextarea = document.getElementById('code');
     if (codeTextarea) {
-        codeTextarea.addEventListener('input', handleCodeChange);
+        codeTextarea.addEventListener('input', function () {
+            if (currentFile.isOpen && currentFile.saved && this.value !== currentFile.content) {
+                markFileAsModified();
+            }
+        });
     }
 }
 
@@ -740,7 +602,8 @@ function processUrlParameters() {
     if (params.im) {
         try {
             const decodedText = decodeKrokiDiagram(params.im);
-            setEditorContent(decodedText);
+            document.getElementById('code').value = decodedText;
+            updateLineNumbers();
             userHasEditedContent = true;
         } catch (error) {
             console.error('Failed to decode diagram from URL:', error);
@@ -754,7 +617,8 @@ function processUrlParameters() {
 // Load the default example for a diagram type
 function loadDefaultExample(diagramType) {
     loadExampleForDiagramType(diagramType).then(example => {
-        setEditorContent(example);
+        document.getElementById('code').value = example;
+        updateLineNumbers();
         userHasEditedContent = false;
         updateDiagram();
     });
@@ -764,7 +628,7 @@ function loadDefaultExample(diagramType) {
 function updateUrl() {
     const diagramType = document.getElementById('diagramType').value;
     const outputFormat = document.getElementById('outputFormat').value;
-    const code = getEditorContent();
+    const code = document.getElementById('code').value;
 
     const url = new URL(window.location.href);
 
@@ -1226,7 +1090,7 @@ function restoreZoomState(savedState) {
 
 // Update the diagram
 async function updateDiagram() {
-    const code = getEditorContent();
+    const code = document.getElementById('code').value;
     const diagramType = document.getElementById('diagramType').value;
     const outputFormat = document.getElementById('outputFormat').value;
 
@@ -1431,20 +1295,11 @@ function downloadDiagram() {
     document.body.removeChild(a);
 }
 
-// Update line numbers in the editor (only for textarea fallback)
+// Update line numbers in the editor
 function updateLineNumbers() {
-    // Only update line numbers if we're using textarea fallback
-    if (isCodeMirrorReady) {
-        return; // CodeMirror handles line numbers internally
-    }
-
-    const codeLines = getEditorContent().split('\n');
+    const codeLines = document.getElementById('code').value.split('\n');
     const lineCount = codeLines.length;
     const lineNumbersDiv = document.getElementById('lineNumbers');
-
-    if (!lineNumbersDiv) {
-        return; // Line numbers div not available (CodeMirror mode)
-    }
 
     let lineNumbersHtml = '';
     for (let i = 1; i <= lineCount; i++) {
@@ -1469,7 +1324,7 @@ function handleDecode() {
 
         const decodedText = decodeKrokiDiagram(encodedDiagram);
 
-        setEditorContent(decodedText);
+        document.getElementById('code').value = decodedText;
         userHasEditedContent = true;
 
         updateLineNumbers();
@@ -1775,9 +1630,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize file operations
     initializeFileOperations();
 
-    // Initialize CodeMirror editor
-    initializeCodeMirrorEditor();
-
     // Initialize theme system
     ThemeManager.init();
 });
@@ -1796,15 +1648,32 @@ window.addEventListener('beforeunload', function (e) {
     }
 });
 
+const codeTextarea = document.getElementById('code');
+
+codeTextarea.addEventListener('input', function () {
+    const code = this.value.trim();
+
+    if (code !== '') {
+        userHasEditedContent = true;
+    }
+
+    // Check if file content has changed for file operations
+    if (currentFile.isOpen && currentFile.saved && this.value !== currentFile.content) {
+        markFileAsModified();
+    }
+
+    updateLineNumbers();
+    debounceUpdateDiagram();
+    updateUrl();
+});
+
+codeTextarea.addEventListener('scroll', function () {
+    document.getElementById('lineNumbers').scrollTop = this.scrollTop;
+});
+
 document.getElementById('diagramType').addEventListener('change', async function () {
     const diagramType = this.value;
-    const currentCode = getEditorContent();
-
-    // Update the current diagram type
-    currentDiagramType = diagramType;
-
-    // Update CodeMirror language if available
-    updateEditorLanguage(diagramType);
+    const currentCode = codeTextarea.value;
 
     updateFormatDropdown();
     updateUrl();
@@ -1814,7 +1683,8 @@ document.getElementById('diagramType').addEventListener('change', async function
 
     if (!userHasEditedContent || isCurrentCodeAnExample || isCodeEmpty) {
         const example = await loadExampleForDiagramType(diagramType);
-        setEditorContent(example);
+        codeTextarea.value = example;
+        updateLineNumbers();
         updateDiagram();
     } else {
         debounceUpdateDiagram();

@@ -7,6 +7,9 @@
     <meta name="author" content="Vysakh P Pillai">
     <title>Kroki Diagram Editor</title>
     <link rel="stylesheet" href="css/main.css">
+    <!-- Include pako library for deflate compression -->
+    <script src="js/pako.min.js" defer></script>
+    <script src="js/main.js" defer></script>
 
 </head>
 
@@ -122,9 +125,8 @@
                 accept=".puml,.plantuml,.uml,.txt,.md,.py,.js,.json,.xml,.yaml,.yml,.dot,.gv,.mmd,.mermaid,.d2,.bpmn,.erd,.tikz,.svg,.drawio"
                 style="display: none;">
             <div class="editor-container">
-                <div id="codemirror-editor"></div>
-                <!-- Fallback textarea for non-module browsers -->
-                <textarea id="code" placeholder="Enter your diagram code here..." style="display: none;">@startuml
+                <div id="lineNumbers" class="line-numbers"></div>
+                <textarea id="code" placeholder="Enter your diagram code here...">@startuml
 Alice -> Bob: Hello
 Bob --> Alice: Hi there
 @enduml</textarea>
@@ -285,13 +287,6 @@ Bob --> Alice: Hi there
             <button id="copy-link-btn">Copy</button>
         </div>
     </div>
-
-    <!-- Scripts -->
-    <script src="js/pako.min.js"></script>
-    <!-- CodeMirror 6 setup (ES modules) -->
-    <script type="module" src="js/codemirror-setup.js"></script>
-    <!-- Main application script -->
-    <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
