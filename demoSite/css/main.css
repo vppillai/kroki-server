@@ -549,6 +549,53 @@ body {
     border-radius: var(--border-radius);
 }
 
+/* Image Error Banner - positioned at bottom of image pane */
+.image-error-banner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    border-top: 2px solid var(--error-color);
+    z-index: 10;
+    animation: slideUpError 0.3s ease-out;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.error-banner-content {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--spacing-md) var(--spacing-lg);
+    gap: var(--spacing-md);
+}
+
+.error-banner-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.error-banner-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.error-banner-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.error-banner-message {
+    font-size: 13px;
+    line-height: 1.4;
+    opacity: 0.9;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
 /* Text preview */
 #text-preview {
     flex: 1;
@@ -1082,6 +1129,18 @@ body:not(.light-theme):not(.dark-theme) .theme-icon-auto {
     0% {
         opacity: 0;
         transform: translateY(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUpError {
+    0% {
+        opacity: 0;
+        transform: translateY(100%);
     }
 
     100% {

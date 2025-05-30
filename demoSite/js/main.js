@@ -407,6 +407,26 @@ function showErrorMessage(message) {
     }, 5000);
 }
 
+// Show image error banner (non-dismissable banner at bottom of image pane)
+function showImageErrorBanner(message) {
+    const banner = document.getElementById('image-error-banner');
+    const messageElement = document.getElementById('error-banner-message');
+
+    if (banner && messageElement) {
+        messageElement.textContent = message;
+        banner.style.display = 'block';
+    }
+}
+
+// Hide image error banner
+function hideImageErrorBanner() {
+    const banner = document.getElementById('image-error-banner');
+
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
 // New file function
 function newFile() {
     if (currentFile.isOpen && !currentFile.saved) {
@@ -1118,82 +1138,111 @@ async function updateDiagram() {
         if (displayType === 'image') {
             diagramImg.classList.add('loading');
 
-            // Create a new image to preload and get dimensions
-            const tempImg = new Image();
-            tempImg.onload = function () {
-                diagramImg.src = url;
-                diagramImg.classList.remove('loading');
-                diagramImg.classList.add('loaded');
-                diagramViewport.style.display = 'block';
-                zoomControls.style.display = 'flex';
+            // Hide any existing error banner
+            hideImageErrorBanner();
 
-                // Wait for the image to be fully loaded and rendered in the DOM
-                const checkImageReady = () => {
-                    if (diagramImg.complete && diagramImg.naturalWidth > 0) {
-                        // Restore zoom state or reset to fit
-                        if (savedZoomState && zoomState.userHasInteracted) {
-                            restoreZoomState(savedZoomState);
+            try {
+                // First, fetch the URL to check for HTTP errors
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    // Handle non-200 responses
+                    let errorMessage = `HTTP ${response.status}`;
+
+                    try {
+                        // Try to get error message from response body
+                        const errorText = await response.text();
+                        if (errorText && errorText.trim()) {
+                            errorMessage += `: ${errorText}`;
                         } else {
-                            // Reset zoom for new diagrams or when user hasn't interacted
-                            const zoomPanControls = window.diagramZoomPan;
-                            if (zoomPanControls) {
-                                zoomPanControls.resetZoom();
-                            }
+                            errorMessage += `: ${response.statusText || 'Unknown error'}`;
                         }
-                    } else {
-                        // If image isn't ready yet, try again in a short while
-                        setTimeout(checkImageReady, 50);
+                    } catch (textError) {
+                        errorMessage += `: ${response.statusText || 'Unknown error'}`;
                     }
+
+                    // Show error banner with server message
+                    showImageErrorBanner(errorMessage);
+
+                    // Still show the diagram viewport with zoom controls
+                    diagramImg.classList.remove('loading');
+                    diagramViewport.style.display = 'block';
+                    zoomControls.style.display = 'flex';
+
+                    // If there's a previous image, keep it; otherwise show placeholder
+                    if (!diagramImg.src || diagramImg.src === '') {
+                        // Show a minimal placeholder image for zoom/pan testing
+                        const placeholderSvg = `<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+                            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial" font-size="14">
+                                Previous diagram (error occurred)
+                            </text>
+                        </svg>`;
+                        const placeholderDataUrl = 'data:image/svg+xml;base64,' + btoa(placeholderSvg);
+                        diagramImg.src = placeholderDataUrl;
+                    }
+
+                    currentDiagramData = url;
+                    return; // Exit early, don't proceed with normal image loading
+                }
+
+                // Response is OK, proceed with normal image loading
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+
+                // Create a new image to preload and get dimensions
+                const tempImg = new Image();
+                tempImg.onload = function () {
+                    diagramImg.src = imageUrl;
+                    diagramImg.classList.remove('loading');
+                    diagramImg.classList.add('loaded');
+                    diagramViewport.style.display = 'block';
+                    zoomControls.style.display = 'flex';
+
+                    // Wait for the image to be fully loaded and rendered in the DOM
+                    const checkImageReady = () => {
+                        if (diagramImg.complete && diagramImg.naturalWidth > 0) {
+                            // Restore zoom state or reset to fit
+                            if (savedZoomState && zoomState.userHasInteracted) {
+                                restoreZoomState(savedZoomState);
+                            } else {
+                                // Reset zoom for new diagrams or when user hasn't interacted
+                                const zoomPanControls = window.diagramZoomPan;
+                                if (zoomPanControls) {
+                                    zoomPanControls.resetZoom();
+                                }
+                            }
+                        } else {
+                            // If image isn't ready yet, try again in a short while
+                            setTimeout(checkImageReady, 50);
+                        }
+                    };
+
+                    // Start checking if image is ready
+                    setTimeout(checkImageReady, 10);
                 };
 
-                // Start checking if image is ready
-                setTimeout(checkImageReady, 10);
-            };
-            tempImg.onerror = function () {
+                tempImg.onerror = function () {
+                    diagramImg.classList.remove('loading');
+                    // This shouldn't happen since we already verified the response, but handle it gracefully
+                    showImageErrorBanner('Failed to load image data');
+                    diagramViewport.style.display = 'block';
+                    zoomControls.style.display = 'flex';
+                };
+
+                tempImg.src = imageUrl;
+                currentDiagramData = url;
+
+            } catch (networkError) {
+                // Handle network errors (no connection, timeout, etc.)
                 diagramImg.classList.remove('loading');
-                // Provide a fallback test image when Kroki server is not available
-                console.warn('Kroki server not available, using fallback test image');
-                const fallbackSvg = `<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-                    <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2"/>
-                    <text x="50%" y="40%" dominant-baseline="middle" text-anchor="middle" fill="#495057" font-family="Arial" font-size="24" font-weight="bold">
-                        Kroki Server Test Image
-                    </text>
-                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="16">
-                        600x400 pixels - Test zoom and pan functionality
-                    </text>
-                    <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="14">
-                        Server offline - Using fallback image for testing
-                    </text>
-                    <circle cx="150" cy="200" r="40" fill="#e3f2fd" stroke="#2196f3" stroke-width="2"/>
-                    <rect x="450" y="160" width="80" height="80" fill="#f3e5f5" stroke="#9c27b0" stroke-width="2"/>
-                    <path d="M 190 200 L 450 200" stroke="#424242" stroke-width="2" marker-end="url(#arrow)"/>
-                    <defs>
-                        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
-                            <path d="M 0,0 L 0,6 L 9,3 z" fill="#424242"/>
-                        </marker>
-                    </defs>
-                </svg>`;
-                const fallbackDataUrl = 'data:image/svg+xml;base64,' + btoa(fallbackSvg);
-                diagramImg.src = fallbackDataUrl;
-                diagramImg.classList.add('loaded');
+                showImageErrorBanner(`Network error: ${networkError.message}`);
                 diagramViewport.style.display = 'block';
                 zoomControls.style.display = 'flex';
 
-                // Wait for fallback image to be ready
-                const checkFallbackReady = () => {
-                    if (diagramImg.complete && diagramImg.naturalWidth > 0) {
-                        const zoomPanControls = window.diagramZoomPan;
-                        if (zoomPanControls) {
-                            zoomPanControls.resetZoom();
-                        }
-                    } else {
-                        setTimeout(checkFallbackReady, 50);
-                    }
-                };
-                setTimeout(checkFallbackReady, 10);
-            };
-            tempImg.src = url;
-            currentDiagramData = url;
+                // Keep previous image if available
+                currentDiagramData = url;
+            }
         } else if (displayType === 'text') {
             const response = await fetch(url);
             const text = await response.text();
