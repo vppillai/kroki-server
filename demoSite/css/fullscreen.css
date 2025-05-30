@@ -1,0 +1,44 @@
+/* Fullscreen Mode Styles */
+
+/* Fullscreen styles */
+.fullscreen-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+    background: var(--background-primary);
+}
+
+.fullscreen-mode .editor {
+    display: none;
+}
+
+.fullscreen-mode .resize-handle {
+    display: none;
+}
+
+.fullscreen-mode .preview {
+    width: 100%;
+    height: 100%;
+}
+
+.fullscreen-notification {
+    position: fixed;
+    top: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--border-radius);
+    font-size: 13px;
+    z-index: 1001;
+    display: none;
+    backdrop-filter: blur(8px);
+}
+
+.fullscreen-mode .fullscreen-notification {
+    display: block;
+}

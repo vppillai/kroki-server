@@ -1,0 +1,146 @@
+/* Responsive Design and Media Queries */
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .toolbar-center {
+        display: none;
+    }
+
+    .editor {
+        width: 45%;
+    }
+
+    .main-toolbar {
+        padding: 0 var(--spacing-md);
+    }
+
+    .diagram-controls {
+        gap: var(--spacing-md);
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --toolbar-height: auto;
+        --spacing-lg: 12px;
+        --spacing-md: 8px;
+    }
+
+    .main-toolbar {
+        flex-direction: column;
+        padding: var(--spacing-md);
+        gap: var(--spacing-md);
+        height: auto;
+        min-height: var(--toolbar-height);
+    }
+
+    .toolbar-section {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+        justify-content: space-between;
+    }
+
+    .file-operations {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .diagram-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .container {
+        flex-direction: column;
+        height: calc(100vh - 120px);
+    }
+
+    .editor {
+        width: 100%;
+        height: 50%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .resize-handle {
+        height: 4px;
+        width: 100%;
+        cursor: ns-resize;
+    }
+
+    .preview {
+        height: 50%;
+    }
+
+    .zoom-controls {
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs);
+    }
+
+    .zoom-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .utility-container {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .utility-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+
+    .utility-row label {
+        min-width: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .toolbar-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 12px;
+        min-height: 32px;
+    }
+
+    .toolbar-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .file-operations {
+        gap: var(--spacing-xs);
+    }
+
+    .zoom-controls {
+        padding: 2px;
+        gap: 2px;
+    }
+
+    .zoom-btn {
+        width: 24px;
+        height: 24px;
+    }
+
+    .download-btn {
+        padding: var(--spacing-xs) var(--spacing-md);
+        font-size: 12px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --border-hover: #000000;
+        --text-muted: #000000;
+        --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.8);
+        --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.8);
+        --shadow-lg: 0 8px 16px -3px rgba(0, 0, 0, 0.8);
+    }
+}

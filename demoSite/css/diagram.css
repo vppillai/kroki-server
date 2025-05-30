@@ -1,0 +1,160 @@
+/* Diagram and Preview Components Styles */
+
+/* Diagram container */
+#diagram-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--background-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.diagram-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    background: var(--background-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Panning cursor state for diagram viewport */
+.diagram-viewport.panning {
+    cursor: grabbing !important;
+    cursor: -webkit-grabbing !important;
+}
+
+.diagram-viewport:active {
+    cursor: grabbing;
+}
+
+.diagram-canvas {
+    position: relative;
+    transition: transform 0.1s ease-out;
+    transform-origin: 0 0;
+}
+
+#diagram {
+    max-width: none;
+    max-height: none;
+    display: block;
+    border-radius: var(--border-radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Zoom controls */
+.zoom-controls {
+    position: absolute;
+    bottom: var(--spacing-lg);
+    left: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xs);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    z-index: 10;
+}
+
+.zoom-level {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 0 var(--spacing-xs);
+    line-height: 1.2;
+    user-select: none;
+    min-width: 40px;
+}
+
+/* Loading and error states */
+.loading,
+.error {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.loading {
+    background: var(--background-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.loading::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: var(--spacing-sm);
+    border: 2px solid var(--border-color);
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+    color: var(--error-color);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-left: 4px solid var(--error-color);
+    border-radius: var(--border-radius);
+    animation: slideDown 0.3s ease;
+}
+
+/* Image Error Banner - positioned at bottom of image pane */
+.image-error-banner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    border-top: 2px solid var(--error-color);
+    z-index: 10;
+    animation: slideUpError 0.3s ease-out;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.error-banner-content {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--spacing-md) var(--spacing-lg);
+    gap: var(--spacing-md);
+}
+
+.error-banner-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.error-banner-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.error-banner-title {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.error-banner-message {
+    font-size: 13px;
+    line-height: 1.4;
+    opacity: 0.9;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}

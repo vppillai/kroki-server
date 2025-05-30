@@ -1,0 +1,128 @@
+/* Animations and Keyframes */
+
+/* Loading animations */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes slideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUpError {
+    0% {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Loading pulse animation for enhanced loading feedback */
+.loading-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Status indicator animations */
+.save-status {
+    transition: all 0.3s ease;
+    animation: slideDown 0.3s ease;
+}
+
+.save-status.saved {
+    animation: fadeIn 0.5s ease;
+}
+
+.save-status.saved::before {
+    content: '✓ ';
+    font-weight: bold;
+}
+
+/* File name animation on change */
+.file-name {
+    transition: all 0.3s ease;
+}
+
+.file-name.changed {
+    animation: slideDown 0.3s ease;
+}
+
+/* Enhanced transitions */
+.toolbar-btn,
+.zoom-btn,
+.download-btn {
+    transform: translateZ(0);
+    /* Enable hardware acceleration */
+}
+
+.container,
+.editor,
+.preview {
+    will-change: transform;
+}
+
+/* Enhanced hover effects */
+.main-toolbar {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.zoom-controls {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .loading::before {
+        animation: none;
+    }
+}

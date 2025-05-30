@@ -1,0 +1,61 @@
+/* Accessibility Styles */
+
+/* Focus states for accessibility */
+.toolbar-btn:focus-visible,
+.zoom-btn:focus-visible,
+.download-btn:focus-visible,
+.control-group select:focus-visible,
+.theme-toggle:focus-visible,
+.github-link:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Better scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-hover);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* Enhanced readability */
+.help-modal-body,
+.error-banner-message,
+.placeholder-text {
+    line-height: 1.5;
+}
+
+/* User select controls */
+.line-numbers,
+.zoom-level {
+    user-select: none;
+}
+
+/* Keyboard navigation support */
+.toolbar-btn,
+.zoom-btn,
+.download-btn,
+.theme-toggle,
+.github-link {
+    position: relative;
+}
+
+.toolbar-btn:focus,
+.zoom-btn:focus,
+.download-btn:focus,
+.theme-toggle:focus,
+.github-link:focus {
+    z-index: 102;
+}

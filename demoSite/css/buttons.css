@@ -1,0 +1,225 @@
+/* Button base styles */
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--background-primary);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-height: 36px;
+    transform: translateZ(0);
+    /* Enable hardware acceleration */
+}
+
+.toolbar-btn:hover:not(:disabled) {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.toolbar-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.toolbar-btn:disabled {
+    background: var(--background-tertiary);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-color: var(--border-color);
+    transform: none;
+    box-shadow: none;
+}
+
+.toolbar-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.toolbar-btn svg {
+    flex-shrink: 0;
+}
+
+/* Button variants */
+.toolbar-btn.primary {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.toolbar-btn.primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.toolbar-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.toolbar-btn.active:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+/* Toggle button styles */
+.toolbar-btn.toggle-btn {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.toolbar-btn.toggle-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.toolbar-btn.toggle-btn.active:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.toolbar-btn.toggle-btn.active svg {
+    animation: spin 2s linear infinite;
+}
+
+/* Zoom button */
+.zoom-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+    transform: translateZ(0);
+    /* Enable hardware acceleration */
+}
+
+.zoom-btn:hover {
+    background: var(--background-primary);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+.zoom-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Download button */
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: 1px solid var(--primary-color);
+    border-radius: var(--border-radius);
+    background: var(--primary-color);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    transform: translateZ(0);
+    /* Enable hardware acceleration */
+}
+
+.download-btn:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.download-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
+}
+
+.download-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* GitHub link button */
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--background-primary);
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: var(--spacing-md);
+    position: relative;
+    z-index: 101;
+}
+
+.github-link:hover {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.github-link:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.github-link svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
+}
+
+.github-link:hover svg {
+    transform: scale(1.1);
+}
+
+/* Placeholder button */
+.placeholder-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.placeholder-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}

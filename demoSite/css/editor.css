@@ -1,0 +1,72 @@
+/* Editor Components Styles */
+
+/* Editor container for line numbers */
+.editor-container {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    background: var(--background-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Line numbers */
+.line-numbers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50px;
+    background-color: var(--background-tertiary);
+    border-right: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: var(--spacing-md) var(--spacing-sm);
+    user-select: none;
+    white-space: pre;
+    z-index: 2;
+    overflow: hidden;
+}
+
+/* Code textarea */
+#code {
+    width: 100%;
+    height: 100%;
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 60px;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: transparent;
+    color: var(--text-primary);
+    z-index: 1;
+    position: relative;
+}
+
+#code::placeholder {
+    color: var(--text-muted);
+}
+
+#code:focus {
+    outline: none;
+}
+
+/* Text preview */
+#text-preview {
+    flex: 1;
+    white-space: pre-wrap;
+    padding: var(--spacing-lg);
+    margin: 0;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    overflow: auto;
+}

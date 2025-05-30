@@ -1,0 +1,119 @@
+/* Auto-Save Toggle Styles */
+
+/* Auto-save button specific styles */
+#auto-save-btn {
+    position: relative;
+}
+
+#auto-save-btn.active svg {
+    animation: spin 2s linear infinite;
+}
+
+/* Toggle switch for auto-save */
+.toggle-switch {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 0 12px 0 0;
+    margin-left: 8px;
+    border-radius: 20px;
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    transition: background 0.2s, border 0.2s;
+    min-height: 36px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+}
+
+.toggle-switch:hover {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+}
+
+.toggle-slider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: transparent;
+    margin-right: 8px;
+    transition: background 0.2s;
+}
+
+#auto-save-toggle:checked+.toggle-switch,
+.toggle-switch.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+#auto-save-toggle:checked+.toggle-switch .toggle-slider svg,
+.toggle-switch.active .toggle-slider svg {
+    animation: spin 2s linear infinite;
+    color: white;
+}
+
+#auto-save-toggle:checked+.toggle-switch .toggle-label-text,
+.toggle-switch.active .toggle-label-text {
+    color: white;
+}
+
+.toggle-label-text {
+    color: var(--text-primary);
+    transition: color 0.2s;
+}
+
+/* Classic pill switch for auto-save */
+.switch-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto;
+    margin-left: 8px;
+    min-height: 28px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+}
+
+.switch-slider {
+    width: 32px;
+    height: 16px;
+    background: #888;
+    border-radius: 16px;
+    position: relative;
+    transition: background 0.2s;
+    margin-right: 8px;
+    box-sizing: border-box;
+}
+
+.switch-slider::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.switch-label.active .switch-slider {
+    background: var(--primary-color);
+}
+
+.switch-label.active .switch-slider::before {
+    transform: translateX(16px);
+}
+
+.switch-label-text {
+    color: var(--text-primary);
+    margin-left: 2px;
+}

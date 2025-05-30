@@ -1,0 +1,100 @@
+/* CSS Variables for consistent theming */
+:root {
+    /* Color palette */
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
+    --primary-active: #1d4ed8;
+    --secondary-color: #6b7280;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --warning-color: #f59e0b;
+
+    /* UI colors */
+    --border-color: #e5e7eb;
+    --border-hover: #d1d5db;
+    --background-primary: #ffffff;
+    --background-secondary: #f8fafc;
+    --background-tertiary: #f1f5f9;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Border radius */
+    --border-radius: 8px;
+    --border-radius-sm: 4px;
+
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+
+    /* Layout */
+    --toolbar-height: 64px;
+}
+
+/* Dark theme variables */
+.dark-theme {
+    --primary-color: #60a5fa;
+    --primary-hover: #3b82f6;
+    --primary-active: #2563eb;
+    --background-primary: #1f2937;
+    --background-secondary: #111827;
+    --background-tertiary: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --border-color: #374151;
+    --border-hover: #4b5563;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+.dark-theme #diagram {
+    background: white;
+    border: 1px solid var(--border-color);
+}
+
+/* Auto dark mode support */
+@media (prefers-color-scheme: dark) {
+    body:not(.light-theme):not(.dark-theme) {
+        --primary-color: #60a5fa;
+        --primary-hover: #3b82f6;
+        --primary-active: #2563eb;
+        --background-primary: #1f2937;
+        --background-secondary: #111827;
+        --background-tertiary: #374151;
+        --text-primary: #f9fafb;
+        --text-secondary: #d1d5db;
+        --text-muted: #9ca3af;
+        --border-color: #374151;
+        --border-hover: #4b5563;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    body:not(.light-theme):not(.dark-theme) #diagram {
+        background: white;
+        border: 1px solid var(--border-color);
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --border-hover: #000000;
+        --text-muted: #000000;
+        --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.8);
+        --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.8);
+        --shadow-lg: 0 8px 16px -3px rgba(0, 0, 0, 0.8);
+    }
+}

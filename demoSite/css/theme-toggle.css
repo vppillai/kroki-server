@@ -1,0 +1,83 @@
+/* Theme Toggle Styles */
+
+/* Theme toggle button */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--background-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: var(--spacing-md);
+    position: relative;
+    z-index: 101;
+    /* Ensure it's above GitHub corner and other elements */
+}
+
+.theme-toggle:hover {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.theme-toggle svg {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.3s ease;
+}
+
+.theme-toggle:hover svg {
+    transform: rotate(10deg);
+}
+
+/* Theme toggle icons */
+.theme-icon-sun,
+.theme-icon-moon,
+.theme-icon-auto {
+    transition: opacity 0.3s ease;
+}
+
+/* Light theme shows sun icon */
+.light-theme .theme-icon-moon,
+.light-theme .theme-icon-auto {
+    opacity: 0;
+    position: absolute;
+}
+
+.light-theme .theme-icon-sun {
+    opacity: 1;
+}
+
+/* Dark theme shows moon icon */
+.dark-theme .theme-icon-sun,
+.dark-theme .theme-icon-auto {
+    opacity: 0;
+    position: absolute;
+}
+
+.dark-theme .theme-icon-moon {
+    opacity: 1;
+}
+
+/* Auto theme shows computer/monitor icon */
+body:not(.light-theme):not(.dark-theme) .theme-icon-sun,
+body:not(.light-theme):not(.dark-theme) .theme-icon-moon {
+    opacity: 0;
+    position: absolute;
+}
+
+body:not(.light-theme):not(.dark-theme) .theme-icon-auto {
+    opacity: 1;
+}
