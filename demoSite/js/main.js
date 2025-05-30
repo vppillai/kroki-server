@@ -1715,6 +1715,85 @@ window.addEventListener('beforeunload', function (e) {
 
 const codeTextarea = document.getElementById('code');
 
+// Add tab key handling for proper indentation
+codeTextarea.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const value = this.value;
+        
+        if (e.shiftKey) {
+            // Shift + Tab: Remove indentation
+            const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+            const lineEnd = value.indexOf('\n', end);
+            const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
+            
+            if (start !== end) {
+                // Multiple lines selected
+                const selectedLines = value.substring(lineStart, actualLineEnd);
+                const lines = selectedLines.split('\n');
+                
+                const dedentedLines = lines.map(line => {
+                    if (line.startsWith('    ')) {
+                        return line.substring(4); // Remove 4 spaces
+                    } else if (line.startsWith('\t')) {
+                        return line.substring(1); // Remove 1 tab
+                    }
+                    return line;
+                });
+                
+                const newValue = value.substring(0, lineStart) + dedentedLines.join('\n') + value.substring(actualLineEnd);
+                const removedChars = selectedLines.length - dedentedLines.join('\n').length;
+                
+                this.value = newValue;
+                this.selectionStart = Math.max(lineStart, start - Math.min(4, removedChars));
+                this.selectionEnd = Math.max(this.selectionStart, end - removedChars);
+            } else {
+                // Single line
+                const currentLine = value.substring(lineStart, actualLineEnd);
+                if (currentLine.startsWith('    ')) {
+                    const newValue = value.substring(0, lineStart) + currentLine.substring(4) + value.substring(actualLineEnd);
+                    this.value = newValue;
+                    this.selectionStart = this.selectionEnd = Math.max(lineStart, start - 4);
+                } else if (currentLine.startsWith('\t')) {
+                    const newValue = value.substring(0, lineStart) + currentLine.substring(1) + value.substring(actualLineEnd);
+                    this.value = newValue;
+                    this.selectionStart = this.selectionEnd = Math.max(lineStart, start - 1);
+                }
+            }
+        } else {
+            // Tab: Add indentation
+            if (start !== end) {
+                // Multiple lines selected - indent each line
+                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                const lineEnd = value.indexOf('\n', end);
+                const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
+                
+                const selectedLines = value.substring(lineStart, actualLineEnd);
+                const lines = selectedLines.split('\n');
+                const indentedLines = lines.map(line => '    ' + line); // Add 4 spaces to each line
+                
+                const newValue = value.substring(0, lineStart) + indentedLines.join('\n') + value.substring(actualLineEnd);
+                
+                this.value = newValue;
+                this.selectionStart = start + 4; // Move cursor past the added indentation
+                this.selectionEnd = end + (lines.length * 4); // Adjust end selection
+            } else {
+                // Single cursor position - insert tab (4 spaces)
+                const newValue = value.substring(0, start) + '    ' + value.substring(end);
+                this.value = newValue;
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+        }
+        
+        // Trigger input event to update line numbers and diagram
+        const inputEvent = new Event('input', { bubbles: true });
+        this.dispatchEvent(inputEvent);
+    }
+});
+
 codeTextarea.addEventListener('input', function () {
     const code = this.value.trim();
 
