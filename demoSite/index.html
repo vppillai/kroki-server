@@ -193,13 +193,13 @@ Bob --> Alice: Hi there
                                 <line x1="3" y1="21" x2="10" y2="14"></line>
                             </svg>
                         </button>
-                        <button id="zoom-help" class="zoom-btn"
-                            title="Help: Mouse wheel to zoom, drag to pan, pinch on mobile">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
+                        <button id="zoom-help" class="zoom-btn help-icon-btn"
+                            title="Help & Keyboard Shortcuts">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                                <path d="M12 17h.01"></path>
+                                <circle cx="12" cy="17" r="0.5" fill="currentColor"></circle>
                             </svg>
                         </button>
                     </div>
@@ -242,52 +242,58 @@ Bob --> Alice: Hi there
     <div id="help-modal" class="help-modal" style="display: none;">
         <div class="help-modal-content">
             <div class="help-modal-header">
-                <h3>Zoom & Pan Controls</h3>
+                <h3>Kroki Diagram Editor - Help & Shortcuts</h3>
                 <button id="close-help" class="close-help">×</button>
             </div>
             <div class="help-modal-body">
-                <h4>Mouse Controls:</h4>
-                <ul>
-                    <li><strong>Mouse Wheel:</strong> Zoom in/out</li>
-                    <li><strong>Click & Drag:</strong> Pan around the diagram</li>
-                    <li><strong>Double-click:</strong> Reset zoom to fit</li>
-                </ul>
-                <h4>Touch Controls (Mobile):</h4>
-                <ul>
-                    <li><strong>Pinch:</strong> Zoom in/out</li>
-                    <li><strong>Single finger drag:</strong> Pan around</li>
-                </ul>
-                <h4>Keyboard Shortcuts:</h4>
-                <ul>
-                    <li><strong>Ctrl/Cmd + Plus (+):</strong> Zoom in</li>
-                    <li><strong>Ctrl/Cmd + Minus (-):</strong> Zoom out</li>
-                    <li><strong>Ctrl/Cmd + 0:</strong> Fit to screen</li>
-                    <li><strong>F key:</strong> Enter fullscreen mode</li>
-                    <li><strong>Escape key:</strong> Exit fullscreen mode</li>
-                </ul>
-                <h4>Button Controls:</h4>
-                <ul>
-                    <li><strong>+ / - buttons:</strong> Zoom in/out from center</li>
-                    <li><strong>⌂ (Fit to Screen) button:</strong> Reset zoom to fit diagram</li>
-                    <li><strong>⤡ (Fullscreen) button:</strong> Toggle maximum screen view</li>
-                </ul>
-                <h4>Fullscreen Mode:</h4>
-                <ul>
-                    <li>Hides the code panel for maximum diagram viewing space</li>
-                    <li>Use the ⤡ button or press <strong>F</strong> to enter</li>
-                    <li>Press <strong>Escape</strong> or click <strong>✕</strong> to exit</li>
-                    <li>All zoom and pan controls remain available</li>
-                </ul>
-                <h4>File Operations:</h4>
-                <ul>
-                    <li><strong>Ctrl/Cmd + N:</strong> New file</li>
-                    <li><strong>Ctrl/Cmd + O:</strong> Open file from disk</li>
-                    <li><strong>Ctrl/Cmd + S:</strong> Save current file</li>
-                    <li><strong>Ctrl/Cmd + Shift + S:</strong> Save As new file</li>
-                    <li>Supports various diagram formats (.puml, .mmd, .dot, .d2, etc.)</li>
-                    <li>Auto-detects diagram type from file content/extension</li>
-                    <li>Shows file status and warns about unsaved changes</li>
-                </ul>
+                <div class="help-section">
+                    <h4>🔄 Auto-Refresh Controls</h4>
+                    <ul>
+                        <li><strong>Auto-refresh checkbox:</strong> Toggle automatic diagram updates as you type</li>
+                        <li><strong>Manual refresh button:</strong> Update diagram manually when auto-refresh is disabled</li>
+                        <li><strong>Alt/Cmd + Enter:</strong> Manual refresh keyboard shortcut</li>
+                        <li><em>Note: Auto-refresh preference is saved and restored on page reload</em></li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>⌨️ Editor Shortcuts</h4>
+                    <ul>
+                        <li><strong>Tab:</strong> Indent line or selection (4 spaces)</li>
+                        <li><strong>Shift + Tab:</strong> Remove indentation</li>
+                        <li><strong>Ctrl/Cmd + N:</strong> New file</li>
+                        <li><strong>Ctrl/Cmd + O:</strong> Open file</li>
+                        <li><strong>Ctrl/Cmd + S:</strong> Save file</li>
+                        <li><strong>Ctrl/Cmd + Shift + S:</strong> Save As</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>🔍 Diagram Viewing</h4>
+                    <ul>
+                        <li><strong>Mouse wheel:</strong> Zoom in/out</li>
+                        <li><strong>Click & drag:</strong> Pan around</li>
+                        <li><strong>Double-click:</strong> Reset zoom to fit</li>
+                        <li><strong>F key:</strong> Toggle fullscreen mode</li>
+                        <li><strong>Escape:</strong> Exit fullscreen</li>
+                        <li><strong>Ctrl/Cmd + Plus/Minus:</strong> Zoom in/out</li>
+                        <li><strong>Ctrl/Cmd + 0:</strong> Fit to screen</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>📱 Touch Controls</h4>
+                    <ul>
+                        <li><strong>Pinch:</strong> Zoom in/out</li>
+                        <li><strong>Single finger drag:</strong> Pan around</li>
+                        <li><strong>Double-tap:</strong> Reset zoom</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>📁 Supported Formats</h4>
+                    <p>PlantUML (.puml), Mermaid (.mmd), Graphviz (.dot), D2 (.d2), BPMN (.bpmn), and many more diagram types with automatic detection.</p>
+                </div>
             </div>
         </div>
     </div>
