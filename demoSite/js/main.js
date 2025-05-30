@@ -55,6 +55,7 @@ let currentOutputFormat = 'svg';
 let currentDiagramUrl = '';
 let diagramUpdateTimer = null;
 const DEBOUNCE_DELAY = 1000; // 1 second delay
+let autoRefreshEnabled = true; // Auto-refresh state
 
 // Zoom and pan state
 let zoomState = {
@@ -619,7 +620,9 @@ function loadDefaultExample(diagramType) {
         document.getElementById('code').value = example;
         updateLineNumbers();
         userHasEditedContent = false;
-        updateDiagram();
+        if (autoRefreshEnabled) {
+            updateDiagram();
+        }
     });
 }
 
@@ -646,6 +649,11 @@ function updateUrl() {
 
 // Debounce diagram updates
 function debounceUpdateDiagram() {
+    // Only auto-refresh if enabled
+    if (!autoRefreshEnabled) {
+        return;
+    }
+    
     if (diagramUpdateTimer) {
         clearTimeout(diagramUpdateTimer);
     }
@@ -1390,6 +1398,68 @@ function handleDecode() {
     }
 }
 
+// Handle auto-refresh checkbox toggle
+function handleAutoRefreshToggle() {
+    const checkbox = document.getElementById('auto-refresh-checkbox');
+    const refreshBtn = document.getElementById('manual-refresh-btn');
+    
+    if (!checkbox || !refreshBtn) return;
+    
+    autoRefreshEnabled = checkbox.checked;
+    localStorage.setItem('kroki-auto-refresh', autoRefreshEnabled.toString());
+    
+    // Show/hide manual refresh button based on auto-refresh state
+    refreshBtn.style.display = autoRefreshEnabled ? 'none' : 'inline-flex';
+}
+
+// Handle manual refresh button click
+function handleManualRefresh() {
+    const refreshBtn = document.getElementById('manual-refresh-btn');
+    if (refreshBtn) {
+        // Add spinning animation
+        refreshBtn.classList.add('spinning');
+        
+        // Remove animation after a short delay
+        setTimeout(() => {
+            refreshBtn.classList.remove('spinning');
+        }, 1000);
+    }
+    
+    // Trigger diagram update
+    updateDiagram();
+}
+
+// Initialize auto-refresh functionality
+function initializeAutoRefresh() {
+    const checkbox = document.getElementById('auto-refresh-checkbox');
+    const refreshBtn = document.getElementById('manual-refresh-btn');
+    
+    if (!checkbox || !refreshBtn) {
+        console.warn('Auto-refresh elements not found');
+        return;
+    }
+    
+    // Load saved preference or default to true
+    const savedPreference = localStorage.getItem('kroki-auto-refresh');
+    autoRefreshEnabled = savedPreference !== null ? savedPreference === 'true' : true;
+    checkbox.checked = autoRefreshEnabled;
+    
+    // Set initial button state
+    handleAutoRefreshToggle();
+    
+    // Add event listeners
+    checkbox.addEventListener('change', handleAutoRefreshToggle);
+    refreshBtn.addEventListener('click', handleManualRefresh);
+    
+    // Add keyboard shortcut for manual refresh (Alt/Cmd + Enter)
+    document.addEventListener('keydown', function(e) {
+        if ((e.altKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            handleManualRefresh();
+        }
+    });
+}
+
 // Initialize diagram type dropdown
 function initializeDiagramTypeDropdown() {
     const diagramTypeDropdown = document.getElementById('diagramType');
@@ -1697,6 +1767,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize theme system
     ThemeManager.init();
+
+    // Initialize auto-refresh functionality
+    initializeAutoRefresh();
 });
 
 // Add window resize listener
@@ -1825,14 +1898,18 @@ document.getElementById('diagramType').addEventListener('change', async function
         const example = await loadExampleForDiagramType(diagramType);
         codeTextarea.value = example;
         updateLineNumbers();
-        updateDiagram();
+        if (autoRefreshEnabled) {
+            updateDiagram();
+        }
     } else {
         debounceUpdateDiagram();
     }
 });
 
 document.getElementById('outputFormat').addEventListener('change', function () {
-    updateDiagram();
+    if (autoRefreshEnabled) {
+        updateDiagram();
+    }
 });
 
 document.getElementById('downloadButton').addEventListener('click', downloadDiagram);

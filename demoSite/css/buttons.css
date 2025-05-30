@@ -186,3 +186,72 @@
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
+
+/* Auto-refresh checkbox styles */
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+.checkbox-text {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Refresh button styles */
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: var(--background-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.refresh-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.refresh-btn:disabled {
+    background: var(--background-tertiary);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-color: var(--border-color);
+    transform: none;
+    box-shadow: none;
+}
+
+.refresh-btn svg {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.refresh-btn.refreshing svg {
+    animation: spin 1s linear infinite;
+}
