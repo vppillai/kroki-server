@@ -148,8 +148,6 @@
     justify-content: center;
     padding: var(--spacing-xl);
     background: var(--background-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
 }
 
 .placeholder-text {

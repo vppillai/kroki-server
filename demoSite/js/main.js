@@ -1118,13 +1118,15 @@ async function updateDiagram() {
         const zoomControls = document.getElementById('zoom-controls');
         const diagramViewport = document.getElementById('diagram-viewport');
 
-        // Hide all display elements
-        diagramViewport.style.display = 'none';
+        // Hide text preview and placeholder, but keep viewport visible for anti-flicker
         textPreview.style.display = 'none';
         placeholderContainer.style.display = 'none';
-        zoomControls.style.display = 'none';
 
         if (displayType === 'image') {
+            // Keep viewport and zoom controls visible for anti-flicker
+            diagramViewport.style.display = 'block';
+            zoomControls.style.display = 'flex';
+            
             diagramImg.classList.add('loading');
 
             // Hide any existing error banner
@@ -1153,10 +1155,8 @@ async function updateDiagram() {
                     // Show error banner with server message
                     showImageErrorBanner(errorMessage);
 
-                    // Still show the diagram viewport with zoom controls
+                    // Remove loading state since we're keeping the previous image
                     diagramImg.classList.remove('loading');
-                    diagramViewport.style.display = 'block';
-                    zoomControls.style.display = 'flex';
 
                     // If there's a previous image, keep it; otherwise show placeholder
                     if (!diagramImg.src || diagramImg.src === '') {
@@ -1182,48 +1182,64 @@ async function updateDiagram() {
                 // Create a new image to preload and get dimensions
                 const tempImg = new Image();
                 tempImg.onload = function () {
-                    diagramImg.src = imageUrl;
-                    diagramImg.classList.remove('loading');
-                    diagramImg.classList.add('loaded');
-                    diagramViewport.style.display = 'block';
-                    zoomControls.style.display = 'flex';
-
-                    // Wait for the image to be fully loaded and rendered in the DOM
-                    const checkImageReady = () => {
-                        if (diagramImg.complete && diagramImg.naturalWidth > 0) {
-                            // Restore zoom state or reset to fit
-                            if (savedZoomState && zoomState.userHasInteracted) {
-                                // Apply saved zoom state
-                                zoomState.scale = savedZoomState.scale;
-                                zoomState.translateX = savedZoomState.translateX;
-                                zoomState.translateY = savedZoomState.translateY;
-                                const zoomPanControls = window.diagramZoomPan;
-                                if (zoomPanControls) {
-                                    zoomPanControls.updateTransform();
-                                }
-                            } else {
-                                // Reset zoom for new diagrams or when user hasn't interacted
-                                const zoomPanControls = window.diagramZoomPan;
-                                if (zoomPanControls) {
-                                    zoomPanControls.resetZoom();
-                                }
-                            }
-                        } else {
-                            // If image isn't ready yet, try again in a short while
-                            setTimeout(checkImageReady, 50);
-                        }
+                    // Define error handler first
+                    const actualImageErrorHandler = function() {
+                        diagramImg.classList.remove('loading');
+                        showImageErrorBanner('Failed to load diagram image');
+                        // Remove the event listeners to prevent them firing again
+                        diagramImg.removeEventListener('load', actualImageLoadHandler);
+                        diagramImg.removeEventListener('error', actualImageErrorHandler);
                     };
 
-                    // Start checking if image is ready
-                    setTimeout(checkImageReady, 10);
+                    // Set up the actual diagram image load handler
+                    const actualImageLoadHandler = function() {
+                        diagramImg.classList.remove('loading');
+
+                        // Wait for the image to be fully loaded and rendered in the DOM
+                        const checkImageReady = () => {
+                            if (diagramImg.complete && diagramImg.naturalWidth > 0) {
+                                // Restore zoom state or reset to fit
+                                if (savedZoomState && zoomState.userHasInteracted) {
+                                    // Apply saved zoom state
+                                    zoomState.scale = savedZoomState.scale;
+                                    zoomState.translateX = savedZoomState.translateX;
+                                    zoomState.translateY = savedZoomState.translateY;
+                                    const zoomPanControls = window.diagramZoomPan;
+                                    if (zoomPanControls) {
+                                        zoomPanControls.updateTransform();
+                                    }
+                                } else {
+                                    // Reset zoom for new diagrams or when user hasn't interacted
+                                    const zoomPanControls = window.diagramZoomPan;
+                                    if (zoomPanControls) {
+                                        zoomPanControls.resetZoom();
+                                    }
+                                }
+                                // Remove the event listeners to prevent them firing again
+                                diagramImg.removeEventListener('load', actualImageLoadHandler);
+                                diagramImg.removeEventListener('error', actualImageErrorHandler);
+                            } else {
+                                // If image isn't ready yet, try again in a short while
+                                setTimeout(checkImageReady, 50);
+                            }
+                        };
+
+                        // Start checking if image is ready
+                        setTimeout(checkImageReady, 10);
+                    };
+
+                    // Add event listeners to the actual diagram image
+                    diagramImg.addEventListener('load', actualImageLoadHandler);
+                    diagramImg.addEventListener('error', actualImageErrorHandler);
+                    
+                    // Now set the source, which will trigger the load event when ready
+                    diagramImg.src = imageUrl;
                 };
 
                 tempImg.onerror = function () {
                     diagramImg.classList.remove('loading');
                     // This shouldn't happen since we already verified the response, but handle it gracefully
                     showImageErrorBanner('Failed to load image data');
-                    diagramViewport.style.display = 'block';
-                    zoomControls.style.display = 'flex';
                 };
 
                 tempImg.src = imageUrl;
@@ -1233,19 +1249,25 @@ async function updateDiagram() {
                 // Handle network errors (no connection, timeout, etc.)
                 diagramImg.classList.remove('loading');
                 showImageErrorBanner(`Network error: ${networkError.message}`);
-                diagramViewport.style.display = 'block';
-                zoomControls.style.display = 'flex';
 
                 // Keep previous image if available
                 currentDiagramData = url;
             }
         } else if (displayType === 'text') {
+            // Hide image viewport for text display
+            diagramViewport.style.display = 'none';
+            zoomControls.style.display = 'none';
+            
             const response = await fetch(url);
             const text = await response.text();
             textPreview.textContent = text;
             textPreview.style.display = 'block';
             currentDiagramData = text;
         } else {
+            // Hide image viewport for placeholder display
+            diagramViewport.style.display = 'none';
+            zoomControls.style.display = 'none';
+            
             placeholderContainer.style.display = 'flex';
             placeholderDownload.href = url;
             placeholderDownload.download = `diagram.${outputFormat}`;

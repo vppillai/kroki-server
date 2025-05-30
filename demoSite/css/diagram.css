@@ -6,8 +6,6 @@
     position: relative;
     overflow: hidden;
     background: var(--background-secondary);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
 }
 
 .diagram-viewport {
@@ -42,8 +40,9 @@
     max-width: none;
     max-height: none;
     display: block;
-    border-radius: var(--border-radius-sm);
-    box-shadow: var(--shadow-sm);
+    transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
 }
 
 /* Zoom controls - integrated into preview toolbar with proper sizing */
