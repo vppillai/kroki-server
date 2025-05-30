@@ -54,6 +54,69 @@
     padding: var(--spacing-lg);
 }
 
+/* Preview header */
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-header h2 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Preview toolbar - fixed layout to prevent overlap */
+.preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    min-height: 40px;
+    flex-wrap: nowrap;
+}
+
+/* Download button - modernized to match toolbar aesthetic */
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--background-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    box-shadow: var(--shadow-xs);
+    min-height: 36px;
+    flex-shrink: 0;
+}
+
+.download-btn:hover {
+    background: var(--background-secondary);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.download-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow-xs);
+}
+
+.download-btn svg {
+    flex-shrink: 0;
+}
+
 /* Resize handle */
 .resize-handle {
     width: 4px;

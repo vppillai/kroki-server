@@ -92,29 +92,28 @@
     animation: spin 2s linear infinite;
 }
 
-/* Zoom button */
+/* Zoom button - compact design for toolbar integration */
 .zoom-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border: none;
     border-radius: var(--border-radius-sm);
     background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     transform: translateZ(0);
     /* Enable hardware acceleration */
 }
 
 .zoom-btn:hover {
-    background: var(--background-primary);
+    background: var(--background-secondary);
     color: var(--text-primary);
-    box-shadow: var(--shadow-sm);
 }
 
 .zoom-btn:active {
@@ -122,42 +121,6 @@
 }
 
 .zoom-btn:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* Download button */
-.download-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    border: 1px solid var(--primary-color);
-    border-radius: var(--border-radius);
-    background: var(--primary-color);
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-    transform: translateZ(0);
-    /* Enable hardware acceleration */
-}
-
-.download-btn:hover {
-    background: var(--primary-hover);
-    border-color: var(--primary-hover);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.download-btn:active {
-    transform: translateY(0);
-    box-shadow: var(--shadow-sm);
-}
-
-.download-btn:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
