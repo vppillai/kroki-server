@@ -1283,11 +1283,69 @@ function downloadDiagram() {
     document.body.removeChild(a);
 }
 
+// Initialize line numbers and scroll synchronization
+function initializeLineNumbers() {
+    const codeTextarea = document.getElementById('code');
+    const lineNumbersDiv = document.getElementById('lineNumbers');
+    
+    if (!codeTextarea || !lineNumbersDiv) {
+        console.warn('Line numbers: Missing required elements');
+        return;
+    }
+
+    // Initial line numbers update
+    updateLineNumbers();
+    
+    // Ensure scroll synchronization is working
+    let isTextareaScrolling = false;
+    let isLineNumbersScrolling = false;
+    
+    codeTextarea.addEventListener('scroll', function() {
+        if (!isLineNumbersScrolling) {
+            isTextareaScrolling = true;
+            lineNumbersDiv.scrollTop = this.scrollTop;
+            requestAnimationFrame(() => {
+                isTextareaScrolling = false;
+            });
+        }
+    });
+    
+    // Optional: sync textarea scroll when line numbers are scrolled
+    // (though this is typically not needed for most use cases)
+    lineNumbersDiv.addEventListener('scroll', function() {
+        if (!isTextareaScrolling) {
+            isLineNumbersScrolling = true;
+            codeTextarea.scrollTop = this.scrollTop;
+            requestAnimationFrame(() => {
+                isLineNumbersScrolling = false;
+            });
+        }
+    });
+    
+    // Also sync when the textarea is resized (e.g., by window resize)
+    const resizeObserver = new ResizeObserver(() => {
+        // Small delay to ensure the textarea has finished resizing
+        setTimeout(() => {
+            if (!isLineNumbersScrolling && !isTextareaScrolling) {
+                lineNumbersDiv.scrollTop = codeTextarea.scrollTop;
+            }
+        }, 10);
+    });
+    
+    resizeObserver.observe(codeTextarea);
+}
+
 // Update line numbers in the editor
 function updateLineNumbers() {
-    const codeLines = document.getElementById('code').value.split('\n');
-    const lineCount = codeLines.length;
+    const codeTextarea = document.getElementById('code');
     const lineNumbersDiv = document.getElementById('lineNumbers');
+    
+    if (!codeTextarea || !lineNumbersDiv) {
+        return;
+    }
+
+    const codeLines = codeTextarea.value.split('\n');
+    const lineCount = Math.max(codeLines.length, 1); // Ensure at least 1 line
 
     let lineNumbersHtml = '';
     for (let i = 1; i <= lineCount; i++) {
@@ -1295,6 +1353,12 @@ function updateLineNumbers() {
     }
 
     lineNumbersDiv.innerHTML = lineNumbersHtml;
+    
+    // Sync scroll position after updating line numbers
+    // Use requestAnimationFrame to ensure DOM updates are complete
+    requestAnimationFrame(() => {
+        lineNumbersDiv.scrollTop = codeTextarea.scrollTop;
+    });
 }
 
 // Handle the decode button click
@@ -1617,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initializeDiagramTypeDropdown();
     updateFormatDropdown();
     processUrlParameters();
-    updateLineNumbers();
+    initializeLineNumbers(); // Initialize line numbers before other operations
     updateDiagram();
     initializeResizeHandle(); // Initialize the resize handle
     adjustControlsLayout(); // Initial layout adjustment
@@ -1666,10 +1730,6 @@ codeTextarea.addEventListener('input', function () {
     updateLineNumbers();
     debounceUpdateDiagram();
     updateUrl();
-});
-
-codeTextarea.addEventListener('scroll', function () {
-    document.getElementById('lineNumbers').scrollTop = this.scrollTop;
 });
 
 document.getElementById('diagramType').addEventListener('change', async function () {
