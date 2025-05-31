@@ -152,6 +152,40 @@
                 accept=".puml,.plantuml,.uml,.txt,.md,.py,.js,.json,.xml,.yaml,.yml,.dot,.gv,.mmd,.mermaid,.d2,.bpmn,.erd,.tikz,.svg,.drawio"
                 style="display: none;">
             <div class="editor-container">
+                <!-- Search Bar -->
+                <div id="search-bar" class="search-bar" style="display: none;">
+                    <div class="search-input-container">
+                        <input type="text" id="search-input" placeholder="Find in code..." autocomplete="off" spellcheck="false">
+                        <div class="search-results-count">
+                            <span id="search-count">0 of 0</span>
+                        </div>
+                    </div>
+                    <div class="search-controls">
+                        <button id="search-prev" class="search-btn" title="Previous (Shift+Enter)" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15,18 9,12 15,6"></polyline>
+                            </svg>
+                        </button>
+                        <button id="search-next" class="search-btn" title="Next (Enter)" disabled>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9,18 15,12 9,6"></polyline>
+                            </svg>
+                        </button>
+                        <button id="search-case" class="search-btn search-toggle" title="Match Case (Aa)">
+                            <span class="case-icon">
+                                <span class="case-upper">A</span>
+                                <span class="case-lower">a</span>
+                            </span>
+                        </button>
+                        <button id="search-close" class="search-btn" title="Close (Escape)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="search-highlight-overlay" class="search-highlight-overlay"></div>
                 <div id="lineNumbers" class="line-numbers"></div>
                 <textarea id="code" placeholder="Enter your diagram code here...">@startuml
 Alice -> Bob: Hello
@@ -274,6 +308,22 @@ Bob --> Alice: Hi there
                         <li><strong>Ctrl/Cmd + O:</strong> Open file</li>
                         <li><strong>Ctrl/Cmd + S:</strong> Save file</li>
                         <li><strong>Ctrl/Cmd + Shift + S:</strong> Save As</li>
+                        <li><strong>Ctrl/Cmd + F:</strong> Open search bar</li>
+                        <li><strong>Ctrl/Cmd + ,:</strong> Open settings</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>🔍 Code Search</h4>
+                    <ul>
+                        <li><strong>Ctrl/Cmd + F:</strong> Open search bar</li>
+                        <li><strong>Enter:</strong> Go to next match</li>
+                        <li><strong>Shift + Enter:</strong> Go to previous match</li>
+                        <li><strong>Escape:</strong> Close search bar</li>
+                        <li><strong>Aa button:</strong> Toggle case-sensitive search (clear visual indicator)</li>
+                        <li><em>Search results are visually highlighted with yellow background</em></li>
+                        <li><em>Current match is highlighted with orange background</em></li>
+                        <li><em>Results counter shows current position (e.g., "2 of 5 matches")</em></li>
                     </ul>
                 </div>
 

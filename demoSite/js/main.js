@@ -476,6 +476,10 @@ function handleFileShortcuts(event) {
                 event.preventDefault();
                 newFile();
                 break;
+            case 'f':
+                event.preventDefault();
+                showSearchBar();
+                break;
             case ',':
                 event.preventDefault();
                 console.log('Settings keyboard shortcut triggered');
@@ -1987,6 +1991,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize file operations
     initializeFileOperations();
 
+    // Initialize search functionality
+    initializeSearchFunctionality();
+
     // Initialize theme system
     ThemeManager.init();
 
@@ -2225,14 +2232,510 @@ if (helpBtn && helpModal && closeHelpBtn) {
     helpModal.addEventListener('click', function (e) {
         if (e.target === helpModal) {
             helpModal.style.display = 'none';
-        }
+               }
     });
 
     // Close modal with Escape key
+   
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && helpModal.style.display === 'flex') {
             helpModal.style.display = 'none';
         }
     });
+}
+
+// Search functionality for code editor
+let searchState = {
+    isVisible: false,
+    currentQuery: '',
+    matches: [],
+    currentIndex: -1,
+    caseSensitive: false,
+    lastSearchValue: ''
+};
+
+// Show search bar
+function showSearchBar() {
+    const searchBar = document.getElementById('search-bar');
+    const searchInput = document.getElementById('search-input');
+    
+    if (!searchBar || !searchInput) {
+        console.warn('Search bar elements not found');
+        return;
+    }
+    
+    searchState.isVisible = true;
+    searchBar.style.display = 'flex';
+    searchInput.focus();
+    searchInput.select();
+    
+    // If there's already text in the input, search immediately
+    if (searchInput.value.trim()) {
+        performSearch(searchInput.value);
+    }
+}
+
+// Hide search bar
+function hideSearchBar() {
+    const searchBar = document.getElementById('search-bar');
+    if (!searchBar) return;
+    
+    searchState.isVisible = false;
+    searchBar.style.display = 'none';
+    clearSearchHighlights();
+    
+    // Return focus to code textarea
+    const codeTextarea = document.getElementById('code');
+    if (codeTextarea) {
+        codeTextarea.focus();
+    }
+}
+
+// Perform search in code textarea
+function performSearch(query) {
+    const codeTextarea = document.getElementById('code');
+    if (!codeTextarea || !query) {
+        clearSearchHighlights();
+        updateSearchCount(0, 0);
+        return;
+    }
+    
+    searchState.currentQuery = query;
+    const text = codeTextarea.value;
+    const flags = searchState.caseSensitive ? 'g' : 'gi';
+    
+    try {
+        // Escape special regex characters in the query
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedQuery, flags);
+        const matches = [];
+        let match;
+        
+        while ((match = regex.exec(text)) !== null) {
+            matches.push({
+                index: match.index,
+                length: match[0].length,
+                text: match[0]
+            });
+        }
+        
+        searchState.matches = matches;
+        
+        if (matches.length > 0) {
+            // If we don't have a current index or query changed, start from the beginning
+            if (searchState.currentIndex === -1 || searchState.lastSearchValue !== query) {
+                searchState.currentIndex = 0;
+            }
+            
+            // Ensure current index is within bounds
+            if (searchState.currentIndex >= matches.length) {
+                searchState.currentIndex = 0;
+            }
+            
+            highlightSearchResults();
+            scrollToCurrentMatch();
+        } else {
+            searchState.currentIndex = -1;
+            clearSearchHighlights();
+        }
+        
+        searchState.lastSearchValue = query;
+        updateSearchCount(searchState.currentIndex + 1, matches.length);
+        updateSearchButtons();
+        
+    } catch (error) {
+        // Invalid regex, clear results
+        clearSearchHighlights();
+        updateSearchCount(0, 0);
+        console.warn('Invalid search pattern:', error);
+    }
+}
+
+// Clear search highlights
+function clearSearchHighlights() {
+    // Clear any selection in the textarea
+    const codeTextarea = document.getElementById('code');
+    if (codeTextarea) {
+        codeTextarea.setSelectionRange(0, 0);
+    }
+    
+    // Clear the overlay
+    const overlay = document.getElementById('search-highlight-overlay');
+    if (overlay) {
+        overlay.innerHTML = '';
+    }
+}
+
+// Highlight search results with overlay
+function highlightSearchResults() {
+    const codeTextarea = document.getElementById('code');
+    const overlay = document.getElementById('search-highlight-overlay');
+    
+    if (!codeTextarea || !overlay) {
+        console.warn('Search highlighting: Missing textarea or overlay element');
+        return;
+    }
+    
+    if (searchState.matches.length === 0) {
+        clearSearchHighlights();
+        return;
+    }
+    
+    try {
+        const text = codeTextarea.value;
+        let highlightedHTML = '';
+        let lastIndex = 0;
+        
+        // Process each match and create highlighted spans
+        searchState.matches.forEach((match, index) => {
+            // Add text before this match (escaped)
+            const beforeMatch = text.substring(lastIndex, match.index);
+            highlightedHTML += escapeHtml(beforeMatch);
+            
+            // Add the highlighted match
+            const isCurrent = index === searchState.currentIndex;
+            const matchText = text.substring(match.index, match.index + match.length);
+            const highlightClass = isCurrent ? 'search-highlight current' : 'search-highlight';
+            highlightedHTML += `<span class="${highlightClass}">${escapeHtml(matchText)}</span>`;
+            
+            lastIndex = match.index + match.length;
+        });
+        
+        // Add remaining text after last match
+        if (lastIndex < text.length) {
+            highlightedHTML += escapeHtml(text.substring(lastIndex));
+        }
+        
+        // Set the overlay content
+        overlay.innerHTML = highlightedHTML;
+        
+        // Force exact style matching
+        const textareaStyles = window.getComputedStyle(codeTextarea);
+        overlay.style.fontFamily = textareaStyles.fontFamily;
+        overlay.style.fontSize = textareaStyles.fontSize;
+        overlay.style.lineHeight = textareaStyles.lineHeight;
+        overlay.style.letterSpacing = textareaStyles.letterSpacing;
+        overlay.style.wordSpacing = textareaStyles.wordSpacing;
+        overlay.style.padding = textareaStyles.padding;
+        overlay.style.margin = textareaStyles.margin;
+        overlay.style.border = textareaStyles.border;
+        overlay.style.boxSizing = textareaStyles.boxSizing;
+        
+        // Ensure exact scroll synchronization
+        overlay.scrollTop = codeTextarea.scrollTop;
+        overlay.scrollLeft = codeTextarea.scrollLeft;
+        
+        // Also set selection on current match for additional feedback
+        if (searchState.currentIndex >= 0 && searchState.currentIndex < searchState.matches.length) {
+            const currentMatch = searchState.matches[searchState.currentIndex];
+            codeTextarea.setSelectionRange(currentMatch.index, currentMatch.index + currentMatch.length);
+        }
+        
+        console.log(`Search highlighting: Rendered ${searchState.matches.length} matches`);
+        
+    } catch (error) {
+        console.error('Error in highlightSearchResults:', error);
+        clearSearchHighlights();
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Debug function for search highlighting (available in console)
+function debugSearchHighlighting() {
+    const codeTextarea = document.getElementById('code');
+    const overlay = document.getElementById('search-highlight-overlay');
+    
+    if (!codeTextarea || !overlay) {
+        console.log('Debug: Missing elements');
+        return;
+    }
+    
+    const textareaRect = codeTextarea.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+    const textareaStyles = window.getComputedStyle(codeTextarea);
+    const overlayStyles = window.getComputedStyle(overlay);
+    
+    console.log('=== Search Highlighting Debug ===');
+    console.log('Textarea position:', textareaRect);
+    console.log('Overlay position:', overlayRect);
+    console.log('Position match:', {
+        top: Math.abs(textareaRect.top - overlayRect.top) < 1,
+        left: Math.abs(textareaRect.left - overlayRect.left) < 1,
+        width: Math.abs(textareaRect.width - overlayRect.width) < 1,
+        height: Math.abs(textareaRect.height - overlayRect.height) < 1
+    });
+    
+    console.log('Font comparison:', {
+        family: textareaStyles.fontFamily === overlayStyles.fontFamily,
+        size: textareaStyles.fontSize === overlayStyles.fontSize,
+        lineHeight: textareaStyles.lineHeight === overlayStyles.lineHeight,
+        letterSpacing: textareaStyles.letterSpacing === overlayStyles.letterSpacing
+    });
+    
+    console.log('Padding comparison:', {
+        textarea: textareaStyles.padding,
+        overlay: overlayStyles.padding,
+        match: textareaStyles.padding === overlayStyles.padding
+    });
+    
+    console.log('Current search state:', {
+        query: searchState.currentQuery,
+        matches: searchState.matches.length,
+        currentIndex: searchState.currentIndex,
+        isVisible: searchState.isVisible
+    });
+    
+    if (searchState.matches.length > 0) {
+        console.log('First match details:', searchState.matches[0]);
+    }
+}
+
+// Make debug function globally available
+window.debugSearchHighlighting = debugSearchHighlighting;
+
+// Scroll to current match
+function scrollToCurrentMatch() {
+    const codeTextarea = document.getElementById('code');
+    if (!codeTextarea || searchState.currentIndex === -1 || searchState.matches.length === 0) {
+        return;
+    }
+    
+    const match = searchState.matches[searchState.currentIndex];
+    
+    // Calculate line number to scroll to
+    const textBeforeMatch = codeTextarea.value.substring(0, match.index);
+    const lineNumber = textBeforeMatch.split('\n').length - 1;
+    
+    // Scroll textarea to make the match visible
+    const lineHeight = parseInt(getComputedStyle(codeTextarea).lineHeight) || 20;
+    const scrollTop = lineNumber * lineHeight;
+    
+    // Scroll to center the match in the visible area
+    const textareaHeight = codeTextarea.clientHeight;
+    const targetScroll = Math.max(0, scrollTop - textareaHeight / 2);
+    
+    codeTextarea.scrollTop = targetScroll;
+    
+    // Sync line numbers scroll
+    const lineNumbersDiv = document.getElementById('lineNumbers');
+    if (lineNumbersDiv) {
+        lineNumbersDiv.scrollTop = targetScroll;
+    }
+    
+    // Sync overlay scroll
+    const overlay = document.getElementById('search-highlight-overlay');
+    if (overlay) {
+        overlay.scrollTop = targetScroll;
+        overlay.scrollLeft = codeTextarea.scrollLeft;
+    }
+}
+
+// Navigate to next match
+function goToNextMatch() {
+    if (searchState.matches.length === 0) return;
+    
+    searchState.currentIndex = (searchState.currentIndex + 1) % searchState.matches.length;
+    highlightSearchResults(); // Update highlights to show new current match
+    scrollToCurrentMatch();
+    updateSearchCount(searchState.currentIndex + 1, searchState.matches.length);
+}
+
+// Navigate to previous match
+function goToPreviousMatch() {
+    if (searchState.matches.length === 0) return;
+    
+    searchState.currentIndex = searchState.currentIndex <= 0 
+        ? searchState.matches.length - 1 
+        : searchState.currentIndex - 1;
+    highlightSearchResults(); // Update highlights to show new current match
+    scrollToCurrentMatch();
+    updateSearchCount(searchState.currentIndex + 1, searchState.matches.length);
+}
+
+// Toggle case sensitivity
+function toggleCaseSensitive() {
+    searchState.caseSensitive = !searchState.caseSensitive;
+    const caseSensitiveBtn = document.getElementById('search-case');
+    if (caseSensitiveBtn) {
+        caseSensitiveBtn.classList.toggle('active', searchState.caseSensitive);
+    }
+    
+    // Re-run search with new case sensitivity
+    const searchInput = document.getElementById('search-input');
+    if (searchInput && searchInput.value) {
+        performSearch(searchInput.value);
+    }
+}
+
+// Update search count display
+function updateSearchCount(current, total) {
+    const searchCount = document.getElementById('search-count');
+    if (searchCount) {
+        if (total === 0) {
+            searchCount.textContent = 'No results';
+        } else {
+            searchCount.textContent = `${current} of ${total}`;
+        }
+    }
+}
+
+// Update search button states
+function updateSearchButtons() {
+    const prevBtn = document.getElementById('search-prev');
+    const nextBtn = document.getElementById('search-next');
+    const hasResults = searchState.matches.length > 0;
+    
+    if (prevBtn) {
+        prevBtn.disabled = !hasResults;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = !hasResults;
+    }
+}
+
+// Initialize search functionality
+function initializeSearchFunctionality() {
+    const searchInput = document.getElementById('search-input');
+    const searchPrev = document.getElementById('search-prev');
+    const searchNext = document.getElementById('search-next');
+    const searchCase = document.getElementById('search-case');
+    const searchClose = document.getElementById('search-close');
+    
+    if (!searchInput) {
+        console.warn('Search input not found');
+        return;
+    }
+    
+    // Search input event handlers
+    searchInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        if (query) {
+            performSearch(query);
+        } else {
+            clearSearchHighlights();
+            updateSearchCount(0, 0);
+            updateSearchButtons();
+        }
+    });
+    
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                goToPreviousMatch();
+            } else {
+                goToNextMatch();
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            hideSearchBar();
+        }
+    });
+    
+    // Navigation button handlers
+    if (searchPrev) {
+        searchPrev.addEventListener('click', goToPreviousMatch);
+    }
+    
+    if (searchNext) {
+        searchNext.addEventListener('click', goToNextMatch);
+    }
+    
+    // Case sensitivity toggle
+    if (searchCase) {
+        searchCase.addEventListener('click', toggleCaseSensitive);
+    }
+    
+    // Close button
+    if (searchClose) {
+        searchClose.addEventListener('click', hideSearchBar);
+    }
+    
+    // Close search bar when clicking outside
+    document.addEventListener('click', (e) => {
+        const searchBar = document.getElementById('search-bar');
+        if (searchState.isVisible && searchBar && !searchBar.contains(e.target)) {
+            // Only close if not clicking on a search-related element
+            const isSearchRelated = e.target.closest('.search-bar') !== null;
+            if (!isSearchRelated) {
+                hideSearchBar();
+            }
+        }
+    });
+    
+    // Global escape key handler for search
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchState.isVisible) {
+            e.preventDefault();
+            hideSearchBar();
+        }
+    });
+    
+    // Sync scroll between textarea and highlight overlay
+    const codeTextarea = document.getElementById('code');
+    const overlay = document.getElementById('search-highlight-overlay');
+    
+    if (codeTextarea && overlay) {
+        console.log('Search functionality: Initializing scroll synchronization');
+        
+        // Sync scroll position
+        function syncScroll() {
+            overlay.scrollTop = codeTextarea.scrollTop;
+            overlay.scrollLeft = codeTextarea.scrollLeft;
+        }
+        
+        codeTextarea.addEventListener('scroll', syncScroll);
+        
+        // Sync styles initially and on changes
+        function syncStyles() {
+            try {
+                const textareaStyles = window.getComputedStyle(codeTextarea);
+                overlay.style.fontFamily = textareaStyles.fontFamily;
+                overlay.style.fontSize = textareaStyles.fontSize;
+                overlay.style.lineHeight = textareaStyles.lineHeight;
+                overlay.style.letterSpacing = textareaStyles.letterSpacing;
+                overlay.style.wordSpacing = textareaStyles.wordSpacing;
+                overlay.style.padding = textareaStyles.padding;
+                overlay.style.margin = textareaStyles.margin;
+                overlay.style.border = textareaStyles.border;
+                overlay.style.boxSizing = textareaStyles.boxSizing;
+                overlay.style.whiteSpace = textareaStyles.whiteSpace;
+                overlay.style.wordWrap = textareaStyles.wordWrap;
+                overlay.style.tabSize = textareaStyles.tabSize;
+            } catch (error) {
+                console.warn('Error syncing styles:', error);
+            }
+        }
+        
+        // Initial sync
+        syncStyles();
+        
+        // Also sync on resize to ensure proper alignment
+        const resizeObserver = new ResizeObserver(() => {
+            if (searchState.matches.length > 0) {
+                // Re-sync styles and re-render highlights after resize
+                syncStyles();
+                setTimeout(() => {
+                    highlightSearchResults();
+                }, 10);
+            }
+        });
+        
+        resizeObserver.observe(codeTextarea);
+        
+        // Periodic style sync to handle dynamic changes
+        setInterval(syncStyles, 2000);
+        
+        console.log('Search functionality: Initialization complete');
+    } else {
+        console.warn('Search functionality: Missing textarea or overlay elements');
+    }
 }
 

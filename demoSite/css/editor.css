@@ -53,8 +53,16 @@
     line-height: 1.5;
     background: transparent;
     color: var(--text-primary);
-    z-index: 1;
+    z-index: 3;
     position: relative;
+    box-sizing: border-box;
+    /* Ensure exact text matching with overlay */
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-indent: 0;
+    tab-size: 4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 #code::placeholder {
@@ -106,4 +114,169 @@
 .editor-controls .control-group {
     display: flex;
     align-items: center;
+}
+
+/* Search Bar Styles */
+.search-bar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    backdrop-filter: blur(10px);
+    min-width: 320px;
+}
+
+.search-input-container {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    position: relative;
+}
+
+#search-input {
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--border-radius) - 2px);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    width: 100%;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+}
+
+#search-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.search-results-count {
+    position: absolute;
+    right: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--background-secondary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.search-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.search-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.search-btn:hover:not(:disabled) {
+    background: var(--background-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.search-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.search-toggle.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Case sensitivity toggle icon */
+.case-icon {
+    display: flex;
+    align-items: baseline;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.case-upper {
+    font-size: 12px;
+}
+
+.case-lower {
+    font-size: 10px;
+    margin-left: -1px;
+}
+
+/* When case sensitivity is active, emphasize the icon */
+.search-toggle.active .case-icon {
+    text-decoration: line-through;
+}
+
+.search-toggle:not(.active) .case-icon {
+    opacity: 0.8;
+}
+
+/* Search highlight overlay for textarea - workaround for highlighting */
+.search-highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 60px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: transparent;
+    overflow: auto;
+    z-index: 2;
+    box-sizing: border-box;
+    /* Ensure exact text matching */
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-indent: 0;
+    tab-size: 4;
+}
+
+.search-highlight {
+    background: rgba(255, 235, 59, 0.7);
+    border-radius: 2px;
+    position: relative;
+    color: transparent;
+}
+
+.search-highlight.current {
+    background: rgba(255, 193, 7, 0.9);
+    box-shadow: 0 0 3px rgba(255, 193, 7, 1);
+    color: transparent;
+}
+
+/* Ensure textarea is above overlay for interaction */
+#code {
+    position: relative;
+    z-index: 2;
+    background: transparent;
 }
