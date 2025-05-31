@@ -54,10 +54,13 @@ let currentDiagramType = 'plantuml';
 let currentOutputFormat = 'svg';
 let currentDiagramUrl = '';
 let diagramUpdateTimer = null;
-const DEBOUNCE_DELAY = 1000; // 1 second delay
 let autoRefreshEnabled = true; // Auto-refresh state
 
-// Zoom and pan state
+// Configuration-driven constants (will be updated from config)
+let DEBOUNCE_DELAY = 1000; // 1 second delay
+let AUTO_SAVE_DELAY = 2000; // 2 seconds delay
+
+// Zoom and pan state (will be updated from config)
 let zoomState = {
     scale: 1,
     translateX: 0,
@@ -85,7 +88,6 @@ let currentFile = {
 
 // Auto-save timer
 let autoSaveTimer = null;
-const AUTO_SAVE_DELAY = 2000; // 2 seconds delay
 
 // File operations functionality
 function updateFileStatus() {
@@ -474,6 +476,17 @@ function handleFileShortcuts(event) {
                 event.preventDefault();
                 newFile();
                 break;
+            case ',':
+                event.preventDefault();
+                console.log('Settings keyboard shortcut triggered');
+                if (window.configUI) {
+                    console.log('ConfigUI available, showing settings');
+                    window.configUI.open();
+                } else {
+                    console.warn('Configuration UI not available yet');
+                    alert('Settings system is loading... Please try again in a moment.');
+                }
+                break;
         }
     }
 }
@@ -848,7 +861,7 @@ function initializeZoomPan() {
         const imageHeight = diagram.naturalHeight;
 
         // Calculate scale to fit image in viewport with some padding
-        const padding = 40; // 40px padding on each side for better spacing
+        const padding = window.configManager ? window.configManager.get('zoom.resetPadding') : 40;
         const availableWidth = viewportWidth - (padding * 2);
         const availableHeight = viewportHeight - (padding * 2);
 
@@ -1776,6 +1789,185 @@ const ThemeManager = {
     }
 };
 
+// Configuration integration
+function initializeConfigurationSystem() {
+    if (!window.configManager) {
+        console.warn('Configuration manager not available');
+        return;
+    }
+
+    // Apply initial configuration values
+    applyConfiguration();
+
+    // Set up configuration change listeners
+    setupConfigurationListeners();
+}
+
+function applyConfiguration() {
+    const config = window.configManager;
+    
+    // Apply configuration-driven values
+    DEBOUNCE_DELAY = config.get('editor.debounceDelay');
+    AUTO_SAVE_DELAY = config.get('editor.autoSaveDelay');
+    
+    // Update zoom state with configuration values
+    zoomState.minScale = config.get('zoom.minScale');
+    zoomState.maxScale = config.get('zoom.maxScale');
+    zoomState.scaleStep = config.get('zoom.scaleStep');
+    
+    // Apply theme configuration
+    const themeConfig = config.get('theme');
+    if (themeConfig !== ThemeManager.currentTheme) {
+        ThemeManager.applyTheme(themeConfig);
+    }
+    
+    // Apply auto-refresh configuration
+    const autoRefreshConfig = config.get('autoRefresh');
+    if (autoRefreshConfig !== autoRefreshEnabled) {
+        autoRefreshEnabled = autoRefreshConfig;
+        const checkbox = document.getElementById('auto-refresh-checkbox');
+        if (checkbox) {
+            checkbox.checked = autoRefreshEnabled;
+            handleAutoRefreshToggle();
+        }
+    }
+    
+    // Apply editor configuration
+    const codeTextarea = document.getElementById('code');
+    if (codeTextarea) {
+        const fontSize = config.get('editor.fontSize');
+        codeTextarea.style.fontSize = `${fontSize}px`;
+    }
+    
+    // Apply layout configuration
+    const editorWidth = config.get('layout.editorWidth');
+    const editor = document.querySelector('.editor');
+    if (editor) {
+        editor.style.width = `${editorWidth}%`;
+    }
+    
+    // Apply UI element visibility
+    applyUIVisibilityConfig();
+}
+
+function applyUIVisibilityConfig() {
+    const config = window.configManager;
+    
+    // Show/hide toolbar
+    const toolbar = document.querySelector('.toolbar');
+    if (toolbar) {
+        toolbar.style.display = config.get('layout.showToolbar') ? 'flex' : 'none';
+    }
+    
+    // Show/hide zoom controls
+    const zoomControls = document.getElementById('zoom-controls');
+    if (zoomControls) {
+        zoomControls.style.display = config.get('layout.showZoomControls') ? 'flex' : 'none';
+    }
+    
+    // Show/hide file status
+    const fileStatus = document.querySelector('.file-status');
+    if (fileStatus) {
+        fileStatus.style.display = config.get('layout.showFileStatus') ? 'block' : 'none';
+    }
+}
+
+function setupConfigurationListeners() {
+    const config = window.configManager;
+    
+    // Listen for theme changes
+    config.addListener('theme', (newTheme) => {
+        ThemeManager.applyTheme(newTheme);
+    });
+    
+    // Listen for auto-refresh changes
+    config.addListener('autoRefresh', (newValue) => {
+        autoRefreshEnabled = newValue;
+        const checkbox = document.getElementById('auto-refresh-checkbox');
+        if (checkbox) {
+            checkbox.checked = newValue;
+            handleAutoRefreshToggle();
+        }
+    });
+    
+    // Listen for debounce delay changes
+    config.addListener('editor.debounceDelay', (newValue) => {
+        DEBOUNCE_DELAY = newValue;
+    });
+    
+    // Listen for auto-save delay changes
+    config.addListener('editor.autoSaveDelay', (newValue) => {
+        AUTO_SAVE_DELAY = newValue;
+        // Restart auto-save timer if it's running
+        if (currentFile.autoSaveEnabled) {
+            startAutoSave();
+        }
+    });
+    
+    // Listen for zoom configuration changes
+    config.addListener('zoom.minScale', (newValue) => {
+        zoomState.minScale = newValue;
+        // If current zoom is now outside the new limits, reset
+        if (zoomState.scale < newValue || zoomState.scale > zoomState.maxScale) {
+            const zoomPanControls = window.diagramZoomPan;
+            if (zoomPanControls) {
+                zoomPanControls.resetZoom();
+            }
+        }
+    });
+    
+    config.addListener('zoom.maxScale', (newValue) => {
+        zoomState.maxScale = newValue;
+        // If current zoom is now outside the new limits, reset
+        if (zoomState.scale < zoomState.minScale || zoomState.scale > newValue) {
+            const zoomPanControls = window.diagramZoomPan;
+            if (zoomPanControls) {
+                zoomPanControls.resetZoom();
+            }
+        }
+    });
+    
+    config.addListener('zoom.scaleStep', (newValue) => {
+        zoomState.scaleStep = newValue;
+    });
+    
+    // Listen for zoom reset padding changes
+    config.addListener('zoom.resetPadding', (newValue) => {
+        // This will be used next time resetZoom is called
+        // No immediate action needed since padding is read dynamically
+    });
+    
+    // Listen for zoom preserve state changes
+    config.addListener('zoom.preserveStateOnUpdate', (newValue) => {
+        // This affects diagram update behavior
+        // No immediate action needed since it's read when updating
+    });
+    
+    // Listen for editor font size changes
+    config.addListener('editor.fontSize', (newValue) => {
+        const codeTextarea = document.getElementById('code');
+        if (codeTextarea) {
+            codeTextarea.style.fontSize = `${newValue}px`;
+        }
+    });
+    
+    // Listen for layout changes
+    config.addListener('layout.editorWidth', (newValue) => {
+        const editor = document.querySelector('.editor');
+        if (editor) {
+            editor.style.width = `${newValue}%`;
+            // Trigger resize event to update line numbers
+            updateLineNumbers();
+            adjustControlsLayout();
+        }
+    });
+    
+    // Listen for UI visibility changes
+    config.addListener('layout.showToolbar', () => applyUIVisibilityConfig());
+    config.addListener('layout.showZoomControls', () => applyUIVisibilityConfig());
+    config.addListener('layout.showFileStatus', () => applyUIVisibilityConfig());
+}
+
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function () {
     initializeDiagramTypeDropdown();
@@ -1800,6 +1992,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize auto-refresh functionality
     initializeAutoRefresh();
+    
+    // Initialize settings button
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+        console.log('Settings button found, adding event listener');
+        settingsBtn.addEventListener('click', () => {
+            console.log('Settings button clicked');
+            if (window.configUI) {
+                console.log('ConfigUI available, showing settings');
+                window.configUI.open();
+            } else {
+                console.warn('Configuration UI not available yet');
+                alert('Settings system is loading... Please try again in a moment.');
+            }
+        });
+    } else {
+        console.error('Settings button not found in DOM');
+    }
+    
+    // Initialize configuration system
+    setTimeout(() => {
+        console.log('Initializing configuration system...');
+        console.log('configManager available:', !!window.configManager);
+        
+        // Initialize ConfigUI manually
+        if (window.configManager && typeof ConfigUI !== 'undefined') {
+            try {
+                console.log('Creating ConfigUI instance...');
+                window.configUI = new ConfigUI(window.configManager);
+                console.log('ConfigUI created successfully');
+            } catch (error) {
+                console.error('Error creating ConfigUI:', error);
+            }
+        } else {
+            console.warn('ConfigManager or ConfigUI class not available');
+        }
+        
+        initializeConfigurationSystem();
+        console.log('Configuration system initialized, configManager:', !!window.configManager, 'configUI:', !!window.configUI);
+    }, 150); // Slightly longer delay to ensure all scripts are loaded
 });
 
 // Add window resize listener
