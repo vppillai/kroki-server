@@ -93,12 +93,13 @@ function updateFileStatus() {
     const saveStatusElement = document.getElementById('save-status');
     const saveBtn = document.getElementById('save-file-btn');
     const autoSaveLabel = document.getElementById('auto-save-label');
+    const fileStatusContainer = document.querySelector('.file-status');
 
-    // Handle no file open state
+    // Handle no file open state - hide the entire file status area
     if (!currentFile.isOpen) {
-        fileNameElement.textContent = 'No file open';
-        saveStatusElement.textContent = '';
-        saveStatusElement.className = 'save-status';
+        if (fileStatusContainer) {
+            fileStatusContainer.style.display = 'none';
+        }
         if (saveBtn) {
             saveBtn.disabled = true;
             saveBtn.title = 'No file to save';
@@ -108,6 +109,11 @@ function updateFileStatus() {
             autoSaveLabel.classList.remove('active');
         }
         return;
+    }
+
+    // Show the file status area when a file is open
+    if (fileStatusContainer) {
+        fileStatusContainer.style.display = 'block';
     }
 
     // Show auto-save pill when file is open
