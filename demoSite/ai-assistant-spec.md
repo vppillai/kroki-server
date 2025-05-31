@@ -271,3 +271,11 @@ Include comprehensive documentation covering:
    - Integration points with the main application
    - Security and performance considerations
 
+## Starting and Stopping the server for test
+
+you can restart the server with all the changes re-built with the following command:
+sudo ./setup-kroki-server.sh restart
+
+the site will be available in https://localhost:8443/
+
+The Makefile or docker compose files might have to be updated if new files are genrated to make sure they are included in the update
