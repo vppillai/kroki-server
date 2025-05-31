@@ -30,10 +30,87 @@ MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 DEFAULT_AI_CONFIG = {
     'endpoint': os.environ.get('AI_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
     'api_key': os.environ.get('AI_API_KEY', ''),
-    'model': os.environ.get('AI_MODEL', 'gpt-3.5-turbo'),
+    'model': os.environ.get('AI_MODEL', 'gpt-4o'),
     'timeout': int(os.environ.get('AI_TIMEOUT', AI_TIMEOUT)),
     'enabled': os.environ.get('AI_ENABLED', 'true').lower() == 'true'
 }
+
+# Default prompt templates - configurable via environment
+DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are an expert diagram assistant for the Kroki diagram server. You help users create, modify, and troubleshoot diagrams.
+
+Your role is to:
+1. Generate correct diagram code in the specified format
+2. Modify existing code based on user requests  
+3. Fix syntax errors and improve diagram structure
+4. Provide helpful explanations when needed
+
+Always ensure your code follows proper syntax for the diagram type and is compatible with Kroki.''')
+
+DEFAULT_USER_PROMPT = os.environ.get('AI_USER_PROMPT', '''Please help me with this diagram request: {{userPrompt}}
+
+Current diagram type: {{diagramType}}
+Current code: {{currentCode}}
+
+Please provide the updated or new diagram code in a code block, along with a brief explanation of the changes.''')
+
+@app.route('/api/ai-prompts', methods=['GET'])
+def get_ai_prompts():
+    """Get default AI prompt templates"""
+    try:
+        if not validate_origin(request):
+            return jsonify({'error': 'Unauthorized origin'}), 403
+        
+        return jsonify({
+            'system': DEFAULT_SYSTEM_PROMPT,
+            'user': DEFAULT_USER_PROMPT
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting AI prompts: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/validate-diagram', methods=['POST'])
+def validate_diagram():
+    """Validate diagram code with Kroki"""
+    try:
+        if not validate_origin(request):
+            return jsonify({'error': 'Unauthorized origin'}), 403
+        
+        data = request.get_json(force=True)
+        if not data or 'code' not in data or 'diagramType' not in data:
+            return jsonify({'error': 'Missing code or diagramType'}), 400
+        
+        code = data['code']
+        diagram_type = data['diagramType']
+        
+        # Use the same encoding logic as the frontend
+        import base64
+        import zlib
+        
+        # Encode for Kroki
+        compressed = zlib.compress(code.encode('utf-8'))
+        encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
+        
+        # Try to validate with Kroki
+        kroki_url = f"https://kroki.io/{diagram_type}/svg/{encoded}"
+        
+        # Make a HEAD request to check if the diagram is valid
+        response = requests.head(kroki_url, timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify({'valid': True, 'url': kroki_url})
+        else:
+            return jsonify({
+                'valid': False, 
+                'error': f'Kroki validation failed with status {response.status_code}'
+            })
+    
+    except Exception as e:
+        logger.error(f"Error validating diagram: {str(e)}")
+        return jsonify({
+            'valid': False,
+            'error': f'Validation error: {str(e)}'
+        }), 500
 
 def validate_origin(request):
     """Validate request origin for security"""

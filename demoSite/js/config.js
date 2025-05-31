@@ -8,7 +8,7 @@ const DEFAULT_CONFIG = {
     // Theme and UI preferences
     theme: 'light', // 'light', 'dark', 'auto'
     autoRefresh: true,
-    
+
     // Editor behavior
     editor: {
         tabSize: 4,
@@ -19,7 +19,7 @@ const DEFAULT_CONFIG = {
         wordWrap: false,
         fontSize: 14
     },
-    
+
     // Zoom and pan settings
     zoom: {
         minScale: 0.1,
@@ -28,7 +28,7 @@ const DEFAULT_CONFIG = {
         resetPadding: 40, // padding when fitting to screen
         preserveStateOnUpdate: true
     },
-    
+
     // Layout preferences
     layout: {
         editorWidth: 33, // percentage of total width
@@ -37,7 +37,7 @@ const DEFAULT_CONFIG = {
         showFileStatus: true,
         fullscreenExitOnEscape: true
     },
-    
+
     // File operations
     file: {
         defaultDiagramType: 'plantuml',
@@ -45,7 +45,7 @@ const DEFAULT_CONFIG = {
         autoDetectDiagramType: true,
         warnOnUnsavedChanges: true
     },
-    
+
     // Notifications and feedback
     ui: {
         showNotifications: true,
@@ -54,37 +54,26 @@ const DEFAULT_CONFIG = {
         showTooltips: true,
         enableKeyboardShortcuts: true
     },
-    
+
     // Performance settings
     performance: {
         enableDiagramCaching: true,
         maxCacheSize: 50, // number of cached diagrams
         imagePreloadTimeout: 10000 // milliseconds
     },
-    
+
     // AI Assistant settings
     ai: {
+        enabled: true, // Enable AI Assistant
+        useCustomAPI: false, // Use custom API instead of proxy
         endpoint: '', // Custom API endpoint (optional)
         apiKey: '', // Custom API key (optional)
         model: 'gpt-4o', // AI model to use
+        customModel: '', // Custom model name when model = 'custom'
         maxRetryAttempts: 3, // Maximum retry attempts for failed requests
-        promptTheme: `You are an expert diagram assistant for the Kroki diagram server. 
-
-Current diagram type: {{diagramType}}
-Current diagram code:
-\`\`\`
-{{currentCode}}
-\`\`\`
-
-User request: {{userPrompt}}
-
-Please help the user by:
-1. If they want to create a new diagram, generate appropriate {{diagramType}} code
-2. If they want to modify existing code, provide the updated version
-3. If they want to fix errors, provide corrected code
-4. Always ensure the code follows proper {{diagramType}} syntax
-
-Provide your response with the diagram code in a code block, and include brief explanations if helpful.`
+        autoValidate: true, // Auto-validate generated code
+        userPromptTemplate: '', // Custom user prompt template (when using custom API)
+        timeout: 30 // Request timeout in seconds
     }
 };
 
@@ -113,7 +102,7 @@ class ConfigManager {
             console.warn('Failed to load user configuration:', error);
             this.config = { ...DEFAULT_CONFIG };
         }
-        
+
         // Migrate old settings
         this.migrateOldSettings();
     }
@@ -162,7 +151,7 @@ class ConfigManager {
      */
     mergeConfig(defaultConfig, userConfig) {
         const result = { ...defaultConfig };
-        
+
         for (const [key, value] of Object.entries(userConfig)) {
             if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
                 result[key] = this.mergeConfig(defaultConfig[key] || {}, value);
@@ -170,7 +159,7 @@ class ConfigManager {
                 result[key] = value;
             }
         }
-        
+
         return result;
     }
 
@@ -180,7 +169,7 @@ class ConfigManager {
     get(path) {
         const keys = path.split('.');
         let current = this.config;
-        
+
         for (const key of keys) {
             if (current && typeof current === 'object' && key in current) {
                 current = current[key];
@@ -198,7 +187,7 @@ class ConfigManager {
                 return defaultCurrent;
             }
         }
-        
+
         return current;
     }
 
@@ -209,7 +198,7 @@ class ConfigManager {
         const keys = path.split('.');
         const lastKey = keys.pop();
         let current = this.config;
-        
+
         // Navigate to the parent object
         for (const key of keys) {
             if (!(key in current) || typeof current[key] !== 'object') {
@@ -217,14 +206,14 @@ class ConfigManager {
             }
             current = current[key];
         }
-        
+
         // Set the value
         const oldValue = current[lastKey];
         current[lastKey] = value;
-        
+
         // Save changes
         this.save();
-        
+
         // Notify listeners
         this.notifyListeners(path, value, oldValue);
     }
@@ -255,11 +244,11 @@ class ConfigManager {
     reset() {
         this.config = { ...DEFAULT_CONFIG };
         this.save();
-        
+
         // Clear old localStorage entries
         localStorage.removeItem('kroki-theme');
         localStorage.removeItem('kroki-auto-refresh');
-        
+
         // Notify all listeners
         for (const [path] of this.listeners) {
             this.notifyListeners(path, this.get(path), undefined);
@@ -281,12 +270,12 @@ class ConfigManager {
             const importedConfig = JSON.parse(jsonString);
             this.config = this.mergeConfig(DEFAULT_CONFIG, importedConfig);
             this.save();
-            
+
             // Notify all listeners
             for (const [path] of this.listeners) {
                 this.notifyListeners(path, this.get(path), undefined);
             }
-            
+
             return true;
         } catch (error) {
             console.error('Failed to import configuration:', error);
@@ -302,7 +291,7 @@ class ConfigManager {
             this.listeners.set(path, new Set());
         }
         this.listeners.get(path).add(callback);
-        
+
         // Return unsubscribe function
         return () => {
             const pathListeners = this.listeners.get(path);

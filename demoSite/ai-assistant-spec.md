@@ -13,6 +13,7 @@ Send composed prompts to the configured AI backend API with appropriate context:
 1. **Prompt Template**
    - Use a template string (called `promptTemplate`) that includes placeholders for `diagramType`, `currentCode`, and `userPrompt`.
    - The user prompt must be modifiable by the user in the settings if they are using a custom API. othersise, the prompt theme is fixed in the backend. The backend proxy prompt must be configurable in the .env file so that it can be updated without modifyuing code in teh docker based build system.
+   - The system prompt must ensure that the AI response is always in the form of a valid JSON object: `{"diagramCode": "...", "explanation": "..."}`. The `diagramCode` field must contain only the raw diagram code. The `explanation` field should contain a brief, user-friendly summary of the changes made by the AI.
 
 2. **Context Inclusion**
    - Include the current diagram type (e.g., PlantUML, Mermaid, Graphviz)
@@ -120,14 +121,18 @@ When users configure their own API endpoint and key:
 - Provide appropriate error messages for API failures
 
 ## Handling AI responses
-- The system and user prompts must be setup in such a way that the AI response is always in the form of a valid diagram code.
+- The system and user prompts must be setup in such a way that the AI response is always in the form of a valid JSON object: `{"diagramCode": "...", "explanation": "..."}`.
+  - The `diagramCode` field must contain only the raw diagram code, without any additional text or markdown code fences.
+  - The `explanation` field should contain a brief, user-friendly summary of the changes made by the AI. This explanation will be displayed in the chat window.
   - The current diagram type and code must be included in the prompt to ensure the AI understands the context. Use prompt templates to ensure the AI requests are formatted correctly and the context is included.
-- The AI response must be validated to ensure it is a valid diagram code. Do this by sending the response to the Kroki API for validation. if a non-200 response is received, the AI response must be considered invalid. 
-- in case of an invalid response, the AI Assistant must retry the request by including the original code, new code provided by the AI, and the user prompt and kroki validation error message in the prompt. This will help the AI understand what went wrong and how to fix it. 
+  - If the user asks for something that the AI cannot do, the AI must respond with an appropriate error message in the `explanation` field, and the `diagramCode` field should be empty or contain a message indicating that no code was generated.
+- When the AI response (expected as a JSON object) is received, either from the proxy server or directly from the AI provider, the response must first be checked for errors and valid JSON structure.
+- The `diagramCode` from the JSON response must be validated to ensure it is valid diagram code. Do this by sending the `diagramCode` to the Kroki API for validation. if a non-200 response is received, the `diagramCode` must be considered invalid.
+- The `explanation` from the JSON response should be displayed as an AI message in the chat window.
+- in case of an invalid `diagramCode`, the AI Assistant must retry the request by including the original code, the invalid `diagramCode` provided by the AI, the user prompt, and the Kroki validation error message in the prompt. This will help the AI understand what went wrong and how to fix it. The retry request must also ask for the same JSON structured response.
     - this means there must be an additional prompt template for retrying the request, which includes the original code, new code provided by the AI, and the user prompt and kroki validation error message.
-- USe the retry count to limit the number of retries for invalid responses.
-- When teh AI response is received, either from the proxy server or directly from the AI provider, the response must be first checked for errors.
-- the retry indication must be shown in the chat window, so that the user can see how many times the AI has tried to generate a valid response.
+- Use the retry count to limit the number of retries for invalid responses.
+- The retry indication must be shown in the chat window, so that the user can see how many times the AI has tried to generate a valid response.
 
 
 ## Technical Implementation
@@ -279,3 +284,5 @@ sudo ./setup-kroki-server.sh restart
 the site will be available in https://localhost:8443/
 
 The Makefile or docker compose files might have to be updated if new files are genrated to make sure they are included in the update
+
+Key for testing with openAI:

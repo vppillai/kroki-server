@@ -82,6 +82,31 @@
     color: var(--text-primary);
 }
 
+.ai-title-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ai-backend-indicator {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ai-backend-indicator.default {
+    background: rgba(34, 197, 94, 0.1);
+    color: rgb(34, 197, 94);
+}
+
+.ai-backend-indicator.custom {
+    background: rgba(59, 130, 246, 0.1);
+    color: rgb(59, 130, 246);
+}
+
 .ai-chat-title svg {
     color: rgb(59, 130, 246);
 }
@@ -122,9 +147,12 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: calc(100% - 60px); /* Account for header height */
-    min-height: 0; /* Important for flex children */
-    overflow: hidden; /* Prevent body from expanding beyond bounds */
+    height: calc(100% - 60px);
+    /* Account for header height */
+    min-height: 0;
+    /* Important for flex children */
+    overflow: hidden;
+    /* Prevent body from expanding beyond bounds */
 }
 
 /* Chat Messages */
@@ -132,12 +160,14 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-md) var(--spacing-sm); /* Reduced left padding */
+    padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-md) var(--spacing-sm);
+    /* Reduced left padding */
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
     scroll-behavior: smooth;
-    min-height: 0; /* Important for flex overflow */
+    min-height: 0;
+    /* Important for flex overflow */
 }
 
 /* Ensure messages scroll to bottom */
@@ -171,8 +201,10 @@
 
 .ai-message.assistant {
     align-self: flex-start;
-    margin-left: 0; /* Ensure no extra left margin */
-    max-width: 90%; /* Increased max-width for assistant messages */
+    margin-left: 0;
+    /* Ensure no extra left margin */
+    max-width: 90%;
+    /* Increased max-width for assistant messages */
 }
 
 .ai-message.system {
@@ -200,7 +232,8 @@
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-bottom-left-radius: var(--border-radius);
-    margin-left: 0; /* Remove any inherited margin */
+    margin-left: 0;
+    /* Remove any inherited margin */
 }
 
 .ai-message.system .ai-message-content {
@@ -251,13 +284,19 @@
     background: var(--background-secondary);
     flex-shrink: 0;
     flex-grow: 0;
-    position: sticky; /* Changed from relative to sticky */
+    position: sticky;
+    /* Changed from relative to sticky */
     bottom: 0;
-    z-index: 10; /* Ensure it stays on top */
-    overflow: hidden; /* Prevent container overflow */
-    position: relative; /* For resize handle positioning */
-    min-height: 60px; /* Minimum height */
-    height: auto; /* Allow dynamic height */
+    z-index: 10;
+    /* Ensure it stays on top */
+    overflow: hidden;
+    /* Prevent container overflow */
+    position: relative;
+    /* For resize handle positioning */
+    min-height: 60px;
+    /* Minimum height */
+    height: auto;
+    /* Allow dynamic height */
 }
 
 /* Resize Handle */
@@ -303,8 +342,13 @@
 }
 
 @keyframes ai-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Chat Input Wrapper */
@@ -313,15 +357,18 @@
     align-items: flex-end;
     padding: var(--spacing-md);
     gap: var(--spacing-sm);
-    overflow: hidden; /* Prevent any overflow issues */
-    height: 100%; /* Fill the container height */
+    overflow: hidden;
+    /* Prevent any overflow issues */
+    height: 100%;
+    /* Fill the container height */
     box-sizing: border-box;
 }
 
 .ai-chat-input {
     flex: 1;
     min-height: 40px;
-    max-height: 120px; /* This will be dynamically updated */
+    max-height: 120px;
+    /* This will be dynamically updated */
     padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
@@ -332,10 +379,14 @@
     resize: none;
     outline: none;
     transition: all 0.2s ease;
-    overflow-y: auto; /* Allow vertical scroll within textarea only when needed */
-    overflow-x: hidden; /* Prevent horizontal scroll */
-    scrollbar-width: thin; /* For Firefox */
-    height: auto; /* Allow dynamic height */
+    overflow-y: auto;
+    /* Allow vertical scroll within textarea only when needed */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+    scrollbar-width: thin;
+    /* For Firefox */
+    height: auto;
+    /* Allow dynamic height */
 }
 
 .ai-chat-input:focus {
@@ -363,7 +414,8 @@
 
 .ai-chat-input::placeholder {
     color: var(--text-secondary);
-    font-size: 12px; /* Smaller font size to prevent line wrapping */
+    font-size: 12px;
+    /* Smaller font size to prevent line wrapping */
 }
 
 .ai-chat-send {
@@ -408,4 +460,3 @@
 }
 
 /* Settings Modal */
-
