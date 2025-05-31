@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Resize Feature Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
+    <script src="js/config.js" defer></script>
+    <script src="js/ai-assistant.js" defer></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--background-primary);
+            color: var(--text-primary);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: var(--background-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .mock-diagram-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #6c757d;
+        }
+        #code {
+            width: 100%;
+            height: 100px;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--background-tertiary);
+            color: var(--text-primary);
+        }
+        #diagramType {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--background-secondary);
+            color: var(--text-primary);
+        }
+        .feature-highlight {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .feature-highlight h4 {
+            margin: 0 0 10px 0;
+            color: rgb(59, 130, 246);
+        }
+        .test-steps {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-steps h4 {
+            margin: 0 0 10px 0;
+            color: #059669;
+        }
+        .test-steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .test-steps li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        .resize-demo {
+            background: rgba(147, 51, 234, 0.1);
+            border: 1px solid rgba(147, 51, 234, 0.3);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .resize-demo h4 {
+            margin: 0 0 10px 0;
+            color: rgb(147, 51, 234);
+        }
+        .size-indicator {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--background-tertiary);
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 AI Assistant Resize Feature Test</h1>
+        
+        <div class="test-section">
+            <h2>Mock Application Environment</h2>
+            
+            <label for="diagramType">Diagram Type:</label>
+            <select id="diagramType">
+                <option value="plantuml">PlantUML</option>
+                <option value="mermaid">Mermaid</option>
+                <option value="graphviz">Graphviz</option>
+            </select>
+            
+            <br><br>
+            
+            <label for="code">Diagram Code:</label>
+            <textarea id="code" placeholder="Enter your diagram code here...">@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there
+@enduml</textarea>
+            
+            <div id="diagram-container" class="mock-diagram-container">
+                Mock Diagram Rendering Area
+                <!-- AI Assistant button will be injected here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <div class="feature-highlight">
+                <h4>🆕 New Features Added:</h4>
+                <ul>
+                    <li><strong>Resizable Input Area:</strong> Drag the top border of the input area to resize</li>
+                    <li><strong>Smaller Placeholder Text:</strong> Prevents text wrapping in default state</li>
+                    <li><strong>Fixed Send Button Position:</strong> Button stays in place during resize</li>
+                    <li><strong>Dynamic Height Limits:</strong> Maintains usability with min/max constraints</li>
+                </ul>
+            </div>
+            
+            <div class="test-steps">
+                <h4>📋 Test Instructions:</h4>
+                <ol>
+                    <li><strong>Open Chat:</strong> Click the AI Assistant button in the diagram area</li>
+                    <li><strong>Check Placeholder:</strong> Verify placeholder text fits on one line</li>
+                    <li><strong>Find Resize Handle:</strong> Look for the thin area at the top of the input container</li>
+                    <li><strong>Test Resize:</strong> Drag the top border up/down to resize the input area</li>
+                    <li><strong>Verify Send Button:</strong> Confirm send button stays in the same position</li>
+                    <li><strong>Test Limits:</strong> Try to resize beyond min/max limits</li>
+                    <li><strong>Type Long Text:</strong> Test with long messages in resized area</li>
+                    <li><strong>Auto-resize Test:</strong> See how auto-resize works with manual resize</li>
+                </ol>
+            </div>
+            
+            <div class="resize-demo">
+                <h4>🎯 Resize Behavior Expected:</h4>
+                <ul>
+                    <li><strong>Hover Effect:</strong> Resize handle should show blue highlight on hover</li>
+                    <li><strong>Cursor Change:</strong> Cursor should change to resize (↕) when hovering</li>
+                    <li><strong>Smooth Resizing:</strong> Input area should resize smoothly during drag</li>
+                    <li><strong>Constraints:</strong> Should stop at minimum (~60px) and maximum (~300px) heights</li>
+                    <li><strong>Send Button Fixed:</strong> Send button position should remain constant</li>
+                    <li><strong>Textarea Adaptation:</strong> Textarea max-height should update proportionally</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📏 Size Testing Scenarios</h2>
+            
+            <div class="size-indicator">Default Size: ~60px height (minimum)</div>
+            <div class="size-indicator">Medium Size: ~150px height</div>
+            <div class="size-indicator">Large Size: ~300px height (maximum)</div>
+            
+            <p><strong>Test Messages for Different Sizes:</strong></p>
+            
+            <div style="background: var(--background-tertiary); padding: 10px; border-radius: var(--border-radius); margin: 10px 0;">
+                <strong>Short (Default):</strong> "Hello AI!"
+            </div>
+            
+            <div style="background: var(--background-tertiary); padding: 10px; border-radius: var(--border-radius); margin: 10px 0;">
+                <strong>Medium (Resize to Medium):</strong> "Can you help me create a detailed sequence diagram that shows the interaction between multiple components including authentication, data processing, and response handling?"
+            </div>
+            
+            <div style="background: var(--background-tertiary); padding: 10px; border-radius: var(--border-radius); margin: 10px 0;">
+                <strong>Long (Resize to Large):</strong> "I need assistance creating a comprehensive system architecture diagram that illustrates the complete data flow between microservices, databases, message queues, load balancers, API gateways, and external services. The diagram should clearly show authentication boundaries, data transformation points, error handling mechanisms, and performance monitoring interfaces. Please include proper labeling and organize the components in a logical hierarchy that demonstrates both the technical architecture and the business process flow."
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>✅ Validation Checklist</h2>
+            
+            <p>Check off each item as you test:</p>
+            <ul style="list-style: none; padding-left: 0;">
+                <li>☐ <strong>Placeholder text fits on one line in default state</strong></li>
+                <li>☐ <strong>Resize handle is visible at top of input container</strong></li>
+                <li>☐ <strong>Hover effect works on resize handle</strong></li>
+                <li>☐ <strong>Cursor changes to ns-resize when hovering</strong></li>
+                <li>☐ <strong>Dragging up increases input area height</strong></li>
+                <li>☐ <strong>Dragging down decreases input area height</strong></li>
+                <li>☐ <strong>Send button position remains fixed during resize</strong></li>
+                <li>☐ <strong>Cannot resize below minimum height (~60px)</strong></li>
+                <li>☐ <strong>Cannot resize above maximum height (~300px)</strong></li>
+                <li>☐ <strong>Textarea max-height updates during resize</strong></li>
+                <li>☐ <strong>Auto-resize still works with manual resize</strong></li>
+                <li>☐ <strong>No visual glitches during resize operation</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Mock config manager for testing
+        window.configManager = {
+            get: function(key) {
+                const config = {
+                    'ai.endpoint': '',
+                    'ai.apiKey': '',
+                    'ai.model': 'gpt-4o',
+                    'ai.maxRetryAttempts': 3
+                };
+                return config[key] || null;
+            }
+        };
+
+        // Initialize AI Assistant when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof AIAssistant !== 'undefined') {
+                window.aiAssistant = new AIAssistant(window.configManager);
+                console.log('AI Assistant initialized for resize testing');
+                
+                // Add resize detection for logging
+                if (window.aiAssistant && window.aiAssistant.chatInputContainer) {
+                    const observer = new ResizeObserver(entries => {
+                        for (let entry of entries) {
+                            const height = entry.contentRect.height;
+                            console.log(`Input container height: ${height}px`);
+                        }
+                    });
+                    
+                    setTimeout(() => {
+                        if (window.aiAssistant.chatInputContainer) {
+                            observer.observe(window.aiAssistant.chatInputContainer);
+                        }
+                    }, 1000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

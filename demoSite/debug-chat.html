@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug AI Chat</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .debug-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .debug-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .debug-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>Debug AI Chat Issues</h1>
+        
+        <div>
+            <button class="debug-button" onclick="openDebugChat()">Open Chat</button>
+            <button class="debug-button" onclick="testEnterKey()">Test Enter Key</button>
+            <button class="debug-button" onclick="testSendButton()">Test Send Button</button>
+            <button class="debug-button" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div id="debug-log" class="debug-log">Debug log will appear here...</div>
+
+        <!-- Simplified chat window -->
+        <div id="ai-chat-window" class="ai-chat-window" style="display: none; position: fixed; right: 20px; bottom: 20px; width: 400px; height: 500px;">
+            <div class="ai-chat-header">
+                <div class="ai-chat-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    Debug Chat
+                </div>
+                <div class="ai-chat-controls">
+                    <button class="ai-chat-close" onclick="closeDebugChat()" title="Close">×</button>
+                </div>
+            </div>
+            <div class="ai-chat-body">
+                <div class="ai-chat-messages" id="ai-chat-messages">
+                    <div class="ai-message system">
+                        <div class="ai-message-content">
+                            🔧 Debug chat window. Test Enter vs Shift+Enter behavior.
+                        </div>
+                    </div>
+                </div>
+                <div class="ai-chat-input-container">
+                    <div class="ai-chat-input-wrapper">
+                        <textarea 
+                            id="ai-chat-input" 
+                            class="ai-chat-input" 
+                            placeholder="Type here and test Enter vs Shift+Enter..."
+                            rows="2"
+                        ></textarea>
+                        <button id="ai-chat-send" class="ai-chat-send" onclick="debugSendMessage()" title="Send message">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22,2 15,22 11,13 2,9"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = 'Debug log cleared...<br>';
+        }
+
+        function openDebugChat() {
+            log('Opening debug chat...');
+            document.getElementById('ai-chat-window').style.display = 'block';
+            
+            // Set up event listeners
+            const chatInput = document.getElementById('ai-chat-input');
+            const chatSend = document.getElementById('ai-chat-send');
+            
+            // Remove existing listeners (if any)
+            chatInput.removeEventListener('keydown', handleKeyDown);
+            chatSend.removeEventListener('click', debugSendMessage);
+            
+            // Add new listeners
+            chatInput.addEventListener('keydown', handleKeyDown);
+            chatSend.addEventListener('click', debugSendMessage);
+            
+            log('Event listeners attached');
+            chatInput.focus();
+        }
+
+        function closeDebugChat() {
+            log('Closing debug chat...');
+            document.getElementById('ai-chat-window').style.display = 'none';
+        }
+
+        function handleKeyDown(e) {
+            log(`Key pressed: ${e.key}, Shift: ${e.shiftKey}`);
+            if (e.key === 'Enter' && !e.shiftKey) {
+                log('Enter without Shift - preventing default and sending message');
+                e.preventDefault();
+                debugSendMessage();
+            } else if (e.key === 'Enter' && e.shiftKey) {
+                log('Shift+Enter - allowing new line');
+            }
+        }
+
+        function debugSendMessage() {
+            log('debugSendMessage() called');
+            const chatInput = document.getElementById('ai-chat-input');
+            const message = chatInput.value.trim();
+            
+            log(`Message content: "${message}"`);
+            
+            if (!message) {
+                log('Message is empty, not sending');
+                return;
+            }
+            
+            // Add message to chat
+            addMessage('user', message);
+            
+            // Clear input
+            chatInput.value = '';
+            log('Message sent and input cleared');
+            
+            // Auto-respond for testing
+            setTimeout(() => {
+                addMessage('assistant', 'Debug response: Message received successfully!');
+            }, 500);
+        }
+
+        function addMessage(type, content) {
+            log(`Adding ${type} message: "${content}"`);
+            const messagesContainer = document.getElementById('ai-chat-messages');
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${type}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'ai-message-content';
+            messageContent.textContent = content;
+            
+            messageDiv.appendChild(messageContent);
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function testEnterKey() {
+            log('Testing Enter key simulation...');
+            const chatInput = document.getElementById('ai-chat-input');
+            if (!chatInput) {
+                log('ERROR: Chat input not found');
+                return;
+            }
+            
+            chatInput.value = 'Test message via Enter key';
+            const event = new KeyboardEvent('keydown', {
+                key: 'Enter',
+                shiftKey: false,
+                bubbles: true
+            });
+            chatInput.dispatchEvent(event);
+        }
+
+        function testSendButton() {
+            log('Testing send button click...');
+            const chatInput = document.getElementById('ai-chat-input');
+            if (!chatInput) {
+                log('ERROR: Chat input not found');
+                return;
+            }
+            
+            chatInput.value = 'Test message via send button';
+            debugSendMessage();
+        }
+
+        // Initialize
+        log('Debug page loaded');
+    </script>
+</body>
+</html>

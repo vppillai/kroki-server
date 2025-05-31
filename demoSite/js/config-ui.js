@@ -33,6 +33,7 @@ class ConfigUI {
                             <button class="config-tab" data-tab="editor">Editor</button>
                             <button class="config-tab" data-tab="zoom">Zoom & Pan</button>
                             <button class="config-tab" data-tab="layout">Layout</button>
+                            <button class="config-tab" data-tab="ai">AI Assistant</button>
                             <button class="config-tab" data-tab="advanced">Advanced</button>
                         </div>
                         
@@ -221,6 +222,121 @@ class ConfigUI {
                                             <span class="config-checkbox-mark"></span>
                                             <span class="config-checkbox-label">Show File Status</span>
                                         </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="config-tab-ai" class="config-tab-content">
+                            <div class="config-section">
+                                <h4 class="config-section-title">AI Provider Settings</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">AI Endpoint URL</label>
+                                        <input type="text" class="config-input" data-config="ai.endpoint" placeholder="https://api.openai.com/v1/chat/completions">
+                                        <div class="config-description">API endpoint for AI chat completions</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">API Key</label>
+                                        <input type="password" class="config-input" data-config="ai.apiKey" placeholder="sk-...">
+                                        <div class="config-description">Your API key for the AI service</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">AI Model</label>
+                                        <select class="config-select" data-config="ai.model">
+                                            <option value="gpt-4">GPT-4</option>
+                                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                            <option value="claude-3-opus">Claude 3 Opus</option>
+                                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                                            <option value="claude-3-haiku">Claude 3 Haiku</option>
+                                            <option value="gemini-pro">Gemini Pro</option>
+                                            <option value="llama2">Llama 2</option>
+                                            <option value="custom">Custom Model</option>
+                                        </select>
+                                        <div class="config-description">Choose the AI model to use for diagram assistance</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Assistant Behavior</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">Prompt Theme</label>
+                                        <select class="config-select" data-config="ai.promptTheme">
+                                            <option value="helpful">Helpful Assistant</option>
+                                            <option value="technical">Technical Expert</option>
+                                            <option value="creative">Creative Partner</option>
+                                            <option value="educational">Educational Guide</option>
+                                        </select>
+                                        <div class="config-description">How the AI assistant should behave and respond</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">Max Retry Attempts</label>
+                                        <div class="config-range">
+                                            <input type="range" min="1" max="5" step="1" class="config-input" data-config="ai.maxRetryAttempts">
+                                            <span class="config-range-value">3</span>
+                                        </div>
+                                        <div class="config-description">Number of times to retry failed diagram validation</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Chat Settings</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.enabled">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Enable AI Assistant</span>
+                                        </label>
+                                        <div class="config-description">Show the AI Assistant button and chat interface</div>
+                                    </div>
+                                    
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.autoValidate">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Auto-validate Diagrams</span>
+                                        </label>
+                                        <div class="config-description">Automatically validate AI-generated diagram code</div>
+                                    </div>
+                                    
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.persistHistory">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Persist Chat History</span>
+                                        </label>
+                                        <div class="config-description">Save chat history between sessions</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Privacy & Security</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.useProxy">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Use Proxy API</span>
+                                        </label>
+                                        <div class="config-description">Route AI requests through the Kroki server proxy for added security</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">Request Timeout (seconds)</label>
+                                        <div class="config-range">
+                                            <input type="range" min="10" max="120" step="5" class="config-input" data-config="ai.timeout">
+                                            <span class="config-range-value">30</span>
+                                        </div>
+                                        <div class="config-description">Timeout for AI API requests</div>
                                     </div>
                                 </div>
                             </div>

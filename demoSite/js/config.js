@@ -60,6 +60,31 @@ const DEFAULT_CONFIG = {
         enableDiagramCaching: true,
         maxCacheSize: 50, // number of cached diagrams
         imagePreloadTimeout: 10000 // milliseconds
+    },
+    
+    // AI Assistant settings
+    ai: {
+        endpoint: '', // Custom API endpoint (optional)
+        apiKey: '', // Custom API key (optional)
+        model: 'gpt-4o', // AI model to use
+        maxRetryAttempts: 3, // Maximum retry attempts for failed requests
+        promptTheme: `You are an expert diagram assistant for the Kroki diagram server. 
+
+Current diagram type: {{diagramType}}
+Current diagram code:
+\`\`\`
+{{currentCode}}
+\`\`\`
+
+User request: {{userPrompt}}
+
+Please help the user by:
+1. If they want to create a new diagram, generate appropriate {{diagramType}} code
+2. If they want to modify existing code, provide the updated version
+3. If they want to fix errors, provide corrected code
+4. Always ensure the code follows proper {{diagramType}} syntax
+
+Provide your response with the diagram code in a code block, and include brief explanations if helpful.`
     }
 };
 
@@ -410,6 +435,42 @@ class ConfigManager {
                 max: 10000,
                 step: 500,
                 description: 'How long to show notifications'
+            },
+            'ai.endpoint': {
+                type: 'text',
+                label: 'AI API Endpoint',
+                description: 'Custom AI API endpoint (optional, leave empty to use proxy backend)'
+            },
+            'ai.apiKey': {
+                type: 'password',
+                label: 'API Key',
+                description: 'API key for custom endpoint (optional)'
+            },
+            'ai.model': {
+                type: 'select',
+                label: 'AI Model',
+                options: [
+                    { value: 'gpt-4o', label: 'GPT-4o' },
+                    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+                    { value: 'gpt-4', label: 'GPT-4' },
+                    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+                    { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+                    { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' }
+                ],
+                description: 'AI model to use for diagram generation'
+            },
+            'ai.maxRetryAttempts': {
+                type: 'number',
+                label: 'Maximum Retry Attempts',
+                min: 1,
+                max: 10,
+                description: 'Maximum retry attempts for failed AI requests'
+            },
+            'ai.promptTheme': {
+                type: 'textarea',
+                label: 'Prompt Theme',
+                rows: 8,
+                description: 'Template for AI prompts. Use {{diagramType}}, {{currentCode}}, and {{userPrompt}} as placeholders.'
             }
         };
     }

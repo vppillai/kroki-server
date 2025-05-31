@@ -1,0 +1,411 @@
+/* AI Assistant Styles */
+
+/* AI Assist Button - floating at bottom-right of image pane */
+.ai-assist-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(59, 130, 246, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    user-select: none;
+}
+
+.ai-assist-btn:hover {
+    background: rgba(59, 130, 246, 1);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+}
+
+.ai-assist-btn:active {
+    transform: translateY(0);
+}
+
+.ai-assist-btn svg {
+    flex-shrink: 0;
+}
+
+.ai-assist-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* AI Chat Window */
+.ai-chat-window {
+    position: fixed;
+    width: 400px;
+    height: 500px;
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-xl);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+/* Chat Header */
+.ai-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+    border-bottom: 1px solid var(--border-color);
+    cursor: move;
+    user-select: none;
+}
+
+.ai-chat-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.ai-chat-title svg {
+    color: rgb(59, 130, 246);
+}
+
+.ai-chat-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.ai-chat-controls button {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: var(--background-secondary);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.ai-chat-controls button:hover {
+    background: var(--background-tertiary);
+    color: var(--text-primary);
+}
+
+.ai-chat-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
+}
+
+/* Chat Body */
+.ai-chat-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 60px); /* Account for header height */
+    min-height: 0; /* Important for flex children */
+    overflow: hidden; /* Prevent body from expanding beyond bounds */
+}
+
+/* Chat Messages */
+.ai-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-md) var(--spacing-sm); /* Reduced left padding */
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    scroll-behavior: smooth;
+    min-height: 0; /* Important for flex overflow */
+}
+
+/* Ensure messages scroll to bottom */
+.ai-chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-track {
+    background: var(--background-secondary);
+    border-radius: 3px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+.ai-message {
+    display: flex;
+    flex-direction: column;
+    max-width: 85%;
+}
+
+.ai-message.user {
+    align-self: flex-end;
+}
+
+.ai-message.assistant {
+    align-self: flex-start;
+    margin-left: 0; /* Ensure no extra left margin */
+    max-width: 90%; /* Increased max-width for assistant messages */
+}
+
+.ai-message.system {
+    align-self: center;
+    max-width: 100%;
+}
+
+.ai-message-content {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-lg);
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.ai-message.user .ai-message-content {
+    background: rgb(59, 130, 246);
+    color: white;
+    border-bottom-right-radius: var(--border-radius);
+}
+
+.ai-message.assistant .ai-message-content {
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: var(--border-radius);
+    margin-left: 0; /* Remove any inherited margin */
+}
+
+.ai-message.system .ai-message-content {
+    background: rgba(147, 51, 234, 0.1);
+    color: var(--text-primary);
+    border: 1px solid rgba(147, 51, 234, 0.2);
+    text-align: center;
+    font-size: 13px;
+}
+
+/* Code blocks in messages */
+.ai-message-content pre {
+    background: var(--background-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm);
+    margin: var(--spacing-xs) 0;
+    overflow-x: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.ai-message-content code {
+    background: var(--background-tertiary);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.ai-message-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.ai-message-content ul {
+    margin: var(--spacing-xs) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.ai-message-content li {
+    margin: var(--spacing-xs) 0;
+}
+
+/* Chat Input Container */
+.ai-chat-input-container {
+    border-top: 1px solid var(--border-color);
+    background: var(--background-secondary);
+    flex-shrink: 0;
+    flex-grow: 0;
+    position: sticky; /* Changed from relative to sticky */
+    bottom: 0;
+    z-index: 10; /* Ensure it stays on top */
+    overflow: hidden; /* Prevent container overflow */
+    position: relative; /* For resize handle positioning */
+    min-height: 60px; /* Minimum height */
+    height: auto; /* Allow dynamic height */
+}
+
+/* Resize Handle */
+.ai-chat-resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    cursor: ns-resize;
+    background: transparent;
+    z-index: 15;
+    transition: background-color 0.2s ease;
+}
+
+.ai-chat-resize-handle:hover {
+    background: rgba(59, 130, 246, 0.3);
+}
+
+.ai-chat-resize-handle.resizing {
+    background: rgba(59, 130, 246, 0.5);
+}
+
+/* Chat Status */
+.ai-chat-status {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(59, 130, 246, 0.1);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.ai-status-spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border-color);
+    border-top: 2px solid rgb(59, 130, 246);
+    border-radius: 50%;
+    animation: ai-spin 1s linear infinite;
+}
+
+@keyframes ai-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Chat Input Wrapper */
+.ai-chat-input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+    overflow: hidden; /* Prevent any overflow issues */
+    height: 100%; /* Fill the container height */
+    box-sizing: border-box;
+}
+
+.ai-chat-input {
+    flex: 1;
+    min-height: 40px;
+    max-height: 120px; /* This will be dynamically updated */
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    background: var(--background-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    transition: all 0.2s ease;
+    overflow-y: auto; /* Allow vertical scroll within textarea only when needed */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    scrollbar-width: thin; /* For Firefox */
+    height: auto; /* Allow dynamic height */
+}
+
+.ai-chat-input:focus {
+    border-color: rgb(59, 130, 246);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Custom scrollbar for chat input */
+.ai-chat-input::-webkit-scrollbar {
+    width: 4px;
+}
+
+.ai-chat-input::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ai-chat-input::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.ai-chat-input::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+.ai-chat-input::placeholder {
+    color: var(--text-secondary);
+    font-size: 12px; /* Smaller font size to prevent line wrapping */
+}
+
+.ai-chat-send {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: rgb(59, 130, 246);
+    color: white;
+    border-radius: var(--border-radius-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.ai-chat-send:hover {
+    background: rgb(37, 99, 235);
+    transform: translateY(-1px);
+}
+
+.ai-chat-send:active {
+    transform: translateY(0);
+}
+
+.ai-chat-send:disabled {
+    background: var(--background-tertiary);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Settings Button */
+.ai-chat-settings {
+    color: var(--text-secondary) !important;
+}
+
+.ai-chat-settings:hover {
+    color: rgb(59, 130, 246) !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Settings Modal */
+

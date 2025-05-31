@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Final Integration Test</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
+    <script src="js/config.js" defer></script>
+    <script src="js/ai-assistant.js" defer></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--background-primary);
+            color: var(--text-primary);
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: var(--background-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-lg);
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: var(--border-radius);
+            margin: 10px 0;
+        }
+        .test-pass {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #059669;
+        }
+        .test-fail {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #dc2626;
+        }
+        .mock-diagram-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #6c757d;
+        }
+        #code {
+            width: 100%;
+            height: 100px;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--background-tertiary);
+            color: var(--text-primary);
+        }
+        #diagramType {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: var(--background-secondary);
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 AI Assistant Final Integration Test</h1>
+        
+        <div class="test-section">
+            <h2>Mock Application Environment</h2>
+            <p>This simulates the main Kroki application environment with all required elements:</p>
+            
+            <label for="diagramType">Diagram Type:</label>
+            <select id="diagramType">
+                <option value="plantuml">PlantUML</option>
+                <option value="mermaid">Mermaid</option>
+                <option value="graphviz">Graphviz</option>
+            </select>
+            
+            <br><br>
+            
+            <label for="code">Diagram Code:</label>
+            <textarea id="code" placeholder="Enter your diagram code here...">@startuml
+Alice -> Bob: Hello
+Bob --> Alice: Hi there
+@enduml</textarea>
+            
+            <div id="diagram-container" class="mock-diagram-container">
+                Mock Diagram Rendering Area
+                <!-- AI Assistant button will be injected here -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Integration Tests</h2>
+            <div id="test-results"></div>
+            <button onclick="runTests()">Run Integration Tests</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>💬 AI Assistant Functionality</h2>
+            <p>Click the AI button in the diagram area above to test the chat interface.</p>
+            <p><strong>Test checklist:</strong></p>
+            <ul>
+                <li>✅ AI button appears at bottom-right of diagram area</li>
+                <li>✅ Click opens chat window with welcome message</li>
+                <li>✅ Enter key sends messages (not Shift+Enter)</li>
+                <li>✅ Send button works properly</li>
+                <li>✅ Chat layout stays fixed with input at bottom</li>
+                <li>✅ AI responses appear close to left boundary</li>
+                <li>✅ Warning about chat history independence shown</li>
+                <li>✅ Configuration integration works</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Mock config manager for testing
+        window.configManager = {
+            get: function(key) {
+                const config = {
+                    'ai.endpoint': 'https://api.openai.com/v1/chat/completions',
+                    'ai.apiKey': 'test-key',
+                    'ai.model': 'gpt-4o',
+                    'ai.maxRetryAttempts': 3
+                };
+                return config[key] || null;
+            }
+        };
+
+        function runTests() {
+            const results = [];
+            
+            // Test 1: AI Assistant class exists
+            if (typeof AIAssistant !== 'undefined') {
+                results.push({ name: 'AIAssistant class loaded', status: 'pass' });
+            } else {
+                results.push({ name: 'AIAssistant class loaded', status: 'fail', error: 'AIAssistant class not found' });
+            }
+            
+            // Test 2: Check if AI Assistant is initialized
+            if (window.aiAssistant) {
+                results.push({ name: 'AI Assistant instance created', status: 'pass' });
+            } else {
+                results.push({ name: 'AI Assistant instance created', status: 'fail', error: 'No aiAssistant instance found' });
+            }
+            
+            // Test 3: Check for required DOM elements
+            const requiredElements = ['code', 'diagramType', 'diagram-container'];
+            let elementsFound = 0;
+            requiredElements.forEach(id => {
+                if (document.getElementById(id)) {
+                    elementsFound++;
+                }
+            });
+            
+            if (elementsFound === requiredElements.length) {
+                results.push({ name: 'Required DOM elements present', status: 'pass' });
+            } else {
+                results.push({ name: 'Required DOM elements present', status: 'fail', error: `Only ${elementsFound}/${requiredElements.length} elements found` });
+            }
+            
+            // Test 4: Check if AI button is created
+            setTimeout(() => {
+                const aiButton = document.getElementById('ai-assist-btn');
+                if (aiButton) {
+                    results.push({ name: 'AI Assistant button created', status: 'pass' });
+                } else {
+                    results.push({ name: 'AI Assistant button created', status: 'fail', error: 'AI button not found' });
+                }
+                
+                // Test 5: Check if chat window is created
+                const chatWindow = document.getElementById('ai-chat-window');
+                if (chatWindow) {
+                    results.push({ name: 'Chat window created', status: 'pass' });
+                } else {
+                    results.push({ name: 'Chat window created', status: 'fail', error: 'Chat window not found' });
+                }
+                
+                displayResults(results);
+            }, 100);
+        }
+        
+        function displayResults(results) {
+            const container = document.getElementById('test-results');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result test-${result.status}`;
+                div.innerHTML = `
+                    <strong>${result.name}:</strong> 
+                    ${result.status === 'pass' ? '✅ PASS' : `❌ FAIL - ${result.error}`}
+                `;
+                container.appendChild(div);
+            });
+            
+            const passCount = results.filter(r => r.status === 'pass').length;
+            const summary = document.createElement('div');
+            summary.className = `test-result ${passCount === results.length ? 'test-pass' : 'test-fail'}`;
+            summary.innerHTML = `<strong>Summary:</strong> ${passCount}/${results.length} tests passed`;
+            container.appendChild(summary);
+        }
+        
+        // Initialize AI Assistant when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof AIAssistant !== 'undefined') {
+                window.aiAssistant = new AIAssistant(window.configManager);
+                console.log('AI Assistant initialized for testing');
+            }
+        });
+    </script>
+</body>
+</html>

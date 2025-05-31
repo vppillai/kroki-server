@@ -1970,6 +1970,21 @@ function setupConfigurationListeners() {
     config.addListener('layout.showToolbar', () => applyUIVisibilityConfig());
     config.addListener('layout.showZoomControls', () => applyUIVisibilityConfig());
     config.addListener('layout.showFileStatus', () => applyUIVisibilityConfig());
+    
+    // Listen for AI Assistant configuration changes
+    const aiConfigPaths = [
+        'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model', 
+        'ai.maxRetryAttempts', 'ai.promptTheme', 'ai.autoValidate',
+        'ai.persistHistory', 'ai.useProxy', 'ai.timeout'
+    ];
+    
+    aiConfigPaths.forEach(path => {
+        config.addListener(path, () => {
+            if (window.aiAssistant) {
+                window.aiAssistant.applyConfiguration();
+            }
+        });
+    });
 }
 
 // Event Listeners
@@ -2036,8 +2051,21 @@ document.addEventListener('DOMContentLoaded', function () {
             console.warn('ConfigManager or ConfigUI class not available');
         }
         
+        // Initialize AI Assistant
+        if (typeof AIAssistant !== 'undefined') {
+            try {
+                console.log('Creating AI Assistant instance...');
+                window.aiAssistant = new AIAssistant(window.configManager);
+                console.log('AI Assistant created successfully');
+            } catch (error) {
+                console.error('Error creating AI Assistant:', error);
+            }
+        } else {
+            console.warn('AIAssistant class not available');
+        }
+        
         initializeConfigurationSystem();
-        console.log('Configuration system initialized, configManager:', !!window.configManager, 'configUI:', !!window.configUI);
+        console.log('Configuration system initialized, configManager:', !!window.configManager, 'configUI:', !!window.configUI, 'aiAssistant:', !!window.aiAssistant);
     }, 150); // Slightly longer delay to ensure all scripts are loaded
 });
 

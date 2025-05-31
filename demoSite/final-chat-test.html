@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Chat - Final Test</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/ai-assistant.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .diagram-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #f9f9f9;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .test-instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .test-checklist {
+            background: #f3e5f5;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .test-checklist ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .test-checklist li {
+            margin: 8px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-pass { background: #4caf50; }
+        .status-fail { background: #f44336; }
+        .status-pending { background: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 AI Assistant Chat - Final Layout Test</h1>
+        
+        <div class="test-instructions">
+            <h3>📋 Test Instructions</h3>
+            <p>This page tests all the AI Assistant chat layout fixes. Follow the checklist below to validate functionality.</p>
+        </div>
+        
+        <div id="diagram-container" class="diagram-container">
+            <div>Mock Diagram Container - AI Button should appear in bottom-right corner</div>
+        </div>
+        
+        <div class="test-checklist">
+            <h3>✅ Test Checklist</h3>
+            <ul>
+                <li><span class="status-indicator status-pending"></span><strong>AI Button Positioning:</strong> AI button appears in bottom-right of diagram container</li>
+                <li><span class="status-indicator status-pending"></span><strong>Chat Window Opening:</strong> Click AI button to open chat window</li>
+                <li><span class="status-indicator status-pending"></span><strong>Initial Layout:</strong> Chat input should be at the bottom, not in center</li>
+                <li><span class="status-indicator status-pending"></span><strong>Enter Key Behavior:</strong> Press Enter to send message (should send)</li>
+                <li><span class="status-indicator status-pending"></span><strong>Shift+Enter Behavior:</strong> Press Shift+Enter to create new line (should NOT send)</li>
+                <li><span class="status-indicator status-pending"></span><strong>Send Button:</strong> Click send button to send message</li>
+                <li><span class="status-indicator status-pending"></span><strong>Multiple Messages:</strong> Send 10+ messages and check layout doesn't break</li>
+                <li><span class="status-indicator status-pending"></span><strong>Scrolling:</strong> Messages area should scroll properly, input stays at bottom</li>
+                <li><span class="status-indicator status-pending"></span><strong>Welcome Message:</strong> Check if welcome message explains chat history limitation</li>
+                <li><span class="status-indicator status-pending"></span><strong>Window Dragging:</strong> Try dragging the chat window by its header</li>
+            </ul>
+            
+            <h4>🎯 Expected Behaviors:</h4>
+            <ul>
+                <li>Input container always stays at bottom of chat window</li>
+                <li>Messages scroll independently without affecting input position</li>
+                <li>Enter sends message, Shift+Enter creates new line</li>
+                <li>Send button works correctly</li>
+                <li>Layout remains stable with many messages</li>
+                <li>Welcome message warns about chat history limitation</li>
+            </ul>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
+            <h4>🔧 Previous Issues (Should be Fixed):</h4>
+            <ul>
+                <li>❌ Chat input appearing in center instead of bottom</li>
+                <li>❌ Layout becoming messy after multiple messages</li>
+                <li>❌ Enter key not sending messages</li>
+                <li>❌ Send button not working</li>
+                <li>❌ Poor scrolling behavior</li>
+                <li>❌ AI returning error messages</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Hidden elements to simulate the main application -->
+    <div id="code" style="display: none;"></div>
+    <select id="diagramType" style="display: none;">
+        <option value="plantuml">PlantUML</option>
+    </select>
+    
+    <script src="js/ai-assistant.js"></script>
+    <script>
+        // Initialize AI Assistant for testing
+        window.addEventListener('DOMContentLoaded', () => {
+            // Simulate the configuration manager
+            window.configManager = {
+                getConfig: () => ({
+                    ai: {
+                        enabled: true,
+                        endpoint: 'https://api.openai.com/v1/chat/completions',
+                        apiKey: 'test-key-for-demo',
+                        model: 'gpt-4o',
+                        promptTheme: 'focused',
+                        maxRetryAttempts: 2
+                    }
+                })
+            };
+            
+            // Mock fetch for testing (override the AI API calls)
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                // Intercept AI API calls and return mock responses
+                if (url.includes('api.openai.com') || url.includes('/api/ai-assist')) {
+                    return new Promise((resolve) => {
+                        setTimeout(() => {
+                            resolve({
+                                ok: true,
+                                json: () => Promise.resolve({
+                                    choices: [{
+                                        message: {
+                                            content: `I'm a mock AI response for testing! Your request was: "${JSON.parse(options?.body)?.messages?.[0]?.content || 'test message'}"
+
+Here's a sample PlantUML diagram:
+
+\`\`\`plantuml
+@startuml
+Alice -> Bob: Hello
+Bob -> Alice: Hi there!
+@enduml
+\`\`\`
+
+This is just a test response to verify the chat layout is working correctly.`
+                                        }
+                                    }]
+                                })
+                            });
+                        }, 1000); // Simulate network delay
+                    });
+                }
+                // For other requests (like Kroki validation), use original fetch
+                return originalFetch.apply(this, arguments);
+            };
+            
+            // Initialize AI Assistant
+            new AIAssistant();
+            
+            console.log('🧪 AI Assistant Test Environment Ready');
+            console.log('📝 Follow the checklist above to test all functionality');
+            console.log('🤖 Mock AI responses enabled for testing');
+        });
+        
+        // Test utilities
+        function simulateMessages() {
+            console.log('🔄 Simulating multiple messages for layout testing...');
+            const assistant = window.aiAssistant;
+            if (assistant && assistant.addMessage) {
+                for (let i = 1; i <= 5; i++) {
+                    assistant.addMessage('user', `Test message ${i}`);
+                    assistant.addMessage('assistant', `Mock response ${i}: This is a longer response to test how the layout handles multiple messages and text wrapping. The response should appear close to the left edge of the chat window.`);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
