@@ -45,6 +45,11 @@
     opacity: 1 !important;
 }
 
+/* Initial state: hidden until a valid source is loaded */
+#diagram[src=""], #diagram:not([src]) {
+    display: none;
+}
+
 /* Prevent diagram image from inheriting loading class styles */
 #diagram.loading {
     padding: 0 !important;

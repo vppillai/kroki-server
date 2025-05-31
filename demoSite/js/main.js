@@ -1168,6 +1168,7 @@ async function updateDiagram() {
                             </text>
                         </svg>`;
                         const placeholderDataUrl = 'data:image/svg+xml;base64,' + btoa(placeholderSvg);
+                        diagramImg.style.display = 'block';
                         diagramImg.src = placeholderDataUrl;
                     }
 
@@ -1232,7 +1233,8 @@ async function updateDiagram() {
                     diagramImg.addEventListener('load', actualImageLoadHandler);
                     diagramImg.addEventListener('error', actualImageErrorHandler);
                     
-                    // Now set the source, which will trigger the load event when ready
+                    // Now set the source and make the image visible, which will trigger the load event when ready
+                    diagramImg.style.display = 'block';
                     diagramImg.src = imageUrl;
                 };
 
