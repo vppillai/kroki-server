@@ -493,11 +493,39 @@ class AIAssistant {
             statusText.textContent = message;
         }
         this.chatStatus.style.display = 'flex';
+
+        // Add class to input container for visual feedback
+        if (this.chatInputContainer) {
+            this.chatInputContainer.classList.add('status-visible');
+        }
+
+        // Add subtle pulse animation to status text
+        if (statusText) {
+            statusText.style.animation = 'statusTextPulse 2s ease-in-out infinite';
+        }
     }
 
     hideStatus() {
         if (!this.chatStatus) return;
-        this.chatStatus.style.display = 'none';
+
+        // Add fade out animation before hiding
+        this.chatStatus.style.animation = 'statusSlideOut 0.2s ease-in';
+
+        setTimeout(() => {
+            this.chatStatus.style.display = 'none';
+            this.chatStatus.style.animation = '';
+
+            // Remove class from input container
+            if (this.chatInputContainer) {
+                this.chatInputContainer.classList.remove('status-visible');
+            }
+
+            // Remove text animation
+            const statusText = this.chatStatus.querySelector('.ai-status-text');
+            if (statusText) {
+                statusText.style.animation = '';
+            }
+        }, 200);
     }
 
     displayMessage(message, messageType = 'ai') {
@@ -649,20 +677,20 @@ class AIAssistant {
             if (diagramCode && diagramCode.trim() && diagramCode !== "No diagram generated") {
                 // Try to apply and validate the diagram code
                 const validationResult = await this.validateAndApplyDiagramCode(diagramCode, diagramType);
-                
+
                 if (validationResult.success) {
                     this.displayMessage(`✅ ${explanation}`, 'ai success');
                 } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
                     // Retry with validation error feedback
                     this.retryAttempts++;
                     this.showStatus(`🔧 Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
-                    
+
                     const retryPrompt = await this.composeRetryPrompt(
-                        prompt, 
-                        diagramCode, 
-                        `The diagram code failed to render: ${validationResult.error}. Please fix the syntax and ensure it's valid ${diagramType} code.`, 
-                        originalUserPrompt, 
-                        diagramType, 
+                        prompt,
+                        diagramCode,
+                        `The diagram code failed to render: ${validationResult.error}. Please fix the syntax and ensure it's valid ${diagramType} code.`,
+                        originalUserPrompt,
+                        diagramType,
                         originalCode
                     );
                     await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig, originalUserPrompt);
