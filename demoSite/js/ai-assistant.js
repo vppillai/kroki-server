@@ -80,7 +80,7 @@ class AIAssistant {
                         <path d="M2 12l10 5 10-5"/>
                     </svg>
                     <div class="ai-title-content">
-                        <span>AI Assistant</span>
+                        <span>AI Assistant <span class="ai-beta-badge">BETA</span></span>
                         <span class="ai-backend-indicator" id="ai-backend-indicator"></span>
                     </div>
                 </div>
@@ -500,6 +500,22 @@ class AIAssistant {
         this.chatStatus.style.display = 'none';
     }
 
+    displayMessage(message, messageType = 'ai') {
+        // Map message types to appropriate CSS classes (single class names only)
+        const typeMap = {
+            'ai': 'assistant',
+            'ai success': 'assistant-success',
+            'ai warning': 'assistant-warning',
+            'ai error': 'assistant-error',
+            'success': 'assistant-success',
+            'warning': 'assistant-warning',
+            'error': 'assistant-error'
+        };
+
+        const cssClass = typeMap[messageType] || 'assistant';
+        this.addMessage(cssClass, message);
+    }
+
     async sendMessage() {
         const message = this.chatInput.value.trim();
         if (!message) return;
@@ -560,7 +576,7 @@ class AIAssistant {
             });
 
             this.retryAttempts = 0;
-            await this.makeAIRequest(composedPrompt, diagramType, currentCode, aiConfig);
+            await this.makeAIRequest(composedPrompt, diagramType, currentCode, aiConfig, userPrompt);
 
         } catch (error) {
             console.error('AI Assistant error:', error);
@@ -587,12 +603,13 @@ class AIAssistant {
             console.warn('Failed to fetch prompt templates, using defaults:', error);
             return {
                 system: this.getDefaultSystemPrompt(),
-                user: this.getDefaultUserPrompt()
+                user: this.getDefaultUserPrompt(),
+                retry: this.getDefaultRetryPrompt()
             };
         }
     }
 
-    async makeAIRequest(prompt, diagramType, originalCode, aiConfig) {
+    async makeAIRequest(prompt, diagramType, originalCode, aiConfig, originalUserPrompt = '') {
         try {
             let rawResponseContent;
 
@@ -616,42 +633,50 @@ class AIAssistant {
             // Log the raw response for debugging
             console.log('Raw AI Response Content:', rawResponseContent);
 
+            // Extract and log the actual AI message content
+            let aiMessageContent = '';
+            if (rawResponseContent.choices && rawResponseContent.choices[0] && rawResponseContent.choices[0].message) {
+                aiMessageContent = rawResponseContent.choices[0].message.content;
+                console.log('AI Message Content (what AI actually said):', aiMessageContent);
+            }
+
             const aiParsedResponse = this.parseAIResponse(rawResponseContent);
             const { diagramCode, explanation } = aiParsedResponse;
 
-            // Validate the generated code if auto-validation is enabled
-            let isValid = true;
-            if (aiConfig.autoValidate && diagramCode && diagramCode.trim() && diagramCode !== "No diagram generated") { // Added check for "No diagram generated"
-                isValid = await this.validateWithKroki(diagramCode, diagramType);
-
-                if (!isValid && this.retryAttempts < aiConfig.maxRetryAttempts) {
-                    this.retryAttempts++;
-                    this.showStatus(`🔧 Validation failed for diagram code, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
-
-                    // Retry with error feedback
-                    const retryPrompt = this.composeRetryPrompt(prompt, diagramCode, 'The provided diagramCode failed Kroki validation. Please fix it and ensure the response is a valid JSON object with \'diagramCode\' and \'explanation\'. If the original request is impossible, explain why in the \'explanation\' and set \'diagramCode\' to an empty string.');
-                    await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig);
-                    return;
-                }
-            }
-
-            // Add AI explanation to chat
-            this.addMessage('assistant', explanation || 'AI provided a response.');
+            // Removed old validation logic - now using validateAndApplyDiagramCode instead
 
             // Update diagram code if it contains valid diagram code
-            // and is not the placeholder for impossible requests
             if (diagramCode && diagramCode.trim() && diagramCode !== "No diagram generated") {
-                if (!aiConfig.autoValidate || isValid) {
-                    this.updateDiagramCode(diagramCode);
+                // Try to apply and validate the diagram code
+                const validationResult = await this.validateAndApplyDiagramCode(diagramCode, diagramType);
+                
+                if (validationResult.success) {
+                    this.displayMessage(`✅ ${explanation}`, 'ai success');
+                } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
+                    // Retry with validation error feedback
+                    this.retryAttempts++;
+                    this.showStatus(`🔧 Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
+                    
+                    const retryPrompt = await this.composeRetryPrompt(
+                        prompt, 
+                        diagramCode, 
+                        `The diagram code failed to render: ${validationResult.error}. Please fix the syntax and ensure it's valid ${diagramType} code.`, 
+                        originalUserPrompt, 
+                        diagramType, 
+                        originalCode
+                    );
+                    await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig, originalUserPrompt);
+                    return;
                 } else {
-                    this.addMessage('system', '⚠️ Generated diagram code failed validation. Please review and modify manually if needed. The AI explanation was: ' + (explanation || 'No explanation provided.'));
+                    // Max retries reached, apply code anyway but show warning
+                    this.updateDiagramCode(diagramCode);
+                    this.displayMessage(`⚠️ ${explanation} (Note: Diagram may have rendering issues)`, 'ai warning');
                 }
-            } else if (!explanation) { // If diagramCode is empty/placeholder AND no explanation
+            } else if (!explanation) {
                 this.addMessage('system', '⚠️ AI did not provide diagram code or an explanation.');
-            } else if (diagramCode === "No diagram generated" && explanation) {
-                // This is the case where AI correctly stated it cannot generate a diagram.
-                // The explanation is already added, so no further action here.
-                // console.log("AI correctly handled an impossible request with explanation.");
+            } else {
+                // AI provided explanation but no diagram code (e.g., for impossible requests)
+                this.addMessage('assistant', explanation);
             }
 
         } catch (error) {
@@ -671,6 +696,108 @@ class AIAssistant {
                 this.addMessage('system', `❌ ${errorMessage}`);
                 throw error;
             }
+        }
+    }
+
+    async validateAndApplyDiagramCode(diagramCode, diagramType) {
+        try {
+            // Store current code for rollback if needed
+            const codeTextarea = document.getElementById('code');
+            const originalCode = codeTextarea ? codeTextarea.value : '';
+
+            // Apply the new diagram code temporarily
+            this.updateDiagramCode(diagramCode);
+
+            // Give the diagram rendering system time to process
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Check if there are any visible error indicators
+            const errorElements = document.querySelectorAll('.error, .error-message, [class*="error"]');
+            const hasVisibleErrors = Array.from(errorElements).some(el =>
+                el.offsetParent !== null && // Element is visible
+                el.textContent.trim() !== '' && // Element has content
+                !el.textContent.toLowerCase().includes('no errors') // Not a "no errors" message
+            );
+
+            // Check if the diagram image loaded successfully
+            const diagramImage = document.querySelector('#diagram-img, .diagram-image, [id*="diagram"] img');
+            let imageLoadedSuccessfully = true;
+
+            if (diagramImage) {
+                // Check if image source indicates an error
+                const imgSrc = diagramImage.src;
+                if (imgSrc.includes('error') || imgSrc.includes('invalid')) {
+                    imageLoadedSuccessfully = false;
+                }
+
+                // Check image natural dimensions (error images are often very small)
+                if (diagramImage.naturalWidth <= 1 || diagramImage.naturalHeight <= 1) {
+                    imageLoadedSuccessfully = false;
+                }
+            }
+
+            // Additional validation by attempting to encode the diagram
+            let encodingSuccessful = true;
+            try {
+                if (window.encodeKrokiDiagram) {
+                    window.encodeKrokiDiagram(diagramCode);
+                } else {
+                    // Basic encoding test
+                    this.encodeKrokiDiagram(diagramCode);
+                }
+            } catch (encodingError) {
+                encodingSuccessful = false;
+                console.warn('Diagram encoding failed:', encodingError);
+            }
+
+            if (hasVisibleErrors) {
+                // Rollback to original code
+                if (codeTextarea) {
+                    codeTextarea.value = originalCode;
+                    this.updateDiagramCode(originalCode);
+                }
+                return {
+                    success: false,
+                    error: 'Diagram contains syntax errors visible in the UI'
+                };
+            }
+
+            if (!imageLoadedSuccessfully) {
+                // Rollback to original code
+                if (codeTextarea) {
+                    codeTextarea.value = originalCode;
+                    this.updateDiagramCode(originalCode);
+                }
+                return {
+                    success: false,
+                    error: 'Diagram image failed to load properly'
+                };
+            }
+
+            if (!encodingSuccessful) {
+                // Rollback to original code
+                if (codeTextarea) {
+                    codeTextarea.value = originalCode;
+                    this.updateDiagramCode(originalCode);
+                }
+                return {
+                    success: false,
+                    error: 'Diagram code encoding failed'
+                };
+            }
+
+            // If we get here, validation passed
+            return {
+                success: true,
+                error: null
+            };
+
+        } catch (error) {
+            console.warn('Validation error:', error);
+            return {
+                success: false,
+                error: `Validation process failed: ${error.message}`
+            };
         }
     }
 
@@ -699,16 +826,48 @@ class AIAssistant {
                 throw new Error('Content to parse from AI response is not a string.');
             }
 
-            const parsed = JSON.parse(actualStringToParse);
+            // Try to extract JSON from the response if it's buried in other text
+            let jsonString = actualStringToParse.trim();
 
-            // Allow diagramCode to be empty or a placeholder string if explanation is present
-            if (!(typeof parsed.diagramCode === 'string') || typeof parsed.explanation !== 'string') {
-                console.error('AI response JSON does not contain required fields \'diagramCode\' (string) and \'explanation\' (string):', parsed, '\nAttempted to parse:', actualStringToParse);
-                throw new Error('AI response JSON format is invalid. Expected \'diagramCode\' and \'explanation\' strings.');
+            // First try to parse as-is
+            try {
+                const parsed = JSON.parse(jsonString);
+                if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
+                    return { diagramCode: parsed.diagramCode, explanation: parsed.explanation };
+                }
+            } catch (e) {
+                // Continue with extraction methods
             }
-            return { diagramCode: parsed.diagramCode, explanation: parsed.explanation };
-        } catch (e) {
-            console.error('Failed to parse AI response as JSON:', e.message, '\nAttempted to parse string:', actualStringToParse, '\nOriginal responseContent object was:', responseContent);
+
+            // Try to extract JSON from markdown code blocks
+            const jsonCodeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)```/g;
+            const jsonMatches = [...jsonString.matchAll(jsonCodeBlockRegex)];
+
+            if (jsonMatches.length > 0) {
+                try {
+                    const parsed = JSON.parse(jsonMatches[0][1].trim());
+                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
+                        return { diagramCode: parsed.diagramCode, explanation: parsed.explanation };
+                    }
+                } catch (e) {
+                    // Continue with other extraction methods
+                }
+            }
+
+            // Try to find JSON object anywhere in the text
+            const jsonObjectRegex = /\{[\s\S]*?"diagramCode"[\s\S]*?"explanation"[\s\S]*?\}/g;
+            const objectMatches = [...jsonString.matchAll(jsonObjectRegex)];
+
+            for (const match of objectMatches) {
+                try {
+                    const parsed = JSON.parse(match[0]);
+                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
+                        return { diagramCode: parsed.diagramCode, explanation: parsed.explanation };
+                    }
+                } catch (e) {
+                    // Continue with next match
+                }
+            }
 
             // Fallback: if AI failed to produce JSON, try to extract code from the actualStringToParse.
             const extractedCode = this._fallbackExtractCode(actualStringToParse);
@@ -719,46 +878,93 @@ class AIAssistant {
                     explanation: extractedCode.explanation
                 };
             }
-            // Add the original error message to the new error for more context
+
+            throw new Error('No valid JSON or extractable diagram code found in AI response');
+        } catch (e) {
+            console.error('Failed to parse AI response as JSON:', e.message, '\nAttempted to parse string:', actualStringToParse, '\nOriginal responseContent object was:', responseContent);
             throw new Error(`AI response was not valid JSON and diagram code could not be extracted. Parsing error: ${e.message}`);
         }
     }
 
     _fallbackExtractCode(responseText) {
-        if (typeof responseText !== 'string') return { diagramCode: '', explanation: 'Invalid response format from AI.' }; // Return object
-        // Try to extract code blocks from markdown format
-        const codeBlockRegex = /```(?:\w+)?\s*\n?([\s\S]*?)```/g;
+        if (typeof responseText !== 'string') return { diagramCode: '', explanation: 'Invalid response format from AI.' };
+
+        // Try to extract code blocks from markdown format (various types)
+        const codeBlockRegex = /```(?:plantuml|mermaid|dot|graphviz|uml|text)?\s*\n?([\s\S]*?)```/g;
         const matches = [...responseText.matchAll(codeBlockRegex)];
 
         if (matches.length > 0) {
-            return { diagramCode: matches[0][1].trim(), explanation: "AI response was not in the expected JSON format. Attempted to extract diagram code from markdown." };
+            // Find the longest code block (most likely to be the diagram)
+            let longestMatch = matches[0];
+            for (const match of matches) {
+                if (match[1].trim().length > longestMatch[1].trim().length) {
+                    longestMatch = match;
+                }
+            }
+            return {
+                diagramCode: longestMatch[1].trim(),
+                explanation: "AI response was not in the expected JSON format. Extracted diagram code from markdown code block."
+            };
         }
-        // If no code blocks, look for typical diagram syntax (very basic)
+
+        // If no code blocks, look for typical diagram syntax patterns
         const lines = responseText.split('\n');
         const diagramLines = [];
         let inDiagram = false;
-        const startKeywords = ['@startuml', 'graph', 'digraph', 'sequenceDiagram', 'classDiagram', 'stateDiagram', 'gantt', 'pie'];
-        const endKeywords = ['@enduml', '}'];
+        let diagramStart = -1;
 
-        for (const line of lines) {
-            if (startKeywords.some(kw => line.trim().startsWith(kw))) {
+        // Extended keywords for different diagram types
+        const startKeywords = [
+            '@startuml', '@startmindmap', '@startsalt', '@startgantt',
+            'graph', 'digraph', 'strict digraph', 'strict graph',
+            'sequenceDiagram', 'classDiagram', 'stateDiagram', 'gantt', 'pie',
+            'flowchart', 'gitgraph', 'erDiagram', 'journey', 'quadrantChart',
+            'timeline', 'mindmap', 'block-beta',
+            'digraph', 'subgraph', 'graph {'
+        ];
+
+        const endKeywords = ['@enduml', '@endmindmap', '@endsalt', '@endgantt', '}'];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            if (!inDiagram && startKeywords.some(kw => line.startsWith(kw))) {
                 inDiagram = true;
+                diagramStart = i;
             }
+
             if (inDiagram) {
-                diagramLines.push(line);
-            }
-            if (inDiagram && endKeywords.some(kw => line.trim().endsWith(kw))) {
-                if (line.includes('@enduml') || line.trim() === '}') { // Ensure it's a proper end
-                    inDiagram = false; // Stop after the first complete block
-                    break;
+                diagramLines.push(lines[i]);
+
+                if (endKeywords.some(kw => line.endsWith(kw))) {
+                    break; // Found complete diagram
                 }
             }
         }
+
         const extractedCode = diagramLines.join('\n').trim();
         if (extractedCode) {
-            return { diagramCode: extractedCode, explanation: "AI response was not in the expected JSON format. Attempted to extract diagram code directly." };
+            return {
+                diagramCode: extractedCode,
+                explanation: "AI response was not in the expected JSON format. Extracted diagram code directly from response text."
+            };
         }
-        return { diagramCode: '', explanation: 'AI response was not valid JSON and no diagram code could be extracted.' }; // Return object
+
+        // Last resort: look for any multi-line structured content that looks like code
+        const structuredContentRegex = /(\w+\s*{\s*[\s\S]*?}|\@\w+[\s\S]*?\@\w+)/g;
+        const structuredMatches = [...responseText.matchAll(structuredContentRegex)];
+
+        if (structuredMatches.length > 0) {
+            return {
+                diagramCode: structuredMatches[0][0].trim(),
+                explanation: "AI response was not in the expected JSON format. Extracted structured content that might be diagram code."
+            };
+        }
+
+        return {
+            diagramCode: '',
+            explanation: 'AI response was not in valid JSON format and no recognizable diagram code could be extracted. Please try rephrasing your request.'
+        };
     }
 
     async callCustomAPI(prompt, config) {
@@ -976,36 +1182,29 @@ Current code: {{currentCode}}
 Please provide the updated or new diagram code in a code block, along with a brief explanation of the changes.`;
     }
 
-    composeRetryPrompt(originalPrompt, failedCode, validationError) {
-        // Ensure originalPrompt is an object with system and user properties
-        let systemContent = this.getDefaultSystemPrompt(); // Fallback
-        let userContent = '';
+    getDefaultRetryPrompt() {
+        return `The previous diagram code failed validation. Original request: {{userPrompt}}. Type: {{diagramType}}. Original code: {{currentCode}}. Failed code: {{failedCode}}. Error: {{validationError}}. Fix the code and respond with ONLY the JSON object. No other text.`;
+    }
 
-        if (typeof originalPrompt === 'object' && originalPrompt.system && originalPrompt.user) {
+    async composeRetryPrompt(originalPrompt, failedCode, validationError, originalUserPrompt, diagramType, currentCode) {
+        // Fetch the retry prompt template from backend
+        const promptTemplates = await this.fetchPromptTemplates();
+
+        let systemContent = this.getDefaultSystemPrompt(); // Fallback
+        if (typeof originalPrompt === 'object' && originalPrompt.system) {
             systemContent = originalPrompt.system;
-            userContent = originalPrompt.user;
-        } else if (typeof originalPrompt === 'string') { // If originalPrompt was just a string
-            userContent = originalPrompt;
-        } else if (typeof originalPrompt === 'object' && originalPrompt.user) { // If it was an object with only user
-            userContent = originalPrompt.user;
         }
 
-        const retryUserPrompt = `The previous attempt to generate diagram code resulted in an error or invalid output.
-Original user request: ${userContent.includes("Original user request:") ? userContent.split("Original user request:")[1].split("Current diagram code:")[0].trim() : userContent}
-Current diagram code was: ${userContent.includes("Current diagram code:") ? userContent.split("Current diagram code:")[1].split("Diagram type:")[0].trim() : 'Not available'}
-Diagram type: ${userContent.includes("Diagram type:") ? userContent.split("Diagram type:")[1].trim() : 'Not available'}
-The AI previously generated this code:
-\`\`\`
-${failedCode}
-\`\`\`
-This code failed validation with the error: "${validationError}"
+        // Use the backend retry template
+        let retryTemplate = promptTemplates.retry || this.getDefaultRetryPrompt();
 
-Please analyze the original request, the previous code, and the validation error.
-Then, provide a corrected response.
-Your response MUST be a JSON object string in the 'content' field of your message, with 'diagramCode' and 'explanation' keys.
-If the original request is impossible or cannot be fixed, set 'diagramCode' to an empty string or a message like 'No diagram generated' and explain why in the 'explanation' field.
-Example of the exact string required for the 'content' field: '{"diagramCode": "corrected diagram code", "explanation": "Explanation of the fix or why it cannot be fixed."}'
-Do NOT include ANY other text, introductions, or conversational phrases in the 'content' field. The 'content' field of your message must be *exclusively* this JSON string.`;
+        // Replace placeholders in the retry template
+        const retryUserPrompt = retryTemplate
+            .replace(/\{\{userPrompt\}\}/g, originalUserPrompt || 'No original request available')
+            .replace(/\{\{diagramType\}\}/g, diagramType || 'Unknown')
+            .replace(/\{\{currentCode\}\}/g, currentCode || 'No existing code')
+            .replace(/\{\{failedCode\}\}/g, failedCode || 'No failed code available')
+            .replace(/\{\{validationError\}\}/g, validationError || 'Unknown validation error');
 
         return {
             system: systemContent, // Reuse the original system prompt that enforces JSON output
@@ -1087,6 +1286,44 @@ Do NOT include ANY other text, introductions, or conversational phrases in the '
 
         } catch (error) {
             console.warn('AI Assistant: Error applying configuration:', error);
+        }
+    }
+
+    updateDiagramCode(code) {
+        const codeTextarea = document.getElementById('code');
+        if (codeTextarea) {
+            // Handle escaped characters properly
+            let processedCode = code;
+
+            // Convert escaped newlines to actual newlines
+            processedCode = processedCode.replace(/\\n/g, '\n');
+
+            // Convert escaped tabs to actual tabs
+            processedCode = processedCode.replace(/\\t/g, '\t');
+
+            // Convert escaped quotes
+            processedCode = processedCode.replace(/\\"/g, '"');
+            processedCode = processedCode.replace(/\\'/g, "'");
+
+            // Convert escaped backslashes
+            processedCode = processedCode.replace(/\\\\/g, '\\');
+
+            codeTextarea.value = processedCode;
+
+            // Trigger change event to update the diagram
+            const event = new Event('change', { bubbles: true });
+            codeTextarea.dispatchEvent(event);
+
+            // Also trigger input event for any listeners
+            const inputEvent = new Event('input', { bubbles: true });
+            codeTextarea.dispatchEvent(inputEvent);
+
+            // Optionally trigger the updateDiagram function if it exists
+            if (typeof updateDiagram === 'function') {
+                updateDiagram();
+            }
+        } else {
+            console.warn('AI Assistant: Could not find code textarea element');
         }
     }
 }

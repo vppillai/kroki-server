@@ -8,10 +8,18 @@ import os
 import json
 import logging
 import requests
+import time
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from datetime import datetime
-import time
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not available, will use system environment variables
+    pass
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +61,15 @@ Current code: {{currentCode}}
 
 Please provide the updated or new diagram code in a code block, along with a brief explanation of the changes.''')
 
+DEFAULT_RETRY_PROMPT = os.environ.get('AI_RETRY_PROMPT', '''The previous diagram code failed validation. 
+Original request: {{userPrompt}}
+Diagram type: {{diagramType}}
+Original code: {{currentCode}}
+Failed code: {{failedCode}}
+Validation error: {{validationError}}
+
+Please fix the code and provide a corrected version. Respond with ONLY a JSON object with 'diagramCode' and 'explanation' fields.''')
+
 @app.route('/api/ai-prompts', methods=['GET'])
 def get_ai_prompts():
     """Get default AI prompt templates"""
@@ -62,55 +79,15 @@ def get_ai_prompts():
         
         return jsonify({
             'system': DEFAULT_SYSTEM_PROMPT,
-            'user': DEFAULT_USER_PROMPT
+            'user': DEFAULT_USER_PROMPT,
+            'retry': DEFAULT_RETRY_PROMPT
         })
     
     except Exception as e:
         logger.error(f"Error getting AI prompts: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/api/validate-diagram', methods=['POST'])
-def validate_diagram():
-    """Validate diagram code with Kroki"""
-    try:
-        if not validate_origin(request):
-            return jsonify({'error': 'Unauthorized origin'}), 403
-        
-        data = request.get_json(force=True)
-        if not data or 'code' not in data or 'diagramType' not in data:
-            return jsonify({'error': 'Missing code or diagramType'}), 400
-        
-        code = data['code']
-        diagram_type = data['diagramType']
-        
-        # Use the same encoding logic as the frontend
-        import base64
-        import zlib
-        
-        # Encode for Kroki
-        compressed = zlib.compress(code.encode('utf-8'))
-        encoded = base64.urlsafe_b64encode(compressed).decode('ascii')
-        
-        # Try to validate with Kroki
-        kroki_url = f"https://kroki.io/{diagram_type}/svg/{encoded}"
-        
-        # Make a HEAD request to check if the diagram is valid
-        response = requests.head(kroki_url, timeout=10)
-        
-        if response.status_code == 200:
-            return jsonify({'valid': True, 'url': kroki_url})
-        else:
-            return jsonify({
-                'valid': False, 
-                'error': f'Kroki validation failed with status {response.status_code}'
-            })
-    
-    except Exception as e:
-        logger.error(f"Error validating diagram: {str(e)}")
-        return jsonify({
-            'valid': False,
-            'error': f'Validation error: {str(e)}'
-        }), 500
+# Removed complex validation endpoint - frontend will handle validation via diagram rendering
 
 def validate_origin(request):
     """Validate request origin for security"""

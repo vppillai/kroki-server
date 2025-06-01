@@ -285,4 +285,4 @@ the site will be available in https://localhost:8443/
 
 The Makefile or docker compose files might have to be updated if new files are genrated to make sure they are included in the update
 
-Key for testing with openAI:
+Key for testing with openAI: 
