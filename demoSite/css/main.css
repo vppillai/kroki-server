@@ -8,6 +8,7 @@
 @import './buttons.css';
 @import './editor.css';
 @import './diagram.css';
+@import './code-history.css';
 @import './theme-toggle.css';
 @import './auto-save-toggle.css';
 @import './modal.css';
@@ -44,9 +45,10 @@
     transition: margin-bottom 0.2s ease;
 }
 
-.ai-chat-input-container.status-visible + .ai-chat-messages,
-.ai-chat-input-container.status-visible ~ .ai-chat-messages {
-    margin-bottom: 40px; /* Space for status message */
+.ai-chat-input-container.status-visible+.ai-chat-messages,
+.ai-chat-input-container.status-visible~.ai-chat-messages {
+    margin-bottom: 40px;
+    /* Space for status message */
 }
 
 /* Alternative: Target when status is visible anywhere in chat body */

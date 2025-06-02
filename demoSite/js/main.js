@@ -676,7 +676,7 @@ function debounceUpdateDiagram() {
     if (!autoRefreshEnabled) {
         return;
     }
-    
+
     if (diagramUpdateTimer) {
         clearTimeout(diagramUpdateTimer);
     }
@@ -1149,7 +1149,7 @@ async function updateDiagram() {
             // Keep viewport and zoom controls visible for anti-flicker
             diagramViewport.style.display = 'block';
             zoomControls.style.display = 'flex';
-            
+
             diagramImg.classList.add('loading');
 
             // Hide any existing error banner
@@ -1207,7 +1207,7 @@ async function updateDiagram() {
                 const tempImg = new Image();
                 tempImg.onload = function () {
                     // Define error handler first
-                    const actualImageErrorHandler = function() {
+                    const actualImageErrorHandler = function () {
                         diagramImg.classList.remove('loading');
                         showImageErrorBanner('Failed to load diagram image');
                         // Remove the event listeners to prevent them firing again
@@ -1216,12 +1216,22 @@ async function updateDiagram() {
                     };
 
                     // Set up the actual diagram image load handler
-                    const actualImageLoadHandler = function() {
+                    const actualImageLoadHandler = function () {
                         diagramImg.classList.remove('loading');
 
                         // Wait for the image to be fully loaded and rendered in the DOM
                         const checkImageReady = () => {
                             if (diagramImg.complete && diagramImg.naturalWidth > 0) {
+                                // Emit successful diagram render event for code history
+                                document.dispatchEvent(new CustomEvent('diagramRendered', {
+                                    detail: {
+                                        success: true,
+                                        code: code,
+                                        diagramType: diagramType,
+                                        outputFormat: outputFormat
+                                    }
+                                }));
+
                                 // Restore zoom state or reset to fit
                                 if (savedZoomState && zoomState.userHasInteracted) {
                                     // Apply saved zoom state
@@ -1255,7 +1265,7 @@ async function updateDiagram() {
                     // Add event listeners to the actual diagram image
                     diagramImg.addEventListener('load', actualImageLoadHandler);
                     diagramImg.addEventListener('error', actualImageErrorHandler);
-                    
+
                     // Now set the source and make the image visible, which will trigger the load event when ready
                     diagramImg.style.display = 'block';
                     diagramImg.src = imageUrl;
@@ -1282,7 +1292,7 @@ async function updateDiagram() {
             // Hide image viewport for text display
             diagramViewport.style.display = 'none';
             zoomControls.style.display = 'none';
-            
+
             const response = await fetch(url);
             const text = await response.text();
             textPreview.textContent = text;
@@ -1292,7 +1302,7 @@ async function updateDiagram() {
             // Hide image viewport for placeholder display
             diagramViewport.style.display = 'none';
             zoomControls.style.display = 'none';
-            
+
             placeholderContainer.style.display = 'flex';
             placeholderDownload.href = url;
             placeholderDownload.download = `diagram.${outputFormat}`;
@@ -1342,7 +1352,7 @@ function downloadDiagram() {
 function initializeLineNumbers() {
     const codeTextarea = document.getElementById('code');
     const lineNumbersDiv = document.getElementById('lineNumbers');
-    
+
     if (!codeTextarea || !lineNumbersDiv) {
         console.warn('Line numbers: Missing required elements');
         return;
@@ -1350,12 +1360,12 @@ function initializeLineNumbers() {
 
     // Initial line numbers update
     updateLineNumbers();
-    
+
     // Ensure scroll synchronization is working
     let isTextareaScrolling = false;
     let isLineNumbersScrolling = false;
-    
-    codeTextarea.addEventListener('scroll', function() {
+
+    codeTextarea.addEventListener('scroll', function () {
         if (!isLineNumbersScrolling) {
             isTextareaScrolling = true;
             lineNumbersDiv.scrollTop = this.scrollTop;
@@ -1364,10 +1374,10 @@ function initializeLineNumbers() {
             });
         }
     });
-    
+
     // Optional: sync textarea scroll when line numbers are scrolled
     // (though this is typically not needed for most use cases)
-    lineNumbersDiv.addEventListener('scroll', function() {
+    lineNumbersDiv.addEventListener('scroll', function () {
         if (!isTextareaScrolling) {
             isLineNumbersScrolling = true;
             codeTextarea.scrollTop = this.scrollTop;
@@ -1376,7 +1386,7 @@ function initializeLineNumbers() {
             });
         }
     });
-    
+
     // Also sync when the textarea is resized (e.g., by window resize)
     const resizeObserver = new ResizeObserver(() => {
         // Small delay to ensure the textarea has finished resizing
@@ -1386,7 +1396,7 @@ function initializeLineNumbers() {
             }
         }, 10);
     });
-    
+
     resizeObserver.observe(codeTextarea);
 }
 
@@ -1394,7 +1404,7 @@ function initializeLineNumbers() {
 function updateLineNumbers() {
     const codeTextarea = document.getElementById('code');
     const lineNumbersDiv = document.getElementById('lineNumbers');
-    
+
     if (!codeTextarea || !lineNumbersDiv) {
         return;
     }
@@ -1408,7 +1418,7 @@ function updateLineNumbers() {
     }
 
     lineNumbersDiv.innerHTML = lineNumbersHtml;
-    
+
     // Sync scroll position after updating line numbers
     // Use requestAnimationFrame to ensure DOM updates are complete
     requestAnimationFrame(() => {
@@ -1449,12 +1459,12 @@ function handleDecode() {
 function handleAutoRefreshToggle() {
     const checkbox = document.getElementById('auto-refresh-checkbox');
     const refreshBtn = document.getElementById('manual-refresh-btn');
-    
+
     if (!checkbox || !refreshBtn) return;
-    
+
     autoRefreshEnabled = checkbox.checked;
     localStorage.setItem('kroki-auto-refresh', autoRefreshEnabled.toString());
-    
+
     // Show/hide manual refresh button based on auto-refresh state
     refreshBtn.style.display = autoRefreshEnabled ? 'none' : 'inline-flex';
 }
@@ -1465,13 +1475,13 @@ function handleManualRefresh() {
     if (refreshBtn) {
         // Add spinning animation
         refreshBtn.classList.add('spinning');
-        
+
         // Remove animation after a short delay
         setTimeout(() => {
             refreshBtn.classList.remove('spinning');
         }, 1000);
     }
-    
+
     // Trigger diagram update
     updateDiagram();
 }
@@ -1480,26 +1490,26 @@ function handleManualRefresh() {
 function initializeAutoRefresh() {
     const checkbox = document.getElementById('auto-refresh-checkbox');
     const refreshBtn = document.getElementById('manual-refresh-btn');
-    
+
     if (!checkbox || !refreshBtn) {
         console.warn('Auto-refresh elements not found');
         return;
     }
-    
+
     // Load saved preference or default to true
     const savedPreference = localStorage.getItem('kroki-auto-refresh');
     autoRefreshEnabled = savedPreference !== null ? savedPreference === 'true' : true;
     checkbox.checked = autoRefreshEnabled;
-    
+
     // Set initial button state
     handleAutoRefreshToggle();
-    
+
     // Add event listeners
     checkbox.addEventListener('change', handleAutoRefreshToggle);
     refreshBtn.addEventListener('click', handleManualRefresh);
-    
+
     // Add keyboard shortcut for manual refresh (Alt/Cmd + Enter)
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if ((e.altKey || e.metaKey) && e.key === 'Enter') {
             e.preventDefault();
             handleManualRefresh();
@@ -1809,22 +1819,22 @@ function initializeConfigurationSystem() {
 
 function applyConfiguration() {
     const config = window.configManager;
-    
+
     // Apply configuration-driven values
     DEBOUNCE_DELAY = config.get('editor.debounceDelay');
     AUTO_SAVE_DELAY = config.get('editor.autoSaveDelay');
-    
+
     // Update zoom state with configuration values
     zoomState.minScale = config.get('zoom.minScale');
     zoomState.maxScale = config.get('zoom.maxScale');
     zoomState.scaleStep = config.get('zoom.scaleStep');
-    
+
     // Apply theme configuration
     const themeConfig = config.get('theme');
     if (themeConfig !== ThemeManager.currentTheme) {
         ThemeManager.applyTheme(themeConfig);
     }
-    
+
     // Apply auto-refresh configuration
     const autoRefreshConfig = config.get('autoRefresh');
     if (autoRefreshConfig !== autoRefreshEnabled) {
@@ -1835,40 +1845,40 @@ function applyConfiguration() {
             handleAutoRefreshToggle();
         }
     }
-    
+
     // Apply editor configuration
     const codeTextarea = document.getElementById('code');
     if (codeTextarea) {
         const fontSize = config.get('editor.fontSize');
         codeTextarea.style.fontSize = `${fontSize}px`;
     }
-    
+
     // Apply layout configuration
     const editorWidth = config.get('layout.editorWidth');
     const editor = document.querySelector('.editor');
     if (editor) {
         editor.style.width = `${editorWidth}%`;
     }
-    
+
     // Apply UI element visibility
     applyUIVisibilityConfig();
 }
 
 function applyUIVisibilityConfig() {
     const config = window.configManager;
-    
+
     // Show/hide toolbar
     const toolbar = document.querySelector('.toolbar');
     if (toolbar) {
         toolbar.style.display = config.get('layout.showToolbar') ? 'flex' : 'none';
     }
-    
+
     // Show/hide zoom controls
     const zoomControls = document.getElementById('zoom-controls');
     if (zoomControls) {
         zoomControls.style.display = config.get('layout.showZoomControls') ? 'flex' : 'none';
     }
-    
+
     // Show/hide file status
     const fileStatus = document.querySelector('.file-status');
     if (fileStatus) {
@@ -1878,12 +1888,12 @@ function applyUIVisibilityConfig() {
 
 function setupConfigurationListeners() {
     const config = window.configManager;
-    
+
     // Listen for theme changes
     config.addListener('theme', (newTheme) => {
         ThemeManager.applyTheme(newTheme);
     });
-    
+
     // Listen for auto-refresh changes
     config.addListener('autoRefresh', (newValue) => {
         autoRefreshEnabled = newValue;
@@ -1893,12 +1903,12 @@ function setupConfigurationListeners() {
             handleAutoRefreshToggle();
         }
     });
-    
+
     // Listen for debounce delay changes
     config.addListener('editor.debounceDelay', (newValue) => {
         DEBOUNCE_DELAY = newValue;
     });
-    
+
     // Listen for auto-save delay changes
     config.addListener('editor.autoSaveDelay', (newValue) => {
         AUTO_SAVE_DELAY = newValue;
@@ -1907,7 +1917,7 @@ function setupConfigurationListeners() {
             startAutoSave();
         }
     });
-    
+
     // Listen for zoom configuration changes
     config.addListener('zoom.minScale', (newValue) => {
         zoomState.minScale = newValue;
@@ -1919,7 +1929,7 @@ function setupConfigurationListeners() {
             }
         }
     });
-    
+
     config.addListener('zoom.maxScale', (newValue) => {
         zoomState.maxScale = newValue;
         // If current zoom is now outside the new limits, reset
@@ -1930,23 +1940,23 @@ function setupConfigurationListeners() {
             }
         }
     });
-    
+
     config.addListener('zoom.scaleStep', (newValue) => {
         zoomState.scaleStep = newValue;
     });
-    
+
     // Listen for zoom reset padding changes
     config.addListener('zoom.resetPadding', (newValue) => {
         // This will be used next time resetZoom is called
         // No immediate action needed since padding is read dynamically
     });
-    
+
     // Listen for zoom preserve state changes
     config.addListener('zoom.preserveStateOnUpdate', (newValue) => {
         // This affects diagram update behavior
         // No immediate action needed since it's read when updating
     });
-    
+
     // Listen for editor font size changes
     config.addListener('editor.fontSize', (newValue) => {
         const codeTextarea = document.getElementById('code');
@@ -1954,7 +1964,7 @@ function setupConfigurationListeners() {
             codeTextarea.style.fontSize = `${newValue}px`;
         }
     });
-    
+
     // Listen for layout changes
     config.addListener('layout.editorWidth', (newValue) => {
         const editor = document.querySelector('.editor');
@@ -1965,19 +1975,19 @@ function setupConfigurationListeners() {
             adjustControlsLayout();
         }
     });
-    
+
     // Listen for UI visibility changes
     config.addListener('layout.showToolbar', () => applyUIVisibilityConfig());
     config.addListener('layout.showZoomControls', () => applyUIVisibilityConfig());
     config.addListener('layout.showFileStatus', () => applyUIVisibilityConfig());
-    
+
     // Listen for AI Assistant configuration changes
     const aiConfigPaths = [
-        'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model', 
+        'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model',
         'ai.maxRetryAttempts', 'ai.promptTheme', 'ai.autoValidate',
         'ai.persistHistory', 'ai.useProxy', 'ai.timeout'
     ];
-    
+
     aiConfigPaths.forEach(path => {
         config.addListener(path, () => {
             if (window.aiAssistant) {
@@ -2014,7 +2024,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize auto-refresh functionality
     initializeAutoRefresh();
-    
+
     // Initialize settings button
     const settingsBtn = document.getElementById('settings-btn');
     if (settingsBtn) {
@@ -2032,12 +2042,12 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         console.error('Settings button not found in DOM');
     }
-    
+
     // Initialize configuration system
     setTimeout(() => {
         console.log('Initializing configuration system...');
         console.log('configManager available:', !!window.configManager);
-        
+
         // Initialize ConfigUI manually
         if (window.configManager && typeof ConfigUI !== 'undefined') {
             try {
@@ -2050,7 +2060,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             console.warn('ConfigManager or ConfigUI class not available');
         }
-        
+
         // Initialize AI Assistant
         if (typeof AIAssistant !== 'undefined') {
             try {
@@ -2063,7 +2073,24 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             console.warn('AIAssistant class not available');
         }
-        
+
+        // Initialize Code History
+        if (typeof CodeHistory !== 'undefined') {
+            try {
+                console.log('Creating Code History instance...');
+                window.codeHistory = new CodeHistory();
+                // Initialize with current code if available
+                setTimeout(() => {
+                    window.codeHistory.initializeWithCurrentCode();
+                }, 100);
+                console.log('Code History created successfully');
+            } catch (error) {
+                console.error('Error creating Code History:', error);
+            }
+        } else {
+            console.warn('CodeHistory class not available');
+        }
+
         initializeConfigurationSystem();
         console.log('Configuration system initialized, configManager:', !!window.configManager, 'configUI:', !!window.configUI, 'aiAssistant:', !!window.aiAssistant);
     }, 150); // Slightly longer delay to ensure all scripts are loaded
@@ -2086,25 +2113,25 @@ window.addEventListener('beforeunload', function (e) {
 const codeTextarea = document.getElementById('code');
 
 // Add tab key handling for proper indentation
-codeTextarea.addEventListener('keydown', function(e) {
+codeTextarea.addEventListener('keydown', function (e) {
     if (e.key === 'Tab') {
         e.preventDefault();
-        
+
         const start = this.selectionStart;
         const end = this.selectionEnd;
         const value = this.value;
-        
+
         if (e.shiftKey) {
             // Shift + Tab: Remove indentation
             const lineStart = value.lastIndexOf('\n', start - 1) + 1;
             const lineEnd = value.indexOf('\n', end);
             const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
-            
+
             if (start !== end) {
                 // Multiple lines selected
                 const selectedLines = value.substring(lineStart, actualLineEnd);
                 const lines = selectedLines.split('\n');
-                
+
                 const dedentedLines = lines.map(line => {
                     if (line.startsWith('    ')) {
                         return line.substring(4); // Remove 4 spaces
@@ -2113,10 +2140,10 @@ codeTextarea.addEventListener('keydown', function(e) {
                     }
                     return line;
                 });
-                
+
                 const newValue = value.substring(0, lineStart) + dedentedLines.join('\n') + value.substring(actualLineEnd);
                 const removedChars = selectedLines.length - dedentedLines.join('\n').length;
-                
+
                 this.value = newValue;
                 this.selectionStart = Math.max(lineStart, start - Math.min(4, removedChars));
                 this.selectionEnd = Math.max(this.selectionStart, end - removedChars);
@@ -2140,13 +2167,13 @@ codeTextarea.addEventListener('keydown', function(e) {
                 const lineStart = value.lastIndexOf('\n', start - 1) + 1;
                 const lineEnd = value.indexOf('\n', end);
                 const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
-                
+
                 const selectedLines = value.substring(lineStart, actualLineEnd);
                 const lines = selectedLines.split('\n');
                 const indentedLines = lines.map(line => '    ' + line); // Add 4 spaces to each line
-                
+
                 const newValue = value.substring(0, lineStart) + indentedLines.join('\n') + value.substring(actualLineEnd);
-                
+
                 this.value = newValue;
                 this.selectionStart = start + 4; // Move cursor past the added indentation
                 this.selectionEnd = end + (lines.length * 4); // Adjust end selection
@@ -2157,7 +2184,7 @@ codeTextarea.addEventListener('keydown', function(e) {
                 this.selectionStart = this.selectionEnd = start + 4;
             }
         }
-        
+
         // Trigger input event to update line numbers and diagram
         const inputEvent = new Event('input', { bubbles: true });
         this.dispatchEvent(inputEvent);
@@ -2260,11 +2287,11 @@ if (helpBtn && helpModal && closeHelpBtn) {
     helpModal.addEventListener('click', function (e) {
         if (e.target === helpModal) {
             helpModal.style.display = 'none';
-               }
+        }
     });
 
     // Close modal with Escape key
-   
+
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && helpModal.style.display === 'flex') {
             helpModal.style.display = 'none';
@@ -2286,17 +2313,17 @@ let searchState = {
 function showSearchBar() {
     const searchBar = document.getElementById('search-bar');
     const searchInput = document.getElementById('search-input');
-    
+
     if (!searchBar || !searchInput) {
         console.warn('Search bar elements not found');
         return;
     }
-    
+
     searchState.isVisible = true;
     searchBar.style.display = 'flex';
     searchInput.focus();
     searchInput.select();
-    
+
     // If there's already text in the input, search immediately
     if (searchInput.value.trim()) {
         performSearch(searchInput.value);
@@ -2307,11 +2334,11 @@ function showSearchBar() {
 function hideSearchBar() {
     const searchBar = document.getElementById('search-bar');
     if (!searchBar) return;
-    
+
     searchState.isVisible = false;
     searchBar.style.display = 'none';
     clearSearchHighlights();
-    
+
     // Return focus to code textarea
     const codeTextarea = document.getElementById('code');
     if (codeTextarea) {
@@ -2327,18 +2354,18 @@ function performSearch(query) {
         updateSearchCount(0, 0);
         return;
     }
-    
+
     searchState.currentQuery = query;
     const text = codeTextarea.value;
     const flags = searchState.caseSensitive ? 'g' : 'gi';
-    
+
     try {
         // Escape special regex characters in the query
         const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(escapedQuery, flags);
         const matches = [];
         let match;
-        
+
         while ((match = regex.exec(text)) !== null) {
             matches.push({
                 index: match.index,
@@ -2346,31 +2373,31 @@ function performSearch(query) {
                 text: match[0]
             });
         }
-        
+
         searchState.matches = matches;
-        
+
         if (matches.length > 0) {
             // If we don't have a current index or query changed, start from the beginning
             if (searchState.currentIndex === -1 || searchState.lastSearchValue !== query) {
                 searchState.currentIndex = 0;
             }
-            
+
             // Ensure current index is within bounds
             if (searchState.currentIndex >= matches.length) {
                 searchState.currentIndex = 0;
             }
-            
+
             highlightSearchResults();
             scrollToCurrentMatch();
         } else {
             searchState.currentIndex = -1;
             clearSearchHighlights();
         }
-        
+
         searchState.lastSearchValue = query;
         updateSearchCount(searchState.currentIndex + 1, matches.length);
         updateSearchButtons();
-        
+
     } catch (error) {
         // Invalid regex, clear results
         clearSearchHighlights();
@@ -2386,7 +2413,7 @@ function clearSearchHighlights() {
     if (codeTextarea) {
         codeTextarea.setSelectionRange(0, 0);
     }
-    
+
     // Clear the overlay
     const overlay = document.getElementById('search-highlight-overlay');
     if (overlay) {
@@ -2398,45 +2425,45 @@ function clearSearchHighlights() {
 function highlightSearchResults() {
     const codeTextarea = document.getElementById('code');
     const overlay = document.getElementById('search-highlight-overlay');
-    
+
     if (!codeTextarea || !overlay) {
         console.warn('Search highlighting: Missing textarea or overlay element');
         return;
     }
-    
+
     if (searchState.matches.length === 0) {
         clearSearchHighlights();
         return;
     }
-    
+
     try {
         const text = codeTextarea.value;
         let highlightedHTML = '';
         let lastIndex = 0;
-        
+
         // Process each match and create highlighted spans
         searchState.matches.forEach((match, index) => {
             // Add text before this match (escaped)
             const beforeMatch = text.substring(lastIndex, match.index);
             highlightedHTML += escapeHtml(beforeMatch);
-            
+
             // Add the highlighted match
             const isCurrent = index === searchState.currentIndex;
             const matchText = text.substring(match.index, match.index + match.length);
             const highlightClass = isCurrent ? 'search-highlight current' : 'search-highlight';
             highlightedHTML += `<span class="${highlightClass}">${escapeHtml(matchText)}</span>`;
-            
+
             lastIndex = match.index + match.length;
         });
-        
+
         // Add remaining text after last match
         if (lastIndex < text.length) {
             highlightedHTML += escapeHtml(text.substring(lastIndex));
         }
-        
+
         // Set the overlay content
         overlay.innerHTML = highlightedHTML;
-        
+
         // Force exact style matching
         const textareaStyles = window.getComputedStyle(codeTextarea);
         overlay.style.fontFamily = textareaStyles.fontFamily;
@@ -2448,19 +2475,19 @@ function highlightSearchResults() {
         overlay.style.margin = textareaStyles.margin;
         overlay.style.border = textareaStyles.border;
         overlay.style.boxSizing = textareaStyles.boxSizing;
-        
+
         // Ensure exact scroll synchronization
         overlay.scrollTop = codeTextarea.scrollTop;
         overlay.scrollLeft = codeTextarea.scrollLeft;
-        
+
         // Also set selection on current match for additional feedback
         if (searchState.currentIndex >= 0 && searchState.currentIndex < searchState.matches.length) {
             const currentMatch = searchState.matches[searchState.currentIndex];
             codeTextarea.setSelectionRange(currentMatch.index, currentMatch.index + currentMatch.length);
         }
-        
+
         console.log(`Search highlighting: Rendered ${searchState.matches.length} matches`);
-        
+
     } catch (error) {
         console.error('Error in highlightSearchResults:', error);
         clearSearchHighlights();
@@ -2478,17 +2505,17 @@ function escapeHtml(text) {
 function debugSearchHighlighting() {
     const codeTextarea = document.getElementById('code');
     const overlay = document.getElementById('search-highlight-overlay');
-    
+
     if (!codeTextarea || !overlay) {
         console.log('Debug: Missing elements');
         return;
     }
-    
+
     const textareaRect = codeTextarea.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
     const textareaStyles = window.getComputedStyle(codeTextarea);
     const overlayStyles = window.getComputedStyle(overlay);
-    
+
     console.log('=== Search Highlighting Debug ===');
     console.log('Textarea position:', textareaRect);
     console.log('Overlay position:', overlayRect);
@@ -2498,27 +2525,27 @@ function debugSearchHighlighting() {
         width: Math.abs(textareaRect.width - overlayRect.width) < 1,
         height: Math.abs(textareaRect.height - overlayRect.height) < 1
     });
-    
+
     console.log('Font comparison:', {
         family: textareaStyles.fontFamily === overlayStyles.fontFamily,
         size: textareaStyles.fontSize === overlayStyles.fontSize,
         lineHeight: textareaStyles.lineHeight === overlayStyles.lineHeight,
         letterSpacing: textareaStyles.letterSpacing === overlayStyles.letterSpacing
     });
-    
+
     console.log('Padding comparison:', {
         textarea: textareaStyles.padding,
         overlay: overlayStyles.padding,
         match: textareaStyles.padding === overlayStyles.padding
     });
-    
+
     console.log('Current search state:', {
         query: searchState.currentQuery,
         matches: searchState.matches.length,
         currentIndex: searchState.currentIndex,
         isVisible: searchState.isVisible
     });
-    
+
     if (searchState.matches.length > 0) {
         console.log('First match details:', searchState.matches[0]);
     }
@@ -2533,29 +2560,29 @@ function scrollToCurrentMatch() {
     if (!codeTextarea || searchState.currentIndex === -1 || searchState.matches.length === 0) {
         return;
     }
-    
+
     const match = searchState.matches[searchState.currentIndex];
-    
+
     // Calculate line number to scroll to
     const textBeforeMatch = codeTextarea.value.substring(0, match.index);
     const lineNumber = textBeforeMatch.split('\n').length - 1;
-    
+
     // Scroll textarea to make the match visible
     const lineHeight = parseInt(getComputedStyle(codeTextarea).lineHeight) || 20;
     const scrollTop = lineNumber * lineHeight;
-    
+
     // Scroll to center the match in the visible area
     const textareaHeight = codeTextarea.clientHeight;
     const targetScroll = Math.max(0, scrollTop - textareaHeight / 2);
-    
+
     codeTextarea.scrollTop = targetScroll;
-    
+
     // Sync line numbers scroll
     const lineNumbersDiv = document.getElementById('lineNumbers');
     if (lineNumbersDiv) {
         lineNumbersDiv.scrollTop = targetScroll;
     }
-    
+
     // Sync overlay scroll
     const overlay = document.getElementById('search-highlight-overlay');
     if (overlay) {
@@ -2567,7 +2594,7 @@ function scrollToCurrentMatch() {
 // Navigate to next match
 function goToNextMatch() {
     if (searchState.matches.length === 0) return;
-    
+
     searchState.currentIndex = (searchState.currentIndex + 1) % searchState.matches.length;
     highlightSearchResults(); // Update highlights to show new current match
     scrollToCurrentMatch();
@@ -2577,9 +2604,9 @@ function goToNextMatch() {
 // Navigate to previous match
 function goToPreviousMatch() {
     if (searchState.matches.length === 0) return;
-    
-    searchState.currentIndex = searchState.currentIndex <= 0 
-        ? searchState.matches.length - 1 
+
+    searchState.currentIndex = searchState.currentIndex <= 0
+        ? searchState.matches.length - 1
         : searchState.currentIndex - 1;
     highlightSearchResults(); // Update highlights to show new current match
     scrollToCurrentMatch();
@@ -2593,7 +2620,7 @@ function toggleCaseSensitive() {
     if (caseSensitiveBtn) {
         caseSensitiveBtn.classList.toggle('active', searchState.caseSensitive);
     }
-    
+
     // Re-run search with new case sensitivity
     const searchInput = document.getElementById('search-input');
     if (searchInput && searchInput.value) {
@@ -2618,11 +2645,11 @@ function updateSearchButtons() {
     const prevBtn = document.getElementById('search-prev');
     const nextBtn = document.getElementById('search-next');
     const hasResults = searchState.matches.length > 0;
-    
+
     if (prevBtn) {
         prevBtn.disabled = !hasResults;
     }
-    
+
     if (nextBtn) {
         nextBtn.disabled = !hasResults;
     }
@@ -2635,12 +2662,12 @@ function initializeSearchFunctionality() {
     const searchNext = document.getElementById('search-next');
     const searchCase = document.getElementById('search-case');
     const searchClose = document.getElementById('search-close');
-    
+
     if (!searchInput) {
         console.warn('Search input not found');
         return;
     }
-    
+
     // Search input event handlers
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value;
@@ -2652,7 +2679,7 @@ function initializeSearchFunctionality() {
             updateSearchButtons();
         }
     });
-    
+
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -2666,26 +2693,26 @@ function initializeSearchFunctionality() {
             hideSearchBar();
         }
     });
-    
+
     // Navigation button handlers
     if (searchPrev) {
         searchPrev.addEventListener('click', goToPreviousMatch);
     }
-    
+
     if (searchNext) {
         searchNext.addEventListener('click', goToNextMatch);
     }
-    
+
     // Case sensitivity toggle
     if (searchCase) {
         searchCase.addEventListener('click', toggleCaseSensitive);
     }
-    
+
     // Close button
     if (searchClose) {
         searchClose.addEventListener('click', hideSearchBar);
     }
-    
+
     // Close search bar when clicking outside
     document.addEventListener('click', (e) => {
         const searchBar = document.getElementById('search-bar');
@@ -2697,7 +2724,7 @@ function initializeSearchFunctionality() {
             }
         }
     });
-    
+
     // Global escape key handler for search
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && searchState.isVisible) {
@@ -2705,22 +2732,22 @@ function initializeSearchFunctionality() {
             hideSearchBar();
         }
     });
-    
+
     // Sync scroll between textarea and highlight overlay
     const codeTextarea = document.getElementById('code');
     const overlay = document.getElementById('search-highlight-overlay');
-    
+
     if (codeTextarea && overlay) {
         console.log('Search functionality: Initializing scroll synchronization');
-        
+
         // Sync scroll position
         function syncScroll() {
             overlay.scrollTop = codeTextarea.scrollTop;
             overlay.scrollLeft = codeTextarea.scrollLeft;
         }
-        
+
         codeTextarea.addEventListener('scroll', syncScroll);
-        
+
         // Sync styles initially and on changes
         function syncStyles() {
             try {
@@ -2741,10 +2768,10 @@ function initializeSearchFunctionality() {
                 console.warn('Error syncing styles:', error);
             }
         }
-        
+
         // Initial sync
         syncStyles();
-        
+
         // Also sync on resize to ensure proper alignment
         const resizeObserver = new ResizeObserver(() => {
             if (searchState.matches.length > 0) {
@@ -2755,12 +2782,12 @@ function initializeSearchFunctionality() {
                 }, 10);
             }
         });
-        
+
         resizeObserver.observe(codeTextarea);
-        
+
         // Periodic style sync to handle dynamic changes
         setInterval(syncStyles, 2000);
-        
+
         console.log('Search functionality: Initialization complete');
     } else {
         console.warn('Search functionality: Missing textarea or overlay elements');

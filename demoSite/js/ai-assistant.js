@@ -620,12 +620,12 @@ class AIAssistant {
             this.currentAbortController.abort();
             this.currentAbortController = null;
         }
-        
+
         this.isRequestInProgress = false;
         this.retryAttempts = 0; // Reset retry counter
         this.setSendButtonState(false);
         this.hideStatus();
-        
+
         this.addMessage('system', '🚫 Request cancelled by user');
     }
 

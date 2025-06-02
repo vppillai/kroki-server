@@ -1,0 +1,150 @@
+/* Code History Navigation Controls */
+.code-history-nav {
+    display: flex;
+    align-items: center;
+    margin-right: 16px;
+}
+
+.code-history-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--background-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2px 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.code-history-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.code-history-btn:hover:not(:disabled) {
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.code-history-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.code-history-btn:disabled {
+    color: var(--text-disabled);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.code-history-btn svg {
+    transition: transform 0.2s ease;
+    width: 14px;
+    height: 14px;
+}
+
+.code-history-btn:hover:not(:disabled) svg {
+    transform: scale(1.1);
+}
+
+.code-history-indicator {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 32px;
+    text-align: center;
+    user-select: none;
+    background: var(--background-secondary);
+    padding: 2px 6px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+    line-height: 1.2;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .code-history-controls {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .code-history-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Integration with editor header */
+.editor-header .editor-controls {
+    align-items: center;
+    gap: 12px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .code-history-nav {
+        margin-right: 8px;
+    }
+    
+    .code-history-controls {
+        gap: 4px;
+        padding: 1px 4px;
+    }
+    
+    .code-history-btn {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .code-history-btn svg {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .code-history-indicator {
+        font-size: 10px;
+        min-width: 28px;
+        padding: 1px 4px;
+    }
+}
+
+/* Animation for navigation actions */
+@keyframes codeHistoryHighlight {
+    0% { background-color: var(--accent-color); opacity: 0.3; }
+    100% { background-color: transparent; opacity: 1; }
+}
+
+.code-history-nav.navigating {
+    animation: codeHistoryHighlight 0.3s ease-out;
+}
+
+/* Tooltip styling for better UX */
+.code-history-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 5px;
+    padding: 4px 8px;
+    background: var(--background-tooltip, #333);
+    color: var(--text-tooltip, white);
+    font-size: 11px;
+    border-radius: var(--border-radius-sm);
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* Hide tooltip on mobile */
+@media (max-width: 768px) {
+    .code-history-btn[title]:hover::after {
+        display: none;
+    }
+}
