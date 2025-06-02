@@ -542,6 +542,20 @@
     transform: none;
 }
 
+/* Cancel button state */
+.ai-chat-send[style*="rgb(239, 68, 68)"] {
+    background: rgb(239, 68, 68) !important;
+}
+
+.ai-chat-send[style*="rgb(239, 68, 68)"]:hover {
+    background: rgb(220, 38, 38) !important;
+    transform: translateY(-1px);
+}
+
+.ai-chat-send[style*="rgb(239, 68, 68)"]:active {
+    transform: translateY(0);
+}
+
 /* Settings Button */
 .ai-chat-settings {
     color: var(--text-secondary) !important;

@@ -16,9 +16,24 @@ from datetime import datetime
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    import os
+    
+    # Try to load from parent directory first (top-level .env), then current directory
+    parent_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    current_env = os.path.join(os.path.dirname(__file__), '.env')
+    
+    if os.path.exists(parent_env):
+        load_dotenv(parent_env)
+        print(f"Loaded environment from: {parent_env}")
+    elif os.path.exists(current_env):
+        load_dotenv(current_env)
+        print(f"Loaded environment from: {current_env}")
+    else:
+        print("No .env file found, using system environment variables")
+        
 except ImportError:
     # dotenv not available, will use system environment variables
+    print("dotenv not available, using system environment variables")
     pass
 
 # Configure logging

@@ -14,6 +14,10 @@ class AIAssistant {
         this.chatHistory = [];
         this.configManager = configManager; // Store the config manager reference
 
+        // Request cancellation support
+        this.currentAbortController = null;
+        this.isRequestInProgress = false;
+
         // Resize functionality state
         this.isResizing = false;
         this.resizeStartY = 0;
@@ -170,12 +174,22 @@ class AIAssistant {
         this.chatWindow.querySelector('.ai-chat-settings').addEventListener('click', () => this.openSettings());
 
         // Send message
-        this.chatSend.addEventListener('click', () => this.sendMessage());
+        this.chatSend.addEventListener('click', () => {
+            if (this.isRequestInProgress) {
+                this.cancelRequest();
+            } else {
+                this.sendMessage();
+            }
+        });
 
         this.chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                this.sendMessage();
+                if (this.isRequestInProgress) {
+                    this.cancelRequest();
+                } else {
+                    this.sendMessage();
+                }
             }
             // Allow Shift+Enter for new lines (default behavior)
         });
@@ -447,7 +461,13 @@ class AIAssistant {
         if (rawHtml) {
             contentElement.innerHTML = text;
         } else {
-            contentElement.textContent = text;
+            // Preserve whitespace and line breaks for user messages
+            if (type === 'user') {
+                contentElement.style.whiteSpace = 'pre-wrap';
+                contentElement.textContent = text;
+            } else {
+                contentElement.textContent = text;
+            }
         }
 
         messageElement.appendChild(contentElement);
@@ -499,6 +519,21 @@ class AIAssistant {
             this.chatInputContainer.classList.add('status-visible');
         }
 
+        // Add class to chat body to adjust messages area
+        if (this.chatWindow) {
+            const chatBody = this.chatWindow.querySelector('.ai-chat-body');
+            if (chatBody) {
+                chatBody.classList.add('status-active');
+            }
+        }
+
+        // Adjust messages area to prevent overlap
+        if (this.chatMessages) {
+            this.chatMessages.style.marginBottom = '45px';
+            // Force scroll to bottom to ensure last message is visible
+            setTimeout(() => this.scrollToBottom(), 100);
+        }
+
         // Add subtle pulse animation to status text
         if (statusText) {
             statusText.style.animation = 'statusTextPulse 2s ease-in-out infinite';
@@ -518,6 +553,19 @@ class AIAssistant {
             // Remove class from input container
             if (this.chatInputContainer) {
                 this.chatInputContainer.classList.remove('status-visible');
+            }
+
+            // Remove class from chat body
+            if (this.chatWindow) {
+                const chatBody = this.chatWindow.querySelector('.ai-chat-body');
+                if (chatBody) {
+                    chatBody.classList.remove('status-active');
+                }
+            }
+
+            // Reset messages area margin
+            if (this.chatMessages) {
+                this.chatMessages.style.marginBottom = '10px';
             }
 
             // Remove text animation
@@ -544,14 +592,56 @@ class AIAssistant {
         this.addMessage(cssClass, message);
     }
 
+    setSendButtonState(isLoading) {
+        if (!this.chatSend) return;
+
+        if (isLoading) {
+            this.chatSend.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="6" y="6" width="12" height="12" rx="2"/>
+                </svg>
+            `;
+            this.chatSend.title = 'Cancel request';
+            this.chatSend.style.background = 'rgb(239, 68, 68)';
+        } else {
+            this.chatSend.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"/>
+                    <polygon points="22,2 15,22 11,13 2,9"/>
+                </svg>
+            `;
+            this.chatSend.title = 'Send message';
+            this.chatSend.style.background = 'rgb(59, 130, 246)';
+        }
+    }
+
+    cancelRequest() {
+        if (this.currentAbortController) {
+            this.currentAbortController.abort();
+            this.currentAbortController = null;
+        }
+        
+        this.isRequestInProgress = false;
+        this.retryAttempts = 0; // Reset retry counter
+        this.setSendButtonState(false);
+        this.hideStatus();
+        
+        this.addMessage('system', '🚫 Request cancelled by user');
+    }
+
     async sendMessage() {
         const message = this.chatInput.value.trim();
-        if (!message) return;
+        if (!message || this.isRequestInProgress) return;
 
         // Add user message to chat
         this.addMessage('user', message);
         this.chatInput.value = '';
         this.autoResizeInput();
+
+        // Set up request cancellation
+        this.isRequestInProgress = true;
+        this.currentAbortController = new AbortController();
+        this.setSendButtonState(true);
 
         // Show loading status
         this.showStatus('Generating response...');
@@ -565,10 +655,17 @@ class AIAssistant {
             await this.sendToAI(message, currentCode, diagramType);
 
         } catch (error) {
+            if (error.name === 'AbortError') {
+                // Request was cancelled, no need to show error
+                return;
+            }
             console.error('AI Assistant error:', error);
             this.addMessage('system', `Error: ${error.message}`);
         } finally {
+            this.isRequestInProgress = false;
+            this.setSendButtonState(false);
             this.hideStatus();
+            this.currentAbortController = null;
         }
     }
 
@@ -681,6 +778,11 @@ class AIAssistant {
                 if (validationResult.success) {
                     this.displayMessage(`✅ ${explanation}`, 'ai success');
                 } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
+                    // Check if request was cancelled before retrying
+                    if (!this.isRequestInProgress) {
+                        return; // Request was cancelled, stop processing
+                    }
+
                     // Retry with validation error feedback
                     this.retryAttempts++;
                     this.showStatus(`🔧 Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
@@ -708,7 +810,17 @@ class AIAssistant {
             }
 
         } catch (error) {
+            // Check if request was cancelled before handling errors
+            if (!this.isRequestInProgress) {
+                return; // Request was cancelled, stop processing
+            }
+
             if (this.retryAttempts < aiConfig.maxRetryAttempts) {
+                // Check again before retrying
+                if (!this.isRequestInProgress) {
+                    return; // Request was cancelled, stop processing
+                }
+
                 this.retryAttempts++;
                 this.showStatus(`🔄 Network error, retrying (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
 
@@ -857,6 +969,11 @@ class AIAssistant {
             // Try to extract JSON from the response if it's buried in other text
             let jsonString = actualStringToParse.trim();
 
+            // Clean up markdown code blocks if present
+            jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            jsonString = jsonString.trim();
+
             // First try to parse as-is
             try {
                 const parsed = JSON.parse(jsonString);
@@ -996,7 +1113,7 @@ class AIAssistant {
     }
 
     async callCustomAPI(prompt, config) {
-        const controller = new AbortController();
+        const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
         try {
@@ -1037,16 +1154,16 @@ class AIAssistant {
             return data; // Return the full response object
         } catch (error) {
             if (error.name === 'AbortError') {
-                throw new Error('Request timed out. Please try again or increase the timeout in settings.');
+                throw error; // Re-throw abort errors to be handled upstream
             }
-            throw error;
+            throw new Error('Request timed out. Please try again or increase the timeout in settings.');
         } finally {
             clearTimeout(timeoutId);
         }
     }
 
     async callProxyAPI(prompt, config) {
-        const controller = new AbortController();
+        const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
         try {
@@ -1085,9 +1202,9 @@ class AIAssistant {
             return await response.json();
         } catch (error) {
             if (error.name === 'AbortError') {
-                throw new Error('Request timed out. Please try again or increase the timeout in settings.');
+                throw error; // Re-throw abort errors to be handled upstream
             }
-            throw error;
+            throw new Error('Request timed out. Please try again or increase the timeout in settings.');
         } finally {
             clearTimeout(timeoutId);
         }
