@@ -871,40 +871,64 @@ class AIAssistant {
 
             // Update diagram code if it contains valid diagram code
             if (diagramCode && diagramCode.trim() && diagramCode !== "No diagram generated") {
-                // Try to apply and validate the diagram code
-                const validationResult = await this.validateAndApplyDiagramCode(diagramCode, diagramType);
+                // Check if auto-validation is enabled
+                if (aiConfig.autoValidate) {
+                    // Try to apply and validate the diagram code
+                    const validationResult = await this.validateAndApplyDiagramCode(diagramCode, diagramType);
 
-                if (validationResult.success) {
+                    if (validationResult.success) {
+                        // Filter out error-fixing language from retry attempts for better user experience
+                        let userFriendlyExplanation = explanation;
+                        if (this.retryAttempts > 0) {
+                            userFriendlyExplanation = this.makeRetryExplanationUserFriendly(explanation, originalUserPrompt);
+                        }
+                        this.displayMessage(`✅ ${userFriendlyExplanation}`, 'ai success');
+                    } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
+                        // Check if request was cancelled before retrying
+                        if (!this.isRequestInProgress) {
+                            return; // Request was cancelled, stop processing
+                        }
+
+                        // Retry with validation error feedback
+                        this.retryAttempts++;
+                        this.showStatus(`🔧 Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
+
+                        const retryPrompt = await this.composeRetryPrompt(
+                            prompt,
+                            diagramCode,
+                            `The diagram code failed to render: ${validationResult.error}. Please fix the syntax and ensure it's valid ${diagramType} code.`,
+                            originalUserPrompt,
+                            diagramType,
+                            originalCode
+                        );
+                        await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig, originalUserPrompt);
+                        return;
+                    } else {
+                        // Max retries reached, apply code anyway but show warning
+                        this.updateDiagramCode(diagramCode);
+
+                        // Ensure code history is saved even when max retries reached
+                        if (window.codeHistory && typeof window.codeHistory.addToHistory === 'function') {
+                            window.codeHistory.addToHistory(diagramCode);
+                        }
+
+                        this.displayMessage(`⚠️ ${explanation} (Note: Diagram may have rendering issues)`, 'ai warning');
+                    }
+                } else {
+                    // Auto-validation is disabled, apply code directly without validation
+                    this.updateDiagramCode(diagramCode);
+
+                    // Ensure code history is saved even when auto-validation is disabled
+                    if (window.codeHistory && typeof window.codeHistory.addToHistory === 'function') {
+                        window.codeHistory.addToHistory(diagramCode);
+                    }
+
                     // Filter out error-fixing language from retry attempts for better user experience
                     let userFriendlyExplanation = explanation;
                     if (this.retryAttempts > 0) {
                         userFriendlyExplanation = this.makeRetryExplanationUserFriendly(explanation, originalUserPrompt);
                     }
                     this.displayMessage(`✅ ${userFriendlyExplanation}`, 'ai success');
-                } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
-                    // Check if request was cancelled before retrying
-                    if (!this.isRequestInProgress) {
-                        return; // Request was cancelled, stop processing
-                    }
-
-                    // Retry with validation error feedback
-                    this.retryAttempts++;
-                    this.showStatus(`🔧 Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
-
-                    const retryPrompt = await this.composeRetryPrompt(
-                        prompt,
-                        diagramCode,
-                        `The diagram code failed to render: ${validationResult.error}. Please fix the syntax and ensure it's valid ${diagramType} code.`,
-                        originalUserPrompt,
-                        diagramType,
-                        originalCode
-                    );
-                    await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig, originalUserPrompt);
-                    return;
-                } else {
-                    // Max retries reached, apply code anyway but show warning
-                    this.updateDiagramCode(diagramCode);
-                    this.displayMessage(`⚠️ ${explanation} (Note: Diagram may have rendering issues)`, 'ai warning');
                 }
             } else if (!explanation) {
                 this.addMessage('system', '⚠️ AI did not provide diagram code or an explanation.');
@@ -1579,7 +1603,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
     makeRetryExplanationUserFriendly(explanation, originalUserPrompt) {
         // Remove error-fixing language that confuses users who didn't see the original error
         let userFriendlyExplanation = explanation;
-        
+
         // Remove common error-fixing phrases
         const errorFixingPhrases = [
             /Fixed the syntax error by\s*/gi,
@@ -1596,22 +1620,22 @@ Please provide the updated or new diagram code in a code block, along with a bri
             /\s*to fix the syntax error/gi,
             /\s*to resolve the validation error/gi
         ];
-        
+
         // Apply each regex to clean the explanation
         errorFixingPhrases.forEach(phrase => {
             userFriendlyExplanation = userFriendlyExplanation.replace(phrase, '');
         });
-        
+
         // Clean up any remaining artifacts
         userFriendlyExplanation = userFriendlyExplanation
             .replace(/^\s*[.,;]\s*/g, '') // Remove leading punctuation
             .replace(/\s+/g, ' ') // Normalize whitespace
             .trim();
-        
+
         // If the explanation is now too short or generic, provide a better one
-        if (userFriendlyExplanation.length < 10 || 
+        if (userFriendlyExplanation.length < 10 ||
             /^(updated?|created?|generated?|done?)\.?$/gi.test(userFriendlyExplanation)) {
-            
+
             // Create a better explanation based on the original request
             if (originalUserPrompt) {
                 if (originalUserPrompt.toLowerCase().includes('create')) {
@@ -1627,12 +1651,12 @@ Please provide the updated or new diagram code in a code block, along with a bri
                 userFriendlyExplanation = "Diagram updated successfully.";
             }
         }
-        
+
         // Ensure it starts with a capital letter
         if (userFriendlyExplanation.length > 0) {
             userFriendlyExplanation = userFriendlyExplanation.charAt(0).toUpperCase() + userFriendlyExplanation.slice(1);
         }
-        
+
         return userFriendlyExplanation;
     }
 }
