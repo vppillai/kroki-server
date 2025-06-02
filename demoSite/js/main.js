@@ -436,21 +436,33 @@ function hideImageErrorBanner() {
 }
 
 // New file function
-function newFile() {
-    if (currentFile.isOpen && !currentFile.saved) {
+async function newFile() {
+    // Check for unsaved changes either in an open file or user-edited content
+    const hasUnsavedChanges = (currentFile.isOpen && !currentFile.saved) || 
+                              (userHasEditedContent && document.getElementById('code').value.trim() !== '');
+    
+    if (hasUnsavedChanges) {
         if (!confirm('You have unsaved changes. Are you sure you want to create a new file?')) {
             return;
         }
     }
 
+    // Get the current diagram type to load the appropriate example
+    const diagramType = document.getElementById('diagramType').value;
+    const exampleCode = await loadExampleForDiagramType(diagramType);
+
     currentFile.name = 'Untitled';
     currentFile.handle = null;
-    currentFile.content = defaultExample;
+    currentFile.content = exampleCode;
     currentFile.saved = false;
     currentFile.isOpen = true;
 
     const codeTextarea = document.getElementById('code');
-    codeTextarea.value = defaultExample;
+    codeTextarea.value = exampleCode;
+    
+    // Reset user edit tracking since we're starting fresh
+    userHasEditedContent = false;
+    
     updateLineNumbers();
     updateDiagram();
     updateFileStatus();
