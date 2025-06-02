@@ -25,6 +25,12 @@ class AIAssistant {
         this.minInputHeight = 60; // Minimum height for input container
         this.maxInputHeight = 300; // Maximum height for input container
 
+        // Message history for up/down arrow navigation
+        this.messageHistory = [];
+        this.messageHistoryIndex = -1;
+        this.maxMessageHistory = 50; // Limit message history size
+        this.currentDraftMessage = ''; // Store current typed message when navigating
+
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
@@ -190,12 +196,29 @@ class AIAssistant {
                 } else {
                     this.sendMessage();
                 }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.navigateMessageHistory('up');
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.navigateMessageHistory('down');
+            } else if (this.messageHistoryIndex !== -1 &&
+                !['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
+                // User is typing something other than navigation keys - reset navigation
+                this.messageHistoryIndex = -1;
             }
             // Allow Shift+Enter for new lines (default behavior)
         });
 
-        // Auto-resize chat input
-        this.chatInput.addEventListener('input', () => this.autoResizeInput());
+        // Auto-resize chat input and reset message history navigation on manual input
+        this.chatInput.addEventListener('input', () => {
+            this.autoResizeInput();
+            // Reset navigation state when user manually types (unless we're navigating)
+            if (this.messageHistoryIndex !== -1) {
+                // User is manually editing while navigating - update the current message
+                this.currentDraftMessage = this.chatInput.value;
+            }
+        });
 
         // Escape key to minimize chat
         document.addEventListener('keydown', (e) => {
@@ -351,6 +374,7 @@ class AIAssistant {
 
         // Clear chat history when closing
         this.clearChatHistory();
+        this.clearMessageHistory();
     }
 
     clearChatHistory() {
@@ -363,6 +387,12 @@ class AIAssistant {
 
         // Clear history array but keep system messages
         this.chatHistory = this.chatHistory.filter(msg => msg.type === 'system');
+    }
+
+    clearMessageHistory() {
+        this.messageHistory = [];
+        this.messageHistoryIndex = -1;
+        this.currentDraftMessage = '';
     }
 
     minimizeChat() {
@@ -443,6 +473,68 @@ class AIAssistant {
         } else {
             this.backendIndicator.textContent = 'Using Default Backend';
             this.backendIndicator.className = 'ai-backend-indicator default';
+        }
+    }
+
+    /**
+     * Add a message to the message history for navigation
+     */
+    addToMessageHistory(message) {
+        if (!message || !message.trim()) return;
+
+        // Remove duplicate if it exists (move to end)
+        const existingIndex = this.messageHistory.indexOf(message);
+        if (existingIndex !== -1) {
+            this.messageHistory.splice(existingIndex, 1);
+        }
+
+        // Add to end of history
+        this.messageHistory.push(message);
+
+        // Limit history size
+        if (this.messageHistory.length > this.maxMessageHistory) {
+            this.messageHistory = this.messageHistory.slice(-this.maxMessageHistory);
+        }
+    }
+
+    /**
+     * Navigate through message history with up/down arrows
+     */
+    navigateMessageHistory(direction) {
+        if (this.messageHistory.length === 0) return;
+
+        // If we're starting navigation, store the current draft
+        if (this.messageHistoryIndex === -1) {
+            this.currentDraftMessage = this.chatInput.value;
+        }
+
+        if (direction === 'up') {
+            // Navigate backwards through history (newer to older)
+            if (this.messageHistoryIndex < this.messageHistory.length - 1) {
+                this.messageHistoryIndex++;
+                const historyMessage = this.messageHistory[this.messageHistory.length - 1 - this.messageHistoryIndex];
+                this.chatInput.value = historyMessage;
+                this.autoResizeInput();
+                // Move cursor to end
+                this.chatInput.setSelectionRange(historyMessage.length, historyMessage.length);
+            }
+        } else if (direction === 'down') {
+            // Navigate forwards through history (older to newer)
+            if (this.messageHistoryIndex > 0) {
+                this.messageHistoryIndex--;
+                const historyMessage = this.messageHistory[this.messageHistory.length - 1 - this.messageHistoryIndex];
+                this.chatInput.value = historyMessage;
+                this.autoResizeInput();
+                // Move cursor to end
+                this.chatInput.setSelectionRange(historyMessage.length, historyMessage.length);
+            } else if (this.messageHistoryIndex === 0) {
+                // Return to the draft message
+                this.messageHistoryIndex = -1;
+                this.chatInput.value = this.currentDraftMessage;
+                this.autoResizeInput();
+                // Move cursor to end
+                this.chatInput.setSelectionRange(this.currentDraftMessage.length, this.currentDraftMessage.length);
+            }
         }
     }
 
@@ -633,10 +725,17 @@ class AIAssistant {
         const message = this.chatInput.value.trim();
         if (!message || this.isRequestInProgress) return;
 
+        // Store message in history for up/down arrow navigation
+        this.addToMessageHistory(message);
+
         // Add user message to chat
         this.addMessage('user', message);
         this.chatInput.value = '';
         this.autoResizeInput();
+
+        // Reset message history navigation
+        this.messageHistoryIndex = -1;
+        this.currentDraftMessage = '';
 
         // Set up request cancellation
         this.isRequestInProgress = true;
