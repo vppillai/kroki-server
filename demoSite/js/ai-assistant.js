@@ -12,7 +12,7 @@ class AIAssistant {
         this.retryAttempts = 0;
         this.maxRetryAttempts = 3;
         this.chatHistory = [];
-        this.configManager = configManager; // Store the config manager reference
+        this.configManager = configManager;
 
         // Request cancellation support
         this.currentAbortController = null;
@@ -22,14 +22,14 @@ class AIAssistant {
         this.isResizing = false;
         this.resizeStartY = 0;
         this.initialInputHeight = 0;
-        this.minInputHeight = 60; // Minimum height for input container
-        this.maxInputHeight = 300; // Maximum height for input container
+        this.minInputHeight = 60;
+        this.maxInputHeight = 300;
 
-        // Message history for up/down arrow navigation
+        // Message history for navigation
         this.messageHistory = [];
         this.messageHistoryIndex = -1;
-        this.maxMessageHistory = 50; // Limit message history size
-        this.currentDraftMessage = ''; // Store current typed message when navigating
+        this.maxMessageHistory = 50;
+        this.currentDraftMessage = '';
 
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
@@ -466,13 +466,19 @@ class AIAssistant {
             return;
         }
 
-        const config = this.getAIConfig();
-        if (config.useCustomAPI && config.endpoint && config.apiKey) {
-            this.backendIndicator.textContent = 'Using Custom API';
-            this.backendIndicator.className = 'ai-backend-indicator custom';
-        } else {
-            this.backendIndicator.textContent = 'Using Default Backend';
-            this.backendIndicator.className = 'ai-backend-indicator default';
+        try {
+            const config = this.getAIConfig();
+            if (config.useCustomAPI && config.endpoint && config.apiKey) {
+                this.backendIndicator.textContent = 'Custom API';
+                this.backendIndicator.className = 'ai-backend-indicator custom';
+            } else {
+                this.backendIndicator.textContent = 'Default Backend';
+                this.backendIndicator.className = 'ai-backend-indicator default';
+            }
+        } catch (error) {
+            console.warn("AI Assistant: Error updating backend indicator:", error);
+            this.backendIndicator.textContent = 'Config Error';
+            this.backendIndicator.className = 'ai-backend-indicator error';
         }
     }
 
@@ -854,16 +860,6 @@ class AIAssistant {
                 throw new Error(rawResponseContent.error);
             }
 
-            // Log the raw response for debugging
-            console.log('Raw AI Response Content:', rawResponseContent);
-
-            // Extract and log the actual AI message content
-            let aiMessageContent = '';
-            if (rawResponseContent.choices && rawResponseContent.choices[0] && rawResponseContent.choices[0].message) {
-                aiMessageContent = rawResponseContent.choices[0].message.content;
-                console.log('AI Message Content (what AI actually said):', aiMessageContent);
-            }
-
             const aiParsedResponse = this.parseAIResponse(rawResponseContent);
             const { diagramCode, explanation } = aiParsedResponse;
 
@@ -971,7 +967,6 @@ class AIAssistant {
 
     async validateAndApplyDiagramCode(diagramCode, diagramType) {
         try {
-            // Store current code for rollback if needed
             const codeTextarea = document.getElementById('code');
             const originalCode = codeTextarea ? codeTextarea.value : '';
 
@@ -981,46 +976,10 @@ class AIAssistant {
             // Give the diagram rendering system time to process
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Check if there are any visible error indicators
-            const errorElements = document.querySelectorAll('.error, .error-message, [class*="error"]');
-            const hasVisibleErrors = Array.from(errorElements).some(el =>
-                el.offsetParent !== null && // Element is visible
-                el.textContent.trim() !== '' && // Element has content
-                !el.textContent.toLowerCase().includes('no errors') // Not a "no errors" message
-            );
+            // Check for validation errors
+            const validationResult = this.checkDiagramValidation();
 
-            // Check if the diagram image loaded successfully
-            const diagramImage = document.querySelector('#diagram-img, .diagram-image, [id*="diagram"] img');
-            let imageLoadedSuccessfully = true;
-
-            if (diagramImage) {
-                // Check if image source indicates an error
-                const imgSrc = diagramImage.src;
-                if (imgSrc.includes('error') || imgSrc.includes('invalid')) {
-                    imageLoadedSuccessfully = false;
-                }
-
-                // Check image natural dimensions (error images are often very small)
-                if (diagramImage.naturalWidth <= 1 || diagramImage.naturalHeight <= 1) {
-                    imageLoadedSuccessfully = false;
-                }
-            }
-
-            // Additional validation by attempting to encode the diagram
-            let encodingSuccessful = true;
-            try {
-                if (window.encodeKrokiDiagram) {
-                    window.encodeKrokiDiagram(diagramCode);
-                } else {
-                    // Basic encoding test
-                    this.encodeKrokiDiagram(diagramCode);
-                }
-            } catch (encodingError) {
-                encodingSuccessful = false;
-                console.warn('Diagram encoding failed:', encodingError);
-            }
-
-            if (hasVisibleErrors) {
+            if (!validationResult.success) {
                 // Rollback to original code
                 if (codeTextarea) {
                     codeTextarea.value = originalCode;
@@ -1028,39 +987,11 @@ class AIAssistant {
                 }
                 return {
                     success: false,
-                    error: 'Diagram contains syntax errors visible in the UI'
+                    error: validationResult.error
                 };
             }
 
-            if (!imageLoadedSuccessfully) {
-                // Rollback to original code
-                if (codeTextarea) {
-                    codeTextarea.value = originalCode;
-                    this.updateDiagramCode(originalCode);
-                }
-                return {
-                    success: false,
-                    error: 'Diagram image failed to load properly'
-                };
-            }
-
-            if (!encodingSuccessful) {
-                // Rollback to original code
-                if (codeTextarea) {
-                    codeTextarea.value = originalCode;
-                    this.updateDiagramCode(originalCode);
-                }
-                return {
-                    success: false,
-                    error: 'Diagram code encoding failed'
-                };
-            }
-
-            // If we get here, validation passed
-            return {
-                success: true,
-                error: null
-            };
+            return { success: true, error: null };
 
         } catch (error) {
             console.warn('Validation error:', error);
@@ -1069,6 +1000,46 @@ class AIAssistant {
                 error: `Validation process failed: ${error.message}`
             };
         }
+    }
+
+    /**
+     * Check if the current diagram has validation errors
+     */
+    checkDiagramValidation() {
+        // Check for visible error indicators
+        const errorElements = document.querySelectorAll('.error, .error-message, [class*="error"]');
+        const hasVisibleErrors = Array.from(errorElements).some(el =>
+            el.offsetParent !== null &&
+            el.textContent.trim() !== '' &&
+            !el.textContent.toLowerCase().includes('no errors')
+        );
+
+        if (hasVisibleErrors) {
+            return { success: false, error: 'Diagram contains syntax errors visible in the UI' };
+        }
+
+        // Check if diagram image loaded successfully
+        const diagramImage = document.querySelector('#diagram-img, .diagram-image, [id*="diagram"] img');
+        if (diagramImage) {
+            const imgSrc = diagramImage.src;
+            if (imgSrc.includes('error') || imgSrc.includes('invalid') ||
+                diagramImage.naturalWidth <= 1 || diagramImage.naturalHeight <= 1) {
+                return { success: false, error: 'Diagram image failed to load properly' };
+            }
+        }
+
+        // Test diagram encoding
+        try {
+            if (window.encodeKrokiDiagram) {
+                const codeTextarea = document.getElementById('code');
+                const diagramCode = codeTextarea ? codeTextarea.value : '';
+                window.encodeKrokiDiagram(diagramCode);
+            }
+        } catch (encodingError) {
+            return { success: false, error: 'Diagram code encoding failed' };
+        }
+
+        return { success: true, error: null };
     }
 
     parseAIResponse(responseContent) {
@@ -1303,18 +1274,9 @@ class AIAssistant {
                 throw error; // Re-throw abort errors to be handled upstream
             }
 
-            // Don't override API errors with timeout message
-            if (error.message.includes('API Error') ||
-                error.message.includes('Authentication failed') ||
-                error.message.includes('Access forbidden') ||
-                error.message.includes('Rate limit') ||
-                error.message.includes('Server error') ||
-                error.message.includes('Client error')) {
-                throw error; // Re-throw API errors as-is
-            }
-
-            // Only show timeout message for actual timeout/network errors
-            throw new Error('Request timed out. Please try again or increase the timeout in settings.');
+            // Handle specific error types with user-friendly messages
+            const errorMessage = this.getErrorMessage(error, response);
+            throw new Error(errorMessage);
         } finally {
             clearTimeout(timeoutId);
         }
@@ -1378,53 +1340,15 @@ class AIAssistant {
                 throw error; // Re-throw abort errors to be handled upstream
             }
 
-            // Don't override specific error messages with timeout message
-            if (error.message.includes('Authentication failed') ||
-                error.message.includes('Access forbidden') ||
-                error.message.includes('service is currently unavailable') ||
-                error.message.includes('Rate limit') ||
-                error.message.includes('server error') ||
-                error.message.includes('API Error')) {
-                throw error; // Re-throw specific errors as-is
-            }
-
-            // Only show timeout message for actual timeout/network errors
-            throw new Error('Request timed out. Please try again or increase the timeout in settings.');
+            // Handle specific error types with user-friendly messages
+            const errorMessage = this.getErrorMessage(error, response);
+            throw new Error(errorMessage);
         } finally {
             clearTimeout(timeoutId);
         }
     }
 
-    async validateWithKroki(code, diagramType) {
-        if (!code || !code.trim()) return false;
-
-        try {
-            const response = await fetch('/api/validate-diagram', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Origin': window.location.origin
-                },
-                body: JSON.stringify({
-                    code: code,
-                    diagramType: diagramType
-                })
-            });
-
-            if (!response.ok) {
-                console.warn('Diagram validation failed:', response.status, response.statusText);
-                return false;
-            }
-
-            const result = await response.json();
-            return result.valid === true;
-
-        } catch (error) {
-            console.warn('Diagram validation error:', error);
-            return await this.validateWithKrokiDirect(code, diagramType);
-        }
-    }
-
+    // Remove redundant validateWithKroki method as it's just calling validateWithKrokiDirect
     async validateWithKrokiDirect(code, diagramType) {
         try {
             const encodedDiagram = window.encodeKrokiDiagram ? window.encodeKrokiDiagram(code) : this.encodeKrokiDiagram(code);
@@ -1549,7 +1473,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
             if (aiConfig) {
                 return {
                     enabled: aiConfig.enabled !== undefined ? aiConfig.enabled : true,
-                    useCustomAPI: aiConfig.useCustomAPI !== undefined ? aiConfig.useCustomAPI : !aiConfig.useProxy, // Assuming useProxy is the inverse
+                    useCustomAPI: aiConfig.useCustomAPI !== undefined ? aiConfig.useCustomAPI : false,
                     endpoint: aiConfig.endpoint || '',
                     apiKey: aiConfig.apiKey || '',
                     model: aiConfig.model || 'gpt-4o',
@@ -1561,8 +1485,8 @@ Please provide the updated or new diagram code in a code block, along with a bri
                 };
             }
         }
+
         // Return default config if manager or 'ai' config is not found
-        console.warn("AI Assistant: AI config not found, using defaults for getAIConfig.");
         return {
             enabled: true,
             useCustomAPI: false,
@@ -1715,6 +1639,25 @@ Please provide the updated or new diagram code in a code block, along with a bri
         }
 
         return userFriendlyExplanation;
+    }
+
+    /**
+     * Get user-friendly error message based on error type and response
+     */
+    getErrorMessage(error, response = null) {
+        // Check for specific error messages that should be preserved
+        if (error.message.includes('Authentication failed') ||
+            error.message.includes('Access forbidden') ||
+            error.message.includes('service is currently unavailable') ||
+            error.message.includes('Rate limit') ||
+            error.message.includes('server error') ||
+            error.message.includes('API Error') ||
+            error.message.includes('Client error')) {
+            return error.message;
+        }
+
+        // Default timeout message for network errors
+        return 'Request timed out. Please try again or increase the timeout in settings.';
     }
 }
 

@@ -566,4 +566,13 @@
     background: rgba(59, 130, 246, 0.1) !important;
 }
 
-/* Settings Modal */
+/* Loading States */
+.ai-backend-indicator.loading {
+    background: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
+}
+
+.ai-backend-indicator.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
+}

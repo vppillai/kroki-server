@@ -482,9 +482,7 @@ function handleFileShortcuts(event) {
                 break;
             case ',':
                 event.preventDefault();
-                console.log('Settings keyboard shortcut triggered');
                 if (window.configUI) {
-                    console.log('ConfigUI available, showing settings');
                     window.configUI.open();
                 } else {
                     console.warn('Configuration UI not available yet');
@@ -1983,9 +1981,8 @@ function setupConfigurationListeners() {
 
     // Listen for AI Assistant configuration changes
     const aiConfigPaths = [
-        'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model',
-        'ai.maxRetryAttempts', 'ai.promptTheme', 'ai.autoValidate',
-        'ai.persistHistory', 'ai.useProxy', 'ai.timeout'
+        'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model', 'ai.customModel',
+        'ai.maxRetryAttempts', 'ai.autoValidate', 'ai.useCustomAPI', 'ai.userPromptTemplate', 'ai.timeout'
     ];
 
     aiConfigPaths.forEach(path => {
@@ -2028,11 +2025,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize settings button
     const settingsBtn = document.getElementById('settings-btn');
     if (settingsBtn) {
-        console.log('Settings button found, adding event listener');
         settingsBtn.addEventListener('click', () => {
-            console.log('Settings button clicked');
             if (window.configUI) {
-                console.log('ConfigUI available, showing settings');
                 window.configUI.open();
             } else {
                 console.warn('Configuration UI not available yet');
@@ -2045,15 +2039,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize configuration system
     setTimeout(() => {
-        console.log('Initializing configuration system...');
-        console.log('configManager available:', !!window.configManager);
-
         // Initialize ConfigUI manually
         if (window.configManager && typeof ConfigUI !== 'undefined') {
             try {
-                console.log('Creating ConfigUI instance...');
                 window.configUI = new ConfigUI(window.configManager);
-                console.log('ConfigUI created successfully');
             } catch (error) {
                 console.error('Error creating ConfigUI:', error);
             }
@@ -2064,9 +2053,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Initialize AI Assistant
         if (typeof AIAssistant !== 'undefined') {
             try {
-                console.log('Creating AI Assistant instance...');
                 window.aiAssistant = new AIAssistant(window.configManager);
-                console.log('AI Assistant created successfully');
             } catch (error) {
                 console.error('Error creating AI Assistant:', error);
             }
@@ -2077,13 +2064,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Initialize Code History
         if (typeof CodeHistory !== 'undefined') {
             try {
-                console.log('Creating Code History instance...');
                 window.codeHistory = new CodeHistory();
                 // Initialize with current code if available
                 setTimeout(() => {
                     window.codeHistory.initializeWithCurrentCode();
                 }, 100);
-                console.log('Code History created successfully');
             } catch (error) {
                 console.error('Error creating Code History:', error);
             }
@@ -2092,7 +2077,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         initializeConfigurationSystem();
-        console.log('Configuration system initialized, configManager:', !!window.configManager, 'configUI:', !!window.configUI, 'aiAssistant:', !!window.aiAssistant);
     }, 150); // Slightly longer delay to ensure all scripts are loaded
 });
 
@@ -2485,8 +2469,6 @@ function highlightSearchResults() {
             const currentMatch = searchState.matches[searchState.currentIndex];
             codeTextarea.setSelectionRange(currentMatch.index, currentMatch.index + currentMatch.length);
         }
-
-        console.log(`Search highlighting: Rendered ${searchState.matches.length} matches`);
 
     } catch (error) {
         console.error('Error in highlightSearchResults:', error);
