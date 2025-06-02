@@ -781,7 +781,7 @@ class AIAssistant {
         // Check configuration based on mode
         if (aiConfig.useCustomAPI) {
             if (!aiConfig.endpoint || !aiConfig.apiKey) {
-                this.addMessage('system', '⚠️ Custom API configuration is incomplete. Please set up your API endpoint and key in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.');
+                this.addMessage('system', '⚠️ Custom API configuration is incomplete. Please set up your API endpoint and key in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
                 return;
             }
         }
@@ -961,7 +961,9 @@ class AIAssistant {
                     ? `${error.message} Check your <button onclick="window.aiAssistant?.openSettings()">AI settings</button>.`
                     : `${error.message}`;
 
-                this.addMessage('system', `❌ ${errorMessage}`);
+                // Use rawHtml=true when the message contains HTML button
+                const hasHtml = errorMessage.includes('<button');
+                this.addMessage('system', `❌ ${errorMessage}`, hasHtml);
                 throw error;
             }
         }
@@ -1275,7 +1277,23 @@ class AIAssistant {
             });
 
             if (!response.ok) {
-                throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                // Get more detailed error information
+                let errorMessage = `API Error: ${response.status} ${response.statusText}`;
+
+                // Handle specific HTTP status codes with user-friendly messages
+                if (response.status === 401) {
+                    errorMessage = 'Authentication failed. Please check your API key in settings.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden. Please verify your API key permissions.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Server error. Please try again later.';
+                } else if (response.status >= 400 && response.status < 500) {
+                    errorMessage = 'Client error. Please check your request configuration.';
+                }
+
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -1284,6 +1302,18 @@ class AIAssistant {
             if (error.name === 'AbortError') {
                 throw error; // Re-throw abort errors to be handled upstream
             }
+
+            // Don't override API errors with timeout message
+            if (error.message.includes('API Error') ||
+                error.message.includes('Authentication failed') ||
+                error.message.includes('Access forbidden') ||
+                error.message.includes('Rate limit') ||
+                error.message.includes('Server error') ||
+                error.message.includes('Client error')) {
+                throw error; // Re-throw API errors as-is
+            }
+
+            // Only show timeout message for actual timeout/network errors
             throw new Error('Request timed out. Please try again or increase the timeout in settings.');
         } finally {
             clearTimeout(timeoutId);
@@ -1324,7 +1354,22 @@ class AIAssistant {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
+                let errorMessage = errorData.error || `API Error: ${response.status} ${response.statusText}`;
+
+                // Handle specific HTTP status codes with user-friendly messages
+                if (response.status === 401) {
+                    errorMessage = 'Authentication failed. The backend proxy is not properly configured with valid API credentials.';
+                } else if (response.status === 403) {
+                    errorMessage = 'Access forbidden by the backend proxy. Please contact the administrator.';
+                } else if (response.status === 503) {
+                    errorMessage = 'AI Assistant service is currently unavailable. Please try again later.';
+                } else if (response.status === 429) {
+                    errorMessage = 'Rate limit exceeded. Please try again later.';
+                } else if (response.status === 500) {
+                    errorMessage = 'Backend server error. Please try again later.';
+                }
+
+                throw new Error(errorMessage);
             }
 
             return await response.json();
@@ -1332,6 +1377,18 @@ class AIAssistant {
             if (error.name === 'AbortError') {
                 throw error; // Re-throw abort errors to be handled upstream
             }
+
+            // Don't override specific error messages with timeout message
+            if (error.message.includes('Authentication failed') ||
+                error.message.includes('Access forbidden') ||
+                error.message.includes('service is currently unavailable') ||
+                error.message.includes('Rate limit') ||
+                error.message.includes('server error') ||
+                error.message.includes('API Error')) {
+                throw error; // Re-throw specific errors as-is
+            }
+
+            // Only show timeout message for actual timeout/network errors
             throw new Error('Request timed out. Please try again or increase the timeout in settings.');
         } finally {
             clearTimeout(timeoutId);
