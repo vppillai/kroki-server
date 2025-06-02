@@ -875,7 +875,12 @@ class AIAssistant {
                 const validationResult = await this.validateAndApplyDiagramCode(diagramCode, diagramType);
 
                 if (validationResult.success) {
-                    this.displayMessage(`✅ ${explanation}`, 'ai success');
+                    // Filter out error-fixing language from retry attempts for better user experience
+                    let userFriendlyExplanation = explanation;
+                    if (this.retryAttempts > 0) {
+                        userFriendlyExplanation = this.makeRetryExplanationUserFriendly(explanation, originalUserPrompt);
+                    }
+                    this.displayMessage(`✅ ${userFriendlyExplanation}`, 'ai success');
                 } else if (this.retryAttempts < aiConfig.maxRetryAttempts) {
                     // Check if request was cancelled before retrying
                     if (!this.isRequestInProgress) {
@@ -1569,6 +1574,66 @@ Please provide the updated or new diagram code in a code block, along with a bri
         } else {
             console.warn('AI Assistant: Could not find code textarea element');
         }
+    }
+
+    makeRetryExplanationUserFriendly(explanation, originalUserPrompt) {
+        // Remove error-fixing language that confuses users who didn't see the original error
+        let userFriendlyExplanation = explanation;
+        
+        // Remove common error-fixing phrases
+        const errorFixingPhrases = [
+            /Fixed the syntax error by\s*/gi,
+            /Fixed syntax error at\s*/gi,
+            /Fixed the error by\s*/gi,
+            /Fixed syntax by\s*/gi,
+            /Corrected the syntax error by\s*/gi,
+            /Corrected the error by\s*/gi,
+            /Fixed the specific syntax error\s*/gi,
+            /Fixed validation errors?\s*/gi,
+            /Resolved the syntax error by\s*/gi,
+            /Fixed the diagram syntax by\s*/gi,
+            /Fixed the rendering error by\s*/gi,
+            /\s*to fix the syntax error/gi,
+            /\s*to resolve the validation error/gi
+        ];
+        
+        // Apply each regex to clean the explanation
+        errorFixingPhrases.forEach(phrase => {
+            userFriendlyExplanation = userFriendlyExplanation.replace(phrase, '');
+        });
+        
+        // Clean up any remaining artifacts
+        userFriendlyExplanation = userFriendlyExplanation
+            .replace(/^\s*[.,;]\s*/g, '') // Remove leading punctuation
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+        
+        // If the explanation is now too short or generic, provide a better one
+        if (userFriendlyExplanation.length < 10 || 
+            /^(updated?|created?|generated?|done?)\.?$/gi.test(userFriendlyExplanation)) {
+            
+            // Create a better explanation based on the original request
+            if (originalUserPrompt) {
+                if (originalUserPrompt.toLowerCase().includes('create')) {
+                    userFriendlyExplanation = "Created the diagram as requested.";
+                } else if (originalUserPrompt.toLowerCase().includes('update') || originalUserPrompt.toLowerCase().includes('modify')) {
+                    userFriendlyExplanation = "Updated the diagram based on your request.";
+                } else if (originalUserPrompt.toLowerCase().includes('add')) {
+                    userFriendlyExplanation = "Added the requested elements to the diagram.";
+                } else {
+                    userFriendlyExplanation = "Generated the diagram successfully.";
+                }
+            } else {
+                userFriendlyExplanation = "Diagram updated successfully.";
+            }
+        }
+        
+        // Ensure it starts with a capital letter
+        if (userFriendlyExplanation.length > 0) {
+            userFriendlyExplanation = userFriendlyExplanation.charAt(0).toUpperCase() + userFriendlyExplanation.slice(1);
+        }
+        
+        return userFriendlyExplanation;
     }
 }
 
