@@ -32,7 +32,6 @@ services:
     networks:
       - kroki_network
 
-  # experimental!
   diagramsnet:
     image: yuzutech/kroki-diagramsnet
     expose:
@@ -46,13 +45,8 @@ services:
       - "8006"
     environment:
       - PORT=8006
-      - AI_ENABLED=${AI_ENABLED:-true}
-      - AI_ENDPOINT=${AI_ENDPOINT:-https://api.openai.com/v1/chat/completions}
-      - AI_MODEL=${AI_MODEL:-gpt-3.5-turbo}
-      - AI_TIMEOUT=${AI_TIMEOUT:-30}
-      - AI_API_KEY=${AI_API_KEY:-}
     env_file:
-      - .env  # Use top-level .env file instead of demoSite/.env
+      - .env
     networks:
       - kroki_network
 
