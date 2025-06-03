@@ -228,9 +228,8 @@ class ConfigUI {
                         </div>
                         
                         <div id="config-tab-ai" class="config-tab-content">
-                            <!-- Main Toggle Section -->
                             <div class="config-section">
-                                <h4 class="config-section-title">🤖 AI Assistant</h4>
+                                <h4 class="config-section-title">AI Assistant</h4>
                                 <div class="config-group">
                                     <div class="config-field config-field-horizontal">
                                         <label class="config-label config-checkbox">
@@ -243,156 +242,62 @@ class ConfigUI {
                                 </div>
                             </div>
                             
-                            <!-- Enhanced User Configuration Group -->
-                            <div class="config-section ai-user-configuration-group">
-                                <h4 class="config-section-title">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                        <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    Your Configuration
-                                </h4>
-                                
-                                <!-- API Mode Selection -->
-                                <div class="config-subsection">
-                                    <h5 class="config-subsection-title">🔧 API Connection Mode</h5>
-                                    <div class="config-group">
-                                        <div class="config-field config-field-horizontal">
-                                            <label class="config-label config-checkbox">
-                                                <input type="checkbox" data-config="ai.useCustomAPI" id="ai-use-custom-api">
-                                                <span class="config-checkbox-mark"></span>
-                                                <span class="config-checkbox-label">Use Custom API Configuration</span>
-                                            </label>
-                                            <div class="config-description">
-                                                <strong>Unchecked:</strong> Uses the default backend proxy (no additional configuration needed)<br>
-                                                <strong>Checked:</strong> Configure your own AI API endpoint and key below
-                                            </div>
-                                        </div>
+                            <div class="config-section">
+                                <h4 class="config-section-title">API Configuration</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.useCustomAPI" id="ai-use-custom-api">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Use Custom API Configuration</span>
+                                        </label>
+                                        <div class="config-description">Enable to configure your own AI API endpoint and key. Otherwise, the default backend proxy will be used.</div>
                                     </div>
-                                </div>
-                                
-                                <!-- User API Settings Subgroup -->
-                                <div class="config-subsection ai-user-settings-subgroup" data-depends="ai.useCustomAPI">
-                                    <h5 class="config-subsection-title">🔑 Your API Credentials</h5>
-                                    <div class="config-group">
-                                        <div class="config-field">
-                                            <label class="config-label">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                                                    <circle cx="12" cy="12" r="3"/>
-                                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
-                                                </svg>
-                                                AI Endpoint URL
-                                            </label>
-                                            <input type="text" class="config-input" data-config="ai.endpoint" placeholder="https://api.openai.com/v1/chat/completions">
-                                            <div class="config-description">API endpoint for AI chat completions</div>
-                                        </div>
-                                        
-                                        <div class="config-field">
-                                            <label class="config-label">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                                                    <rect x="3" y="11" width="18" height="10" rx="2" ry="2"/>
-                                                    <circle cx="12" cy="16" r="1"/>
-                                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                                </svg>
-                                                API Key
-                                            </label>
-                                            <div class="password-input-container">
-                                                <input type="password" class="config-input" data-config="ai.apiKey" placeholder="sk-..." id="ai-api-key-input">
-                                                <button type="button" class="password-toggle-btn" id="api-key-toggle" aria-label="Toggle password visibility">
-                                                    <svg class="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
-                                                    </svg>
-                                                    <svg class="eye-slash-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
-                                                        <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                            <div class="config-description">Your personal API key for the AI service</div>
-                                        </div>
-                                        
-                                        <div class="config-field">
-                                            <label class="config-label">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                                                    <polyline points="6,9 12,15 18,9"/>
-                                                </svg>
-                                                AI Model
-                                            </label>
-                                            <select class="config-select" data-config="ai.model">
-                                                <option value="gpt-4o">GPT-4o (Recommended)</option>
-                                                <option value="gpt-4">GPT-4</option>
-                                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                                <option value="claude-3">Claude 3</option>
-                                                <option value="custom">Custom Model</option>
-                                            </select>
-                                            <div class="config-description">Choose the AI model to use for diagram assistance</div>
-                                        </div>
-                                        
-                                        <div class="config-field" id="custom-model-field" style="display: none;">
-                                            <label class="config-label">Custom Model Name</label>
-                                            <input type="text" class="config-input" data-config="ai.customModel" placeholder="Enter custom model name">
-                                            <div class="config-description">Specify the exact model name for custom models</div>
-                                        </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">AI Endpoint URL</label>
+                                        <input type="text" class="config-input" data-config="ai.endpoint" placeholder="https://api.openai.com/v1/chat/completions">
+                                        <div class="config-description">API endpoint for AI chat completions</div>
                                     </div>
-                                </div>
-                                
-                                <!-- User Preferences Subgroup -->
-                                <div class="config-subsection">
-                                    <h5 class="config-subsection-title">⚙️ Your Preferences</h5>
-                                    <div class="config-group">
-                                        <div class="config-field config-field-horizontal">
-                                            <label class="config-label config-checkbox">
-                                                <input type="checkbox" data-config="ai.autoValidate" checked>
-                                                <span class="config-checkbox-mark"></span>
-                                                <span class="config-checkbox-label">Auto-validate Generated Code</span>
-                                            </label>
-                                            <div class="config-description">Automatically validate AI-generated diagram code with Kroki</div>
-                                        </div>
-                                        
-                                        <div class="config-field">
-                                            <label class="config-label">Request Timeout</label>
-                                            <div class="config-range">
-                                                <input type="range" min="10" max="120" step="5" class="config-input" data-config="ai.timeout">
-                                                <span class="config-range-value">30s</span>
-                                            </div>
-                                            <div class="config-description">Maximum time to wait for AI responses</div>
-                                        </div>
-                                        
-                                        <div class="config-field">
-                                            <label class="config-label">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                                    <polyline points="14,2 14,8 20,8"/>
-                                                    <line x1="16" y1="13" x2="8" y2="13"/>
-                                                    <line x1="16" y1="17" x2="8" y2="17"/>
-                                                    <polyline points="10,9 9,9 8,9"/>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">API Key</label>
+                                        <div class="password-input-container">
+                                            <input type="password" class="config-input" data-config="ai.apiKey" placeholder="sk-..." id="ai-api-key-input">
+                                            <button type="button" class="password-toggle-btn" id="api-key-toggle" aria-label="Toggle password visibility">
+                                                <svg class="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
                                                 </svg>
-                                                Custom Prompt Template
-                                            </label>
-                                            <textarea 
-                                                class="config-input config-textarea" 
-                                                data-config="ai.userPromptTemplate" 
-                                                rows="4"
-                                                placeholder="Use {{diagramType}}, {{currentCode}}, and {{userPrompt}} as placeholders.&#10;&#10;Example:&#10;You are an expert diagram assistant. Create or modify {{diagramType}} diagrams.&#10;Current code: {{currentCode}}&#10;User request: {{userPrompt}}&#10;&#10;Respond with valid JSON: {&quot;diagramCode&quot;: &quot;...&quot;, &quot;explanation&quot;: &quot;...&quot;}"
-                                            ></textarea>
-                                            <div class="config-description">
-                                                <strong>Advanced:</strong> Customize how requests are sent to your AI model. 
-                                                Use placeholders: <code>{{diagramType}}</code>, <code>{{currentCode}}</code>, <code>{{userPrompt}}</code>
-                                            </div>
+                                                <svg class="eye-slash-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                                                    <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
+                                                </svg>
+                                            </button>
                                         </div>
+                                        <div class="config-description">Your API key for the AI service</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">AI Model</label>
+                                        <select class="config-select" data-config="ai.model">
+                                            <option value="gpt-4o">GPT-4o</option>
+                                            <option value="gpt-4">GPT-4</option>
+                                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                            <option value="claude-3">Claude 3</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <div class="config-description">Choose the AI model to use for diagram assistance</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI" id="custom-model-field" style="display: none;">
+                                        <label class="config-label">Custom Model Name</label>
+                                        <input type="text" class="config-input" data-config="ai.customModel" placeholder="Enter custom model name">
+                                        <div class="config-description">Specify the exact model name for custom models</div>
                                     </div>
                                 </div>
                             </div>
                             
-                            <!-- System Behavior Settings -->
-                            <!-- System Behavior Settings -->
                             <div class="config-section">
-                                <h4 class="config-section-title">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
-                                        <circle cx="12" cy="12" r="3"/>
-                                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                    </svg>
-                                    System Settings
-                                </h4>
+                                <h4 class="config-section-title">Behavior Settings</h4>
                                 <div class="config-group">
                                     <div class="config-field">
                                         <label class="config-label">Maximum Retry Attempts</label>
@@ -400,7 +305,41 @@ class ConfigUI {
                                             <input type="range" min="1" max="5" step="1" class="config-input" data-config="ai.maxRetryAttempts">
                                             <span class="config-range-value">3</span>
                                         </div>
-                                        <div class="config-description">Number of times to retry failed AI requests (applies to all users)</div>
+                                        <div class="config-description">Number of times to retry failed diagram validation</div>
+                                    </div>
+                                    
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.autoValidate" checked>
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Auto-validate Generated Code</span>
+                                        </label>
+                                        <div class="config-description">Automatically validate AI-generated diagram code with Kroki</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">Custom User Prompt Template</label>
+                                        <textarea 
+                                            class="config-input config-textarea" 
+                                            data-config="ai.userPromptTemplate" 
+                                            rows="6"
+                                            placeholder="Use {{diagramType}}, {{currentCode}}, and {{userPrompt}} as placeholders"
+                                        ></textarea>
+                                        <div class="config-description">Template for AI prompts. Only available when using custom API configuration.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Privacy & Performance</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">Request Timeout (seconds)</label>
+                                        <div class="config-range">
+                                            <input type="range" min="10" max="120" step="5" class="config-input" data-config="ai.timeout">
+                                            <span class="config-range-value">30</span>
+                                        </div>
+                                        <div class="config-description">Timeout for AI API requests</div>
                                     </div>
                                 </div>
                             </div>
@@ -652,39 +591,14 @@ class ConfigUI {
         const customApiCheckbox = document.getElementById('ai-use-custom-api');
         const isCustom = customApiCheckbox && customApiCheckbox.checked;
 
-        // Show/hide the user API settings subgroup (new structure)
-        const userSettingsSubgroup = document.querySelector('.ai-user-settings-subgroup');
-        if (userSettingsSubgroup) {
-            userSettingsSubgroup.style.display = isCustom ? 'block' : 'none';
-        }
-
-        // Show/hide the legacy user settings group (for backward compatibility)
-        const userSettingsGroup = document.querySelector('.ai-user-settings-group');
-        if (userSettingsGroup) {
-            userSettingsGroup.style.display = isCustom ? 'block' : 'none';
-        }
-
         // Enable/disable fields that depend on custom API
         document.querySelectorAll('[data-depends="ai.useCustomAPI"]').forEach(field => {
             const inputs = field.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
                 input.disabled = !isCustom;
             });
-            
-            // Apply opacity for visual feedback (except for groups that are hidden completely)
-            if (!field.classList.contains('ai-user-settings-group') && 
-                !field.classList.contains('ai-user-settings-subgroup')) {
-                field.style.opacity = isCustom ? '1' : '0.5';
-            }
+            field.style.opacity = isCustom ? '1' : '0.5';
         });
-
-        // Handle custom model field visibility
-        const modelSelect = document.querySelector('select[data-config="ai.model"]');
-        const customModelField = document.getElementById('custom-model-field');
-        if (modelSelect && customModelField) {
-            const showCustomModel = isCustom && modelSelect.value === 'custom';
-            customModelField.style.display = showCustomModel ? 'block' : 'none';
-        }
     }
 
     open() {
