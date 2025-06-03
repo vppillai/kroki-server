@@ -279,10 +279,15 @@ class ConfigUI {
                                     <div class="config-field" data-depends="ai.useCustomAPI">
                                         <label class="config-label">AI Model</label>
                                         <select class="config-select" data-config="ai.model">
+                                            <option value="gpt-4.1">GPT-4.1</option>
+                                            <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                                            <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
+                                            <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
                                             <option value="gpt-4o">GPT-4o</option>
-                                            <option value="gpt-4">GPT-4</option>
-                                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                            <option value="claude-3">Claude 3</option>
+                                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                            <option value="o4-mini">O4 Mini</option>
+                                            <option value="o3">O3</option>
+                                            <option value="o3-mini">O3 Mini</option>
                                             <option value="custom">Custom</option>
                                         </select>
                                         <div class="config-description">Choose the AI model to use for diagram assistance</div>
@@ -544,13 +549,13 @@ class ConfigUI {
         if (toggleBtn && passwordInput && eyeIcon && eyeSlashIcon) {
             // Always start with password hidden when modal opens
             this.resetPasswordVisibility();
-            
+
             toggleBtn.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
-                
+
                 // Toggle input type
                 passwordInput.type = isPassword ? 'text' : 'password';
-                
+
                 // Toggle icon visibility
                 if (isPassword) {
                     eyeIcon.style.display = 'none';
@@ -576,11 +581,11 @@ class ConfigUI {
         if (passwordInput && toggleBtn && eyeIcon && eyeSlashIcon) {
             // Always start with password type (hidden)
             passwordInput.type = 'password';
-            
+
             // Show eye icon, hide eye-slash icon
             eyeIcon.style.display = 'block';
             eyeSlashIcon.style.display = 'none';
-            
+
             // Set appropriate aria-label and title
             toggleBtn.setAttribute('aria-label', 'Show password');
             toggleBtn.title = 'Show password';

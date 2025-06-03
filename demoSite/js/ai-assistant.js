@@ -469,10 +469,15 @@ class AIAssistant {
         try {
             const config = this.getAIConfig();
             if (config.useCustomAPI && config.endpoint && config.apiKey) {
-                this.backendIndicator.textContent = 'Custom API';
+                // Show model name and user settings indicator when using custom API
+                let modelName = config.model || 'Unknown';
+                if (config.model === 'custom' && config.customModel) {
+                    modelName = config.customModel;
+                }
+                this.backendIndicator.textContent = `${modelName} (Custom)`;
                 this.backendIndicator.className = 'ai-backend-indicator custom';
             } else {
-                this.backendIndicator.textContent = 'Default Backend';
+                this.backendIndicator.textContent = 'Server Backend';
                 this.backendIndicator.className = 'ai-backend-indicator default';
             }
         } catch (error) {
