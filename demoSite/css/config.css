@@ -257,6 +257,7 @@
     background: var(--border-color);
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .config-range input[type="range"]::-webkit-slider-thumb {
@@ -476,6 +477,20 @@
         width: 100%;
         justify-content: center;
     }
+    
+    .ai-user-configuration-group {
+        margin: var(--spacing-md) 0;
+        padding: var(--spacing-md);
+    }
+    
+    .ai-user-settings-subgroup {
+        padding: var(--spacing-sm);
+        margin: var(--spacing-sm) 0;
+    }
+    
+    .config-subsection-title {
+        font-size: 13px;
+    }
 }
 
 /* Animations */
@@ -504,4 +519,202 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* AI Assistant User Settings Group Styling */
+/* User configuration group styling */
+.ai-user-configuration-group {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(16, 185, 129, 0.02));
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-lg);
+    margin: var(--spacing-lg) 0;
+    position: relative;
+}
+
+.ai-user-configuration-group::before {
+    content: "👤";
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--background-primary);
+    padding: 2px 6px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.ai-user-configuration-group .config-section-title {
+    color: rgb(59, 130, 246);
+    border-bottom: 2px solid rgba(59, 130, 246, 0.2);
+    padding-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+}
+
+.ai-user-configuration-group .config-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.ai-user-configuration-group .config-subsection:last-child {
+    margin-bottom: 0;
+}
+
+/* Subsection styling within user configuration */
+.config-subsection {
+    margin-bottom: var(--spacing-lg);
+}
+
+.config-subsection-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.config-subsection-title svg {
+    opacity: 0.7;
+}
+
+.ai-user-settings-subgroup {
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.ai-user-settings-subgroup[style*="display: none"] {
+    display: none !important;
+}
+
+.ai-user-settings-subgroup .config-subsection-title {
+    color: rgb(59, 130, 246);
+    border-bottom-color: rgba(59, 130, 246, 0.3);
+}
+
+.ai-user-settings-subgroup .config-label {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.ai-user-settings-subgroup .config-label svg {
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.ai-user-settings-subgroup .config-description {
+    background: rgba(59, 130, 246, 0.08);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid rgba(59, 130, 246, 0.4);
+}
+
+.ai-user-settings-subgroup .config-description code {
+    background: rgba(59, 130, 246, 0.15);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+}
+
+/* Legacy ai-user-settings-group styling (keep for compatibility) */
+.ai-user-settings-group {
+    background: rgba(59, 130, 246, 0.03);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+.ai-user-settings-group::before {
+    content: "👤";
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: var(--background-primary);
+    padding: 0 4px;
+    font-size: 12px;
+}
+
+.ai-user-settings-group .config-section-title {
+    color: rgb(59, 130, 246);
+    border-bottom-color: rgba(59, 130, 246, 0.2);
+}
+
+.ai-user-settings-group .config-label {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.ai-user-settings-group .config-label svg {
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.ai-user-settings-group .config-description {
+    background: rgba(59, 130, 246, 0.05);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid rgba(59, 130, 246, 0.3);
+}
+
+.ai-user-settings-group .config-description code {
+    background: rgba(59, 130, 246, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+}
+
+/* Enhanced visual separation for sections */
+.config-section h4.config-section-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Disabled state styling for dependent fields */
+.config-field[data-depends] {
+    transition: all 0.3s ease;
+}
+
+.config-field[data-depends]:not([style*="display: block"]) {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.config-field[data-depends]:not([style*="display: block"]) .config-input,
+.config-field[data-depends]:not([style*="display: block"]) .config-select,
+.config-field[data-depends]:not([style*="display: block"]) .config-textarea {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Enhanced focus states for grouped elements */
+.ai-user-configuration-group .config-input:focus,
+.ai-user-configuration-group .config-select:focus {
+    border-color: rgb(59, 130, 246);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ai-user-configuration-group .config-checkbox input:focus + .config-checkbox-mark {
+    border-color: rgb(59, 130, 246);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Improved visual hierarchy for section icons */
+.config-section-title svg {
+    vertical-align: middle;
+    flex-shrink: 0;
 }
