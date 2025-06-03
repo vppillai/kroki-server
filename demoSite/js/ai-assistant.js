@@ -43,9 +43,6 @@ class AIAssistant {
         this.createElements();
         this.setupEventListeners();
         this.loadConfiguration();
-
-        // Check backend availability and auto-configure if needed
-        this.checkBackendAvailabilityOnLoad();
     }
 
     createElements() {
@@ -482,92 +479,6 @@ class AIAssistant {
             console.warn("AI Assistant: Error updating backend indicator:", error);
             this.backendIndicator.textContent = 'Config Error';
             this.backendIndicator.className = 'ai-backend-indicator error';
-        }
-    }
-
-    /**
-     * Check backend availability on page load and auto-configure if needed
-     */
-    async checkBackendAvailabilityOnLoad() {
-        // Wait a moment for configuration to be ready
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const config = this.getAIConfig();
-
-        // If user already has custom API configured and complete, don't interfere
-        if (config.useCustomAPI && config.endpoint && config.apiKey) {
-            console.log('AI Assistant: Custom API already configured');
-            return;
-        }
-
-        // Check if default backend is available
-        const isBackendAvailable = await this.checkBackendAvailability();
-
-        if (!isBackendAvailable) {
-            console.log('AI Assistant: Default backend unavailable, switching to custom API mode');
-
-            // Automatically switch to custom API mode
-            this.configManager.set('ai.useCustomAPI', true);
-            this.updateBackendIndicator();
-
-            // Show configuration message if settings are incomplete
-            this.showBackendUnavailableMessage();
-        }
-    }
-
-    /**
-     * Check if the backend server is available
-     */
-    async checkBackendAvailability() {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-
-            const response = await fetch('/api/ai-assist', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Origin': window.location.origin
-                },
-                body: JSON.stringify({
-                    messages: [{ role: 'user', content: 'health check' }],
-                    model: 'gpt-4o',
-                    maxRetryAttempts: 1
-                }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            // Even if we get an error response, if we get a response at all, 
-            // the backend is reachable (it might just be an API key issue)
-            return response.status !== 503;
-
-        } catch (error) {
-            // Network errors, timeouts, or 503 errors mean backend is unavailable
-            return false;
-        }
-    }
-
-    /**
-     * Show message when backend is unavailable and configuration is needed
-     */
-    showBackendUnavailableMessage() {
-        const config = this.getAIConfig();
-
-        // Check if custom API configuration is complete
-        if (config.useCustomAPI && config.endpoint && config.apiKey) {
-            // Configuration is complete, show welcome message
-            this.addMessage('system', '👋 Hi! I\'m your AI diagram assistant. How can I help you create or modify diagrams today?');
-        } else {
-            // Configuration incomplete, show setup message
-            const message = `👋 Hi! I'm your AI diagram assistant.
-
-⚠️ **Configuration Required:** The default AI backend server is not available. Please configure your own AI API endpoint and key to use the AI Assistant.
-
-<button onclick="window.aiAssistant?.openSettings()" class="error-settings-btn">⚙️ Configure AI Settings</button>`;
-
-            this.addMessage('system', message, true);
         }
     }
 
@@ -1420,9 +1331,7 @@ class AIAssistant {
                     errorMessage = 'Backend server error. Please try again later.';
                 }
 
-                const error = new Error(errorMessage);
-                error.response = response;
-                throw error;
+                throw new Error(errorMessage);
             }
 
             return await response.json();
@@ -1432,10 +1341,8 @@ class AIAssistant {
             }
 
             // Handle specific error types with user-friendly messages
-            const errorMessage = this.getErrorMessage(error, error.response);
-            const newError = new Error(errorMessage);
-            newError.response = error.response;
-            throw newError;
+            const errorMessage = this.getErrorMessage(error, response);
+            throw new Error(errorMessage);
         } finally {
             clearTimeout(timeoutId);
         }
@@ -1738,24 +1645,6 @@ Please provide the updated or new diagram code in a code block, along with a bri
      * Get user-friendly error message based on error type and response
      */
     getErrorMessage(error, response = null) {
-        // Check for backend unavailability (503 errors or network failures)
-        if (response && response.status === 503) {
-            return `⚠️ **Backend Server Unavailable**
-
-The AI backend server is currently unavailable. Please configure your own AI API to continue using the AI Assistant.
-
-<button onclick="window.aiAssistant?.openSettings()" class="error-settings-btn">⚙️ Configure AI Settings</button>`;
-        }
-
-        // Check for network/connection errors
-        if (error.name === 'TypeError' && error.message.toLowerCase().includes('fetch')) {
-            return `⚠️ **Connection Error**
-
-Unable to connect to the AI backend server. Please check your connection or configure a custom AI API.
-
-<button onclick="window.aiAssistant?.openSettings()" class="error-settings-btn">⚙️ Configure AI Settings</button>`;
-        }
-
         // Check for specific error messages that should be preserved
         if (error.message.includes('Authentication failed') ||
             error.message.includes('Access forbidden') ||
