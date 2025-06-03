@@ -438,9 +438,9 @@ function hideImageErrorBanner() {
 // New file function
 async function newFile() {
     // Check for unsaved changes either in an open file or user-edited content
-    const hasUnsavedChanges = (currentFile.isOpen && !currentFile.saved) || 
-                              (userHasEditedContent && document.getElementById('code').value.trim() !== '');
-    
+    const hasUnsavedChanges = (currentFile.isOpen && !currentFile.saved) ||
+        (userHasEditedContent && document.getElementById('code').value.trim() !== '');
+
     if (hasUnsavedChanges) {
         if (!confirm('You have unsaved changes. Are you sure you want to create a new file?')) {
             return;
@@ -459,10 +459,10 @@ async function newFile() {
 
     const codeTextarea = document.getElementById('code');
     codeTextarea.value = exampleCode;
-    
+
     // Reset user edit tracking since we're starting fresh
     userHasEditedContent = false;
-    
+
     updateLineNumbers();
     updateDiagram();
     updateFileStatus();
