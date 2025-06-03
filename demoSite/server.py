@@ -48,6 +48,7 @@ PORT = int(os.environ.get('PORT', 8006))
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 AI_TIMEOUT = 30  # Default timeout for AI API requests
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
+HOSTNAME= os.environ.get('HOSTNAME', 'localhost')
 
 # Default AI configuration - can be overridden by environment variables
 DEFAULT_AI_CONFIG = {
@@ -114,14 +115,19 @@ def validate_origin(request):
         f"http://localhost:{PORT}",
         f"https://localhost:{PORT}",
         "http://127.0.0.1:" + str(PORT),
-        "https://127.0.0.1:" + str(PORT)
+        "https://127.0.0.1:" + str(PORT),
+        f"http://{HOSTNAME}:{PORT}",
+        f"https://{HOSTNAME}:{PORT}",
+        f"http://{HOSTNAME}",
+        f"https://{HOSTNAME}",
+        "http://localhost",
+        "https://localhost",
     ]
     
     # In production, you might want to be more restrictive
     if origin and not any(origin.startswith(allowed) for allowed in allowed_origins):
-        if not (origin.startswith('http://localhost') or origin.startswith('https://localhost')):
-            logger.warning(f"Rejected request from origin: {origin}")
-            return False
+        logger.warning(f"Rejected request from origin: {origin}")
+        return False
     
     return True
 
