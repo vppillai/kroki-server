@@ -1,9 +1,32 @@
 /**
  * User Configuration System for Kroki Diagram Editor
- * Provides persistent storage and management of user preferences
+ * 
+ * Provides comprehensive persistent storage and management of user preferences
+ * for the Kroki diagram editor. Handles configuration loading, saving, validation,
+ * migration, and change notification across all application components.
+ * 
+ * Features:
+ * - Persistent localStorage-based configuration storage
+ * - Deep configuration object merging and validation
+ * - Change listener system for reactive updates
+ * - Import/export functionality for configuration backup
+ * - Schema definition for UI generation
+ * - Automatic migration from legacy settings
+ * 
+ * @author Kroki Team
+ * @version 1.0.0
  */
 
-// Default configuration values
+// ========================================
+// DEFAULT CONFIGURATION SCHEMA
+// ========================================
+
+/**
+ * Default configuration values for all application settings
+ * Provides fallback values and defines the complete configuration structure
+ * 
+ * @constant {Object} DEFAULT_CONFIG
+ */
 const DEFAULT_CONFIG = {
     // Theme and UI preferences
     theme: 'light', // 'light', 'dark', 'auto'
@@ -77,19 +100,73 @@ const DEFAULT_CONFIG = {
     }
 };
 
+// ========================================
+// CONFIGURATION MANAGER CLASS
+// ========================================
+
 /**
  * Configuration Manager Class
+ * 
+ * Central configuration management system for the Kroki diagram editor.
+ * Handles persistent storage, change tracking, validation, and notification
+ * of configuration changes throughout the application lifecycle.
+ * 
+ * Organization:
+ * - INITIALIZATION METHODS: Constructor and setup logic
+ * - PERSISTENCE METHODS: Loading and saving configuration data
+ * - MIGRATION METHODS: Legacy settings migration and compatibility
+ * - CONFIGURATION ACCESS: Getting and setting configuration values
+ * - BATCH OPERATIONS: Multi-value configuration operations
+ * - STATE MANAGEMENT: Reset and restoration functionality
+ * - IMPORT/EXPORT: Configuration backup and restore
+ * - LISTENER SYSTEM: Change notification and reactive updates
+ * - SCHEMA DEFINITION: UI generation and validation support
+ * 
+ * @class ConfigManager
+ * @author Kroki Team
+ * @version 1.0.0
  */
 class ConfigManager {
+    /**
+     * Initialize the Configuration Manager
+     * Sets up default configuration state and loads existing settings
+     */
     constructor() {
+        // ========================================
+        // CONFIGURATION STATE
+        // ========================================
+        /** @type {Object} Current configuration object with all settings */
         this.config = { ...DEFAULT_CONFIG };
-        this.listeners = new Map();
+
+        /** @type {string} localStorage key for persistent storage */
         this.storageKey = 'kroki-user-config';
+
+        // ========================================
+        // LISTENER SYSTEM
+        // ========================================
+        /** @type {Map<string, Set<Function>>} Configuration change listeners */
+        this.listeners = new Map();
+
+        // Load existing configuration
         this.load();
     }
 
+    // ========================================
+    // INITIALIZATION METHODS
+    // ========================================
+
+    // (Constructor logic is handled above)
+
+    // ========================================
+    // PERSISTENCE METHODS
+    // ========================================
+
     /**
      * Load configuration from localStorage
+     * Attempts to load and merge stored configuration with defaults
+     * Handles parsing errors gracefully and triggers migration
+     * 
+     * @private
      */
     load() {
         try {
@@ -109,6 +186,9 @@ class ConfigManager {
 
     /**
      * Save configuration to localStorage
+     * Persists current configuration state with error handling
+     * 
+     * @private
      */
     save() {
         try {
@@ -118,8 +198,16 @@ class ConfigManager {
         }
     }
 
+    // ========================================
+    // MIGRATION METHODS
+    // ========================================
+
     /**
      * Migrate old localStorage settings to new config system
+     * Handles backward compatibility with legacy configuration keys
+     * Automatically saves changes if migration occurs
+     * 
+     * @private
      */
     migrateOldSettings() {
         let hasChanges = false;
@@ -148,6 +236,13 @@ class ConfigManager {
 
     /**
      * Deep merge configuration objects
+     * Recursively merges user configuration with default values
+     * Preserves nested object structure and handles null values
+     * 
+     * @param {Object} defaultConfig - The default configuration object
+     * @param {Object} userConfig - The user's configuration object
+     * @returns {Object} Merged configuration object
+     * @private
      */
     mergeConfig(defaultConfig, userConfig) {
         const result = { ...defaultConfig };
@@ -163,8 +258,17 @@ class ConfigManager {
         return result;
     }
 
+    // ========================================
+    // CONFIGURATION ACCESS
+    // ========================================
+
     /**
      * Get a configuration value by path (e.g., 'editor.tabSize')
+     * Supports dot notation for nested properties with fallback to defaults
+     * 
+     * @param {string} path - Dot-separated path to configuration value
+     * @returns {*} Configuration value or undefined if not found
+     * @public
      */
     get(path) {
         const keys = path.split('.');
@@ -193,6 +297,12 @@ class ConfigManager {
 
     /**
      * Set a configuration value by path (e.g., 'editor.tabSize', 4)
+     * Creates nested object structure if needed and triggers change notifications
+     * Automatically saves changes to localStorage
+     * 
+     * @param {string} path - Dot-separated path to configuration value
+     * @param {*} value - Value to set at the specified path
+     * @public
      */
     set(path, value) {
         const keys = path.split('.');
@@ -218,8 +328,17 @@ class ConfigManager {
         this.notifyListeners(path, value, oldValue);
     }
 
+    // ========================================
+    // BATCH OPERATIONS
+    // ========================================
+
     /**
      * Get multiple configuration values
+     * Retrieves multiple configuration values in a single operation
+     * 
+     * @param {string[]} paths - Array of dot-separated paths to retrieve
+     * @returns {Object} Object mapping paths to their values
+     * @public
      */
     getAll(paths) {
         const result = {};
@@ -231,6 +350,11 @@ class ConfigManager {
 
     /**
      * Set multiple configuration values
+     * Updates multiple configuration values in a batch operation
+     * Each change triggers individual notifications and saves
+     * 
+     * @param {Object} configs - Object mapping paths to values
+     * @public
      */
     setAll(configs) {
         for (const [path, value] of Object.entries(configs)) {
@@ -238,8 +362,16 @@ class ConfigManager {
         }
     }
 
+    // ========================================
+    // STATE MANAGEMENT
+    // ========================================
+
     /**
      * Reset configuration to defaults
+     * Restores all settings to their default values and clears legacy storage
+     * Notifies all listeners of the reset operation
+     * 
+     * @public
      */
     reset() {
         this.config = { ...DEFAULT_CONFIG };
@@ -255,8 +387,16 @@ class ConfigManager {
         }
     }
 
+    // ========================================
+    // IMPORT/EXPORT
+    // ========================================
+
     /**
      * Export configuration as JSON
+     * Creates a formatted JSON string of the current configuration
+     * 
+     * @returns {string} JSON string representation of configuration
+     * @public
      */
     export() {
         return JSON.stringify(this.config, null, 2);
@@ -264,6 +404,12 @@ class ConfigManager {
 
     /**
      * Import configuration from JSON
+     * Parses and merges imported configuration with defaults
+     * Notifies all listeners of changes and handles import errors gracefully
+     * 
+     * @param {string} jsonString - JSON string containing configuration data
+     * @returns {boolean} True if import was successful, false otherwise
+     * @public
      */
     import(jsonString) {
         try {
@@ -283,8 +429,19 @@ class ConfigManager {
         }
     }
 
+    // ========================================
+    // LISTENER SYSTEM
+    // ========================================
+
     /**
      * Add a listener for configuration changes
+     * Registers a callback function to be notified when specific configuration values change
+     * Returns an unsubscribe function for cleanup
+     * 
+     * @param {string} path - Dot-separated path to monitor for changes
+     * @param {Function} callback - Function to call when value changes (newValue, oldValue, path)
+     * @returns {Function} Unsubscribe function to remove the listener
+     * @public
      */
     addListener(path, callback) {
         if (!this.listeners.has(path)) {
@@ -306,6 +463,13 @@ class ConfigManager {
 
     /**
      * Notify listeners of configuration changes
+     * Triggers all registered callbacks for a specific configuration path
+     * Handles listener errors gracefully to prevent disruption
+     * 
+     * @param {string} path - Configuration path that changed
+     * @param {*} newValue - New value after change
+     * @param {*} oldValue - Previous value before change
+     * @private
      */
     notifyListeners(path, newValue, oldValue) {
         const pathListeners = this.listeners.get(path);
@@ -320,8 +484,17 @@ class ConfigManager {
         }
     }
 
+    // ========================================
+    // SCHEMA DEFINITION
+    // ========================================
+
     /**
      * Get configuration schema for UI generation
+     * Provides metadata for all configuration options including types, constraints,
+     * and descriptions for dynamic UI generation and validation
+     * 
+     * @returns {Object} Schema object defining all configuration options
+     * @public
      */
     getSchema() {
         return {
