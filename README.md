@@ -2,6 +2,13 @@
 
 A complete setup for running a local Kroki diagram rendering server with a custom interactive demo site.
 
+<blockquote style="background:#f9f9f9; border-left: 6px solid #ccc; padding: 1em; font-size: 0.95em;">
+  <strong>Note:</strong><br>
+  While the initial framework and specifications were manually crafted, over <strong>90%</strong> of the code in this repository was generated using AI tools. As such, the code quality and structure may not fully reflect best practices and have not undergone extensive manual review.<br><br>
+  That said, I have been actively <em>dogfooding</em> the tool, and it is functional and working as intended in real-world usage.
+</blockquote>
+
+
 ![](./images/demoSite.png)
 
 ## Quick Start
