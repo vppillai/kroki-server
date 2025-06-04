@@ -1,24 +1,59 @@
 /**
  * Code History Manager for Kroki Diagram Editor
  * Manages undo/redo functionality for diagram code changes
+ * 
+ * Class Organization:
+ * - INITIALIZATION METHODS: Setup and DOM creation
+ * - UI CREATION METHODS: Navigation button and control creation
+ * - EVENT HANDLING METHODS: User interaction and system event handlers
+ * - HISTORY MANAGEMENT: Core history operations and navigation
+ * - UTILITY METHODS: Helper functions and state management
  */
 
 class CodeHistory {
+    /**
+     * Create new Code History Manager instance
+     * Manages version history for diagram code with undo/redo functionality
+     */
     constructor() {
+        // History State
         this.history = [];
         this.currentIndex = -1;
         this.maxHistorySize = 50; // Limit history to prevent memory issues
+
+        // Navigation State
         this.isNavigating = false; // Flag to prevent history updates during navigation
         this.pendingCode = null; // Code waiting for successful render
+
+        // UI References
+        this.backButton = null;
+        this.forwardButton = null;
+        this.indicator = null;
 
         this.init();
     }
 
+    // ========================================
+    // INITIALIZATION METHODS
+    // ========================================
+
+    /**
+     * Initialize the code history manager
+     * Sets up UI and event listeners
+     */
     init() {
         this.createNavigationButtons();
         this.setupEventListeners();
     }
 
+    // ========================================
+    // UI CREATION METHODS
+    // ========================================
+
+    /**
+     * Create navigation buttons in the editor header
+     * Adds undo/redo controls with keyboard shortcut hints
+     */
     createNavigationButtons() {
         // Find the editor header where we should place the navigation controls
         const editorHeader = document.querySelector('.editor-header');
@@ -62,6 +97,14 @@ class CodeHistory {
         this.indicator = document.getElementById('code-history-indicator');
     }
 
+    // ========================================
+    // EVENT HANDLING METHODS
+    // ========================================
+
+    /**
+     * Set up all event listeners for history navigation
+     * Handles button clicks, keyboard shortcuts, and diagram events
+     */
     setupEventListeners() {
         // Navigation button handlers
         if (this.backButton) {
@@ -106,6 +149,14 @@ class CodeHistory {
         }
     }
 
+    // ========================================
+    // HISTORY MANAGEMENT
+    // ========================================
+
+    /**
+     * Add code to history if it's different from current entry
+     * @param {string} code - Diagram code to add to history
+     */
     addToHistory(code) {
         // Don't add if we're currently navigating or if code hasn't changed
         if (this.isNavigating || this.isDuplicate(code)) {
@@ -137,16 +188,9 @@ class CodeHistory {
         this.clearPendingCode();
     }
 
-    isDuplicate(code) {
-        if (this.history.length === 0) return false;
-        const lastEntry = this.history[this.currentIndex];
-        return lastEntry && lastEntry.code === code;
-    }
-
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
-    }
-
+    /**
+     * Navigate back to previous version in history
+     */
     goBack() {
         if (!this.canGoBack()) return;
 
@@ -154,6 +198,9 @@ class CodeHistory {
         this.navigateToCurrentEntry();
     }
 
+    /**
+     * Navigate forward to next version in history
+     */
     goForward() {
         if (!this.canGoForward()) return;
 
@@ -161,6 +208,10 @@ class CodeHistory {
         this.navigateToCurrentEntry();
     }
 
+    /**
+     * Navigate to the current history entry
+     * Updates code editor and triggers diagram update
+     */
     navigateToCurrentEntry() {
         if (this.currentIndex < 0 || this.currentIndex >= this.history.length) {
             return;
@@ -205,14 +256,70 @@ class CodeHistory {
         }, 500);
     }
 
+    /**
+     * Initialize history with current code from editor
+     * Called to populate initial history entry
+     */
+    initializeWithCurrentCode() {
+        const codeTextarea = document.getElementById('code');
+        if (codeTextarea && codeTextarea.value.trim()) {
+            this.addToHistory(codeTextarea.value);
+        }
+    }
+
+    /**
+     * Clear all history entries
+     * Useful for resetting the history state
+     */
+    clear() {
+        this.history = [];
+        this.currentIndex = -1;
+        this.updateUI();
+    }
+
+    // ========================================
+    // UTILITY METHODS
+    // ========================================
+
+    /**
+     * Check if code is duplicate of current entry
+     * @param {string} code - Code to check for duplication
+     * @returns {boolean} True if code is duplicate
+     */
+    isDuplicate(code) {
+        if (this.history.length === 0) return false;
+        const lastEntry = this.history[this.currentIndex];
+        return lastEntry && lastEntry.code === code;
+    }
+
+    /**
+     * Generate unique ID for history entries
+     * @returns {string} Unique identifier
+     */
+    generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+
+    /**
+     * Check if backward navigation is possible
+     * @returns {boolean} True if can go back
+     */
     canGoBack() {
         return this.currentIndex > 0;
     }
 
+    /**
+     * Check if forward navigation is possible
+     * @returns {boolean} True if can go forward
+     */
     canGoForward() {
         return this.currentIndex < this.history.length - 1;
     }
 
+    /**
+     * Update UI elements based on current state
+     * Updates button states and position indicator
+     */
     updateUI() {
         // Update button states
         if (this.backButton) {
@@ -230,10 +337,17 @@ class CodeHistory {
         }
     }
 
+    /**
+     * Clear pending code state
+     */
     clearPendingCode() {
         this.pendingCode = null;
     }
 
+    /**
+     * Get current code from history
+     * @returns {string|null} Current code or null if no history
+     */
     getCurrentCode() {
         if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
             return this.history[this.currentIndex].code;
@@ -241,6 +355,10 @@ class CodeHistory {
         return null;
     }
 
+    /**
+     * Get current history information
+     * @returns {Object} History state information
+     */
     getHistoryInfo() {
         return {
             current: this.currentIndex + 1,
@@ -248,21 +366,6 @@ class CodeHistory {
             canGoBack: this.canGoBack(),
             canGoForward: this.canGoForward()
         };
-    }
-
-    // Initialize with current code if available
-    initializeWithCurrentCode() {
-        const codeTextarea = document.getElementById('code');
-        if (codeTextarea && codeTextarea.value.trim()) {
-            this.addToHistory(codeTextarea.value);
-        }
-    }
-
-    // Clear history (useful for reset)
-    clear() {
-        this.history = [];
-        this.currentIndex = -1;
-        this.updateUI();
     }
 }
 
