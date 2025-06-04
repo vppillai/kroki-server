@@ -1,23 +1,82 @@
 /**
  * Configuration Settings UI Component
- * Provides a user interface for managing Kroki editor configuration
+ * 
+ * Manages the comprehensive settings interface for the Kroki diagram editor.
+ * Provides tabbed configuration panels for different aspects of the application
+ * including general settings, editor preferences, zoom controls, layout options,
+ * AI assistant configuration, and advanced features.
+ * 
+ * Organization:
+ * - INITIALIZATION METHODS: Constructor and setup logic
+ * - UI CREATION METHODS: Modal HTML generation and structure
+ * - EVENT HANDLING METHODS: User interaction handlers and listeners
+ * - TAB MANAGEMENT: Tab switching and content organization
+ * - CONFIGURATION MANAGEMENT: Loading, saving, and validation
+ * - IMPORT/EXPORT FUNCTIONALITY: Settings backup and restore
+ * - UI STATE MANAGEMENT: Visual feedback and status updates
+ * - UTILITY METHODS: Helper functions and form handling
+ * 
+ * @class ConfigUI
+ * @author Kroki Team
+ * @version 1.0.0
  */
-
 class ConfigUI {
+    /**
+     * Initialize the Configuration UI component
+     * 
+     * @param {Object} configManager - The configuration manager instance for persistent settings
+     */
     constructor(configManager) {
+        // ========================================
+        // CONFIGURATION STATE
+        // ========================================
+        /** @type {Object} Configuration manager instance */
         this.configManager = configManager;
-        this.modal = null;
-        this.activeTab = 'general';
-        this.unsavedChanges = false;
+
+        /** @type {Object} Temporary configuration changes before saving */
         this.tempConfig = {};
 
+        // ========================================
+        // UI STATE
+        // ========================================
+        /** @type {HTMLElement|null} The modal dialog element */
+        this.modal = null;
+
+        /** @type {string} Currently active configuration tab */
+        this.activeTab = 'general';
+
+        /** @type {boolean} Flag indicating if there are unsaved changes */
+        this.unsavedChanges = false;
+
+        // Initialize the UI
         this.init();
     }
 
+    // ========================================
+    // INITIALIZATION METHODS
+    // ========================================
+
+    /**
+     * Initialize the configuration UI component
+     * Sets up the modal dialog and event listeners
+     * 
+     * @private
+     */
     init() {
         this.createModal();
         this.setupEventListeners();
     }
+
+    // ========================================
+    // UI CREATION METHODS
+    // ========================================
+
+    /**
+     * Create the modal dialog HTML structure
+     * Generates the complete configuration interface with all tabs and settings
+     * 
+     * @private
+     */
 
     createModal() {
         const modalHTML = `
@@ -462,6 +521,17 @@ class ConfigUI {
         this.modal = document.getElementById('config-modal');
     }
 
+    // ========================================
+    // EVENT HANDLING METHODS
+    // ========================================
+
+    /**
+     * Set up all event listeners for the configuration UI
+     * Handles modal interactions, form changes, and keyboard shortcuts
+     * 
+     * @private
+     */
+
     setupEventListeners() {
         // Modal close handlers
         document.getElementById('config-modal-close').addEventListener('click', () => this.close());
@@ -515,6 +585,13 @@ class ConfigUI {
         this.setupPasswordToggle();
     }
 
+    /**
+     * Set up AI configuration conditional logic
+     * Handles visibility and interaction of AI-related configuration fields
+     * 
+     * @private
+     */
+
     setupAIConfigLogic() {
         const customApiCheckbox = document.getElementById('ai-use-custom-api');
         const modelSelect = document.querySelector('[data-config="ai.model"]');
@@ -539,6 +616,13 @@ class ConfigUI {
         // Initial setup
         this.toggleDependentFields();
     }
+
+    /**
+     * Set up password visibility toggle functionality
+     * Configures the show/hide password button for API key input
+     * 
+     * @private
+     */
 
     setupPasswordToggle() {
         const toggleBtn = document.getElementById('api-key-toggle');
@@ -572,6 +656,13 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Reset password input to hidden state
+     * Ensures API key field starts in password mode when modal opens
+     * 
+     * @private
+     */
+
     resetPasswordVisibility() {
         const passwordInput = document.getElementById('ai-api-key-input');
         const toggleBtn = document.getElementById('api-key-toggle');
@@ -592,6 +683,12 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Toggle visibility of fields that depend on custom AI API configuration
+     * Enables/disables fields based on the custom API checkbox state
+     * 
+     * @private
+     */
     toggleDependentFields() {
         const customApiCheckbox = document.getElementById('ai-use-custom-api');
         const isCustom = customApiCheckbox && customApiCheckbox.checked;
@@ -606,6 +703,16 @@ class ConfigUI {
         });
     }
 
+    // ========================================
+    // MODAL CONTROL METHODS
+    // ========================================
+
+    /**
+     * Open the configuration modal
+     * Loads current configuration and displays the modal dialog
+     * 
+     * @public
+     */
     open() {
         this.loadCurrentConfig();
         // Always reset password visibility to hidden when modal opens
@@ -614,6 +721,12 @@ class ConfigUI {
         document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Close the configuration modal
+     * Checks for unsaved changes and closes the modal if confirmed
+     * 
+     * @public
+     */
     close() {
         if (this.unsavedChanges) {
             if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
@@ -626,6 +739,17 @@ class ConfigUI {
         this.tempConfig = {};
     }
 
+    // ========================================
+    // TAB MANAGEMENT
+    // ========================================
+
+    /**
+     * Switch between configuration tabs
+     * Updates active tab display and content visibility
+     * 
+     * @param {string} tabName - The name of the tab to switch to
+     * @public
+     */
     switchTab(tabName) {
         // Update tab buttons
         document.querySelectorAll('.config-tab').forEach(tab => {
@@ -640,6 +764,16 @@ class ConfigUI {
         this.activeTab = tabName;
     }
 
+    // ========================================
+    // CONFIGURATION MANAGEMENT
+    // ========================================
+
+    /**
+     * Load current configuration values into the form
+     * Populates all form fields with values from the configuration manager
+     * 
+     * @private
+     */
     loadCurrentConfig() {
         // Load all configuration values into the form
         document.querySelectorAll('[data-config]').forEach(element => {
@@ -669,6 +803,13 @@ class ConfigUI {
         this.unsavedChanges = false;
     }
 
+    /**
+     * Handle configuration field changes
+     * Processes user input and stores temporary changes
+     * 
+     * @param {Event} event - The change event from form elements
+     * @private
+     */
     handleConfigChange(event) {
         const element = event.target;
         const configPath = element.dataset.config;
@@ -693,6 +834,14 @@ class ConfigUI {
         saveBtn.classList.add('primary');
     }
 
+    /**
+     * Update the display value for range input controls
+     * Formats values with appropriate units based on the configuration type
+     * 
+     * @param {HTMLElement} rangeElement - The range input element
+     * @param {number} value - The current value to display
+     * @private
+     */
     updateRangeDisplay(rangeElement, value) {
         const valueDisplay = rangeElement.parentElement.querySelector('.config-range-value');
         if (valueDisplay) {
@@ -714,6 +863,12 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Save all configuration changes
+     * Applies temporary changes to the configuration manager and provides user feedback
+     * 
+     * @public
+     */
     save() {
         try {
             // Apply all temporary configuration changes
@@ -740,6 +895,12 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Reset all configuration settings to default values
+     * Prompts user for confirmation before resetting all settings
+     * 
+     * @public
+     */
     reset() {
         if (confirm('Are you sure you want to reset all settings to their default values? This cannot be undone.')) {
             this.configManager.reset();
@@ -757,6 +918,16 @@ class ConfigUI {
         }
     }
 
+    // ========================================
+    // IMPORT/EXPORT FUNCTIONALITY
+    // ========================================
+
+    /**
+     * Export current configuration settings to a JSON file
+     * Creates and downloads a JSON file containing all current settings
+     * 
+     * @public
+     */
     export() {
         try {
             const config = this.configManager.export();
@@ -778,10 +949,23 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Trigger file import dialog
+     * Opens the file input dialog for importing configuration settings
+     * 
+     * @public
+     */
     import() {
         document.getElementById('config-file-input').click();
     }
 
+    /**
+     * Handle file import from user selection
+     * Processes uploaded JSON configuration file and applies settings
+     * 
+     * @param {Event} event - The file input change event
+     * @private
+     */
     handleFileImport(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -807,6 +991,18 @@ class ConfigUI {
         event.target.value = '';
     }
 
+    // ========================================
+    // UI STATE MANAGEMENT
+    // ========================================
+
+    /**
+     * Display status message to user
+     * Shows temporary status messages with appropriate styling
+     * 
+     * @param {string} message - The message to display
+     * @param {string} type - The message type ('success', 'error', etc.)
+     * @private
+     */
     showStatus(message, type) {
         const status = document.getElementById('config-status');
         status.textContent = message;
