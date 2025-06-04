@@ -1,22 +1,45 @@
 /**
  * AI Assistant Module for Kroki Diagram Editor
  * Provides AI-powered diagram generation and editing assistance
+ * 
+ * Class Organization:
+ * - INITIALIZATION METHODS: Setup and DOM creation
+ * - EVENT HANDLING METHODS: User interaction handlers
+ * - DRAG AND DROP FUNCTIONALITY: Window positioning
+ * - RESIZE FUNCTIONALITY: Chat window resizing
+ * - CHAT MANAGEMENT: Window state and history management
+ * - MESSAGE HANDLING: Chat message display and navigation
+ * - API COMMUNICATION: AI service integration
+ * - VALIDATION METHODS: Diagram code validation
+ * - UTILITY METHODS: Parsing and encoding helpers
+ * - PROMPT COMPOSITION: AI prompt generation
+ * - CONFIGURATION METHODS: Settings and configuration
  */
 
 class AIAssistant {
+    /**
+     * Create new AI Assistant instance
+     * @param {Object} configManager - Configuration manager instance
+     */
     constructor(configManager = null) {
+        // UI State
         this.isOpen = false;
         this.isDragging = false;
         this.dragOffset = { x: 0, y: 0 };
         this.position = { x: 0, y: 0 };
+
+        // API Request State
         this.retryAttempts = 0;
         this.maxRetryAttempts = 3;
-        this.chatHistory = [];
-        this.configManager = configManager;
-
-        // Request cancellation support
         this.currentAbortController = null;
         this.isRequestInProgress = false;
+
+        // Chat State
+        this.chatHistory = [];
+        this.messageHistory = [];
+        this.messageHistoryIndex = -1;
+        this.maxMessageHistory = 50;
+        this.currentDraftMessage = '';
 
         // Resize functionality state
         this.isResizing = false;
@@ -25,11 +48,8 @@ class AIAssistant {
         this.minInputHeight = 60;
         this.maxInputHeight = 300;
 
-        // Message history for navigation
-        this.messageHistory = [];
-        this.messageHistoryIndex = -1;
-        this.maxMessageHistory = 50;
-        this.currentDraftMessage = '';
+        // Configuration
+        this.configManager = configManager;
 
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
@@ -39,12 +59,22 @@ class AIAssistant {
         }
     }
 
+    // ========================================
+    // INITIALIZATION METHODS
+    // ========================================
+
+    /**
+     * Initialize the AI Assistant
+     */
     init() {
         this.createElements();
         this.setupEventListeners();
         this.loadConfiguration();
     }
 
+    /**
+     * Create all UI elements
+     */
     createElements() {
         // Create AI Assist button
         this.createAssistButton();
@@ -52,6 +82,9 @@ class AIAssistant {
         this.createChatWindow();
     }
 
+    /**
+     * Create the AI assistant button
+     */
     createAssistButton() {
         const button = document.createElement('button');
         button.id = 'ai-assist-btn';
@@ -75,6 +108,9 @@ class AIAssistant {
         this.assistButton = button;
     }
 
+    /**
+     * Create the floating chat window
+     */
     createChatWindow() {
         const chatWindow = document.createElement('div');
         chatWindow.id = 'ai-chat-window';
@@ -164,6 +200,13 @@ class AIAssistant {
         }
     }
 
+    // ========================================
+    // EVENT HANDLING METHODS
+    // ========================================
+
+    /**
+     * Set up all event listeners for the UI elements
+     */
     setupEventListeners() {
         // Validate elements exist before setting up listeners
         if (!this.assistButton || !this.chatWindow || !this.chatSend || !this.chatInput) {
@@ -235,6 +278,14 @@ class AIAssistant {
         this.setupResizing();
     }
 
+    // ========================================
+    // DRAG AND DROP FUNCTIONALITY
+    // ========================================
+
+    /**
+     * Set up drag functionality for the chat window
+     * Allows users to move the chat window around the screen
+     */
     setupDragging() {
         const header = this.chatWindow.querySelector('.ai-chat-header');
 
@@ -247,6 +298,10 @@ class AIAssistant {
         header.style.cursor = 'move';
     }
 
+    /**
+     * Start dragging the chat window
+     * @param {MouseEvent} e - Mouse event
+     */
     startDrag(e) {
         if (e.target.closest('button')) return; // Don't drag when clicking buttons
 
@@ -258,6 +313,10 @@ class AIAssistant {
         this.chatWindow.style.cursor = 'grabbing';
     }
 
+    /**
+     * Handle drag movement
+     * @param {MouseEvent} e - Mouse event
+     */
     drag(e) {
         if (!this.isDragging) return;
 
@@ -276,16 +335,29 @@ class AIAssistant {
         this.updatePosition();
     }
 
+    /**
+     * End dragging operation
+     */
     endDrag() {
         this.isDragging = false;
         this.chatWindow.style.cursor = '';
     }
 
+    /**
+     * Update chat window position on screen
+     */
     updatePosition() {
         this.chatWindow.style.left = `${this.position.x}px`;
         this.chatWindow.style.top = `${this.position.y}px`;
     }
 
+    // ========================================
+    // RESIZE FUNCTIONALITY
+    // ========================================
+
+    /**
+     * Set up resize functionality for the chat input area
+     */
     setupResizing() {
         if (!this.chatResizeHandle) {
             console.warn('AI Assistant: Resize handle not found');
@@ -297,6 +369,10 @@ class AIAssistant {
         document.addEventListener('mouseup', () => this.endResize());
     }
 
+    /**
+     * Start resizing the chat input area
+     * @param {MouseEvent} e - Mouse event
+     */
     startResize(e) {
         e.preventDefault();
         e.stopPropagation(); // Prevent triggering drag
@@ -310,6 +386,10 @@ class AIAssistant {
         document.body.style.userSelect = 'none';
     }
 
+    /**
+     * Handle resize movement
+     * @param {MouseEvent} e - Mouse event
+     */
     resize(e) {
         if (!this.isResizing) return;
 
@@ -323,7 +403,7 @@ class AIAssistant {
 
         this.chatInputContainer.style.height = `${newHeight}px`;
 
-        // Calculate available height for textarea (account for padding and margins)
+        // Calculate available height for textarea
         const wrapperPadding = 24; // 12px padding top + 12px padding bottom
         const textareaAvailableHeight = newHeight - wrapperPadding;
         const textareaHeight = Math.max(40, Math.min(textareaAvailableHeight, this.chatInput.scrollHeight || 40));
@@ -333,6 +413,9 @@ class AIAssistant {
         this.chatInput.style.height = `${textareaHeight}px`;
     }
 
+    /**
+     * End resizing operation
+     */
     endResize() {
         if (!this.isResizing) return;
 
@@ -342,6 +425,13 @@ class AIAssistant {
         document.body.style.userSelect = '';
     }
 
+    // ========================================
+    // CHAT MANAGEMENT
+    // ========================================
+
+    /**
+     * Toggle chat window open/closed state
+     */
     toggleChat() {
         if (this.isOpen) {
             this.closeChat();
@@ -350,6 +440,9 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Open chat window
+     */
     openChat() {
         this.isOpen = true;
         this.assistButton.style.display = 'none';
@@ -367,6 +460,9 @@ class AIAssistant {
         this.scrollToBottom();
     }
 
+    /**
+     * Close chat window and clear history
+     */
     closeChat() {
         this.isOpen = false;
         this.chatWindow.style.display = 'none';
@@ -377,6 +473,9 @@ class AIAssistant {
         this.clearMessageHistory();
     }
 
+    /**
+     * Clear chat message history while preserving system messages
+     */
     clearChatHistory() {
         // Clear the chat messages except system message
         const systemMessage = this.chatMessages.querySelector('.ai-message.system');
@@ -389,12 +488,18 @@ class AIAssistant {
         this.chatHistory = this.chatHistory.filter(msg => msg.type === 'system');
     }
 
+    /**
+     * Clear message history for up/down arrow navigation
+     */
     clearMessageHistory() {
         this.messageHistory = [];
         this.messageHistoryIndex = -1;
         this.currentDraftMessage = '';
     }
 
+    /**
+     * Minimize chat window without clearing history
+     */
     minimizeChat() {
         this.isOpen = false;
         this.chatWindow.style.display = 'none';
@@ -402,6 +507,9 @@ class AIAssistant {
         // Don't clear history on minimize, only on close
     }
 
+    /**
+     * Position chat window in optimal location
+     */
     positionChatWindow() {
         const diagramContainer = document.getElementById('diagram-container');
         if (!diagramContainer) return;
@@ -423,12 +531,19 @@ class AIAssistant {
         this.updatePosition();
     }
 
+    /**
+     * Check if chat window or its elements have focus
+     * @returns {boolean} True if chat is focused
+     */
     isChatInFocus() {
         // Check if the chat window or any of its elements has focus
         const activeElement = document.activeElement;
         return this.chatWindow.contains(activeElement) || activeElement === this.chatWindow;
     }
 
+    /**
+     * Auto-resize chat input based on content
+     */
     autoResizeInput() {
         const input = this.chatInput;
 
@@ -455,37 +570,9 @@ class AIAssistant {
         input.offsetHeight;
     }
 
-    updateBackendIndicator() {
-        if (!this.backendIndicator) return;
-
-        // Ensure configManager is available before calling getAIConfig
-        if (!this.configManager && !window.configManager) {
-            console.warn("AI Assistant: Config manager not available for updateBackendIndicator.");
-            this.backendIndicator.textContent = 'Config Loading...';
-            this.backendIndicator.className = 'ai-backend-indicator loading';
-            return;
-        }
-
-        try {
-            const config = this.getAIConfig();
-            if (config.useCustomAPI && config.endpoint && config.apiKey) {
-                // Show model name and user settings indicator when using custom API
-                let modelName = config.model || 'Unknown';
-                if (config.model === 'custom' && config.customModel) {
-                    modelName = config.customModel;
-                }
-                this.backendIndicator.textContent = `${modelName} (Custom)`;
-                this.backendIndicator.className = 'ai-backend-indicator custom';
-            } else {
-                this.backendIndicator.textContent = 'Server Backend';
-                this.backendIndicator.className = 'ai-backend-indicator default';
-            }
-        } catch (error) {
-            console.warn("AI Assistant: Error updating backend indicator:", error);
-            this.backendIndicator.textContent = 'Config Error';
-            this.backendIndicator.className = 'ai-backend-indicator error';
-        }
-    }
+    // ========================================
+    // MESSAGE HANDLING
+    // ========================================
 
     /**
      * Add a message to the message history for navigation
@@ -493,7 +580,7 @@ class AIAssistant {
     addToMessageHistory(message) {
         if (!message || !message.trim()) return;
 
-        // Remove duplicate if it exists (move to end)
+        // Remove duplicate if it exists
         const existingIndex = this.messageHistory.indexOf(message);
         if (existingIndex !== -1) {
             this.messageHistory.splice(existingIndex, 1);
@@ -549,6 +636,12 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Add a message to the chat window
+     * @param {string} type - Message type ('user', 'assistant', 'system', etc.)
+     * @param {string} text - Message content
+     * @param {boolean} rawHtml - Whether to render text as HTML
+     */
     addMessage(type, text, rawHtml = false) {
         if (!this.chatMessages) {
             console.error("AI Assistant: chatMessages element not found, cannot add message.");
@@ -576,9 +669,9 @@ class AIAssistant {
         messageElement.appendChild(contentElement);
         this.chatMessages.appendChild(messageElement);
 
-        // Store message in history (optional, if needed for other features)
+        // Store message in history
         this.chatHistory.push({ type, text, rawHtml, timestamp: new Date() });
-        // Limit history size if specified by spec (e.g., 100 messages)
+        // Limit history size
         const maxHistoryLength = 100;
         if (this.chatHistory.length > maxHistoryLength) {
             this.chatHistory.splice(0, this.chatHistory.length - maxHistoryLength);
@@ -603,12 +696,19 @@ class AIAssistant {
         this.scrollToBottom();
     }
 
+    /**
+     * Scroll chat messages to bottom
+     */
     scrollToBottom() {
         if (this.chatMessages) {
             this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
         }
     }
 
+    /**
+     * Show status message in chat window
+     * @param {string} message - Status message to display
+     */
     showStatus(message) {
         if (!this.chatStatus) return;
         const statusText = this.chatStatus.querySelector('.ai-status-text');
@@ -643,6 +743,9 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Hide status message from chat window
+     */
     hideStatus() {
         if (!this.chatStatus) return;
 
@@ -679,8 +782,13 @@ class AIAssistant {
         }, 200);
     }
 
+    /**
+     * Display a message with appropriate styling
+     * @param {string} message - Message content
+     * @param {string} messageType - Message type for styling
+     */
     displayMessage(message, messageType = 'ai') {
-        // Map message types to appropriate CSS classes (single class names only)
+        // Map message types to appropriate CSS classes
         const typeMap = {
             'ai': 'assistant',
             'ai success': 'assistant-success',
@@ -695,6 +803,10 @@ class AIAssistant {
         this.addMessage(cssClass, message);
     }
 
+    /**
+     * Set the state of the send button (loading/normal)
+     * @param {boolean} isLoading - Whether request is in progress
+     */
     setSendButtonState(isLoading) {
         if (!this.chatSend) return;
 
@@ -718,6 +830,9 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Cancel current AI request
+     */
     cancelRequest() {
         if (this.currentAbortController) {
             this.currentAbortController.abort();
@@ -732,6 +847,9 @@ class AIAssistant {
         this.addMessage('system', '🚫 Request cancelled by user');
     }
 
+    /**
+     * Send user message to AI assistant
+     */
     async sendMessage() {
         const message = this.chatInput.value.trim();
         if (!message || this.isRequestInProgress) return;
@@ -779,6 +897,16 @@ class AIAssistant {
         }
     }
 
+    // ========================================
+    // API COMMUNICATION
+    // ========================================
+
+    /**
+     * Send user prompt to AI with context
+     * @param {string} userPrompt - User's request
+     * @param {string} currentCode - Current diagram code
+     * @param {string} diagramType - Type of diagram
+     */
     async sendToAI(userPrompt, currentCode, diagramType) {
         // Get AI configuration
         const aiConfig = this.getAIConfig();
@@ -819,6 +947,10 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Fetch prompt templates from backend
+     * @returns {Object} Prompt templates object
+     */
     async fetchPromptTemplates() {
         try {
             const response = await fetch('/api/ai-prompts', {
@@ -844,6 +976,14 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Make AI request with retry logic
+     * @param {string|Object} prompt - Composed prompt
+     * @param {string} diagramType - Type of diagram
+     * @param {string} originalCode - Original diagram code
+     * @param {Object} aiConfig - AI configuration
+     * @param {string} originalUserPrompt - Original user request
+     */
     async makeAIRequest(prompt, diagramType, originalCode, aiConfig, originalUserPrompt = '') {
         try {
             let rawResponseContent;
@@ -934,7 +1074,7 @@ class AIAssistant {
             } else if (!explanation) {
                 this.addMessage('system', '⚠️ AI did not provide diagram code or an explanation.');
             } else {
-                // AI provided explanation but no diagram code (e.g., for impossible requests)
+                // AI provided explanation but no diagram code
                 this.addMessage('assistant', explanation);
             }
 
@@ -970,6 +1110,16 @@ class AIAssistant {
         }
     }
 
+    // ========================================
+    // VALIDATION METHODS
+    // ========================================
+
+    /**
+     * Validate and apply diagram code
+     * @param {string} diagramCode - Code to validate
+     * @param {string} diagramType - Type of diagram
+     * @returns {Object} Validation result
+     */
     async validateAndApplyDiagramCode(diagramCode, diagramType) {
         try {
             const codeTextarea = document.getElementById('code');
@@ -1047,6 +1197,15 @@ class AIAssistant {
         return { success: true, error: null };
     }
 
+    // ========================================
+    // UTILITY METHODS
+    // ========================================
+
+    /**
+     * Parse AI response to extract diagram code and explanation
+     * @param {string|Object} responseContent - AI response
+     * @returns {Object} Parsed response with diagramCode and explanation
+     */
     parseAIResponse(responseContent) {
         let actualStringToParse;
 
@@ -1137,15 +1296,20 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Fallback method to extract diagram code from text response
+     * @param {string} responseText - Raw response text
+     * @returns {Object} Extracted code and explanation
+     */
     _fallbackExtractCode(responseText) {
         if (typeof responseText !== 'string') return { diagramCode: '', explanation: 'Invalid response format from AI.' };
 
-        // Try to extract code blocks from markdown format (various types)
+        // Try to extract code blocks from markdown format
         const codeBlockRegex = /```(?:plantuml|mermaid|dot|graphviz|uml|text)?\s*\n?([\s\S]*?)```/g;
         const matches = [...responseText.matchAll(codeBlockRegex)];
 
         if (matches.length > 0) {
-            // Find the longest code block (most likely to be the diagram)
+            // Find the longest code block
             let longestMatch = matches[0];
             for (const match of matches) {
                 if (match[1].trim().length > longestMatch[1].trim().length) {
@@ -1218,6 +1382,12 @@ class AIAssistant {
         };
     }
 
+    /**
+     * Call custom API endpoint
+     * @param {string|Object} prompt - Prompt to send
+     * @param {Object} config - API configuration
+     * @returns {Object} API response
+     */
     async callCustomAPI(prompt, config) {
         const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
@@ -1287,6 +1457,12 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Call proxy API backend
+     * @param {string|Object} prompt - Prompt to send
+     * @param {Object} config - API configuration
+     * @returns {Object} API response
+     */
     async callProxyAPI(prompt, config) {
         const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
@@ -1353,7 +1529,12 @@ class AIAssistant {
         }
     }
 
-    // Remove redundant validateWithKroki method as it's just calling validateWithKrokiDirect
+    /**
+     * Validate diagram with Kroki server directly
+     * @param {string} code - Diagram code
+     * @param {string} diagramType - Type of diagram
+     * @returns {boolean} Whether validation passed
+     */
     async validateWithKrokiDirect(code, diagramType) {
         try {
             const encodedDiagram = window.encodeKrokiDiagram ? window.encodeKrokiDiagram(code) : this.encodeKrokiDiagram(code);
@@ -1371,6 +1552,11 @@ class AIAssistant {
         }
     }
 
+    /**
+     * Encode diagram text for Kroki
+     * @param {string} text - Diagram code to encode
+     * @returns {string} Encoded diagram
+     */
     encodeKrokiDiagram(text) {
         if (window.encodeKrokiDiagram) {
             return window.encodeKrokiDiagram(text);
@@ -1386,6 +1572,16 @@ class AIAssistant {
         return btoa(text).replace(/\+/g, '-').replace(/\//g, '_');
     }
 
+    // ========================================
+    // PROMPT COMPOSITION
+    // ========================================
+
+    /**
+     * Compose prompt from templates and variables
+     * @param {Object} promptTemplates - Template objects
+     * @param {Object} variables - Variables to substitute
+     * @returns {string|Object} Composed prompt
+     */
     async composePrompt(promptTemplates, variables) {
         const { diagramType, currentCode, userPrompt, useCustomAPI, userPromptTemplate } = variables;
 
@@ -1417,6 +1613,10 @@ class AIAssistant {
         };
     }
 
+    /**
+     * Get default system prompt template
+     * @returns {string} Default system prompt
+     */
     getDefaultSystemPrompt() {
         return `You are an expert diagram assistant for the Kroki diagram server. You help users create and modify diagrams using various diagram languages supported by Kroki.
 
@@ -1432,6 +1632,10 @@ Your role is to:
 Always ensure your code follows proper syntax for the diagram type and is compatible with Kroki.`;
     }
 
+    /**
+     * Get default user prompt template
+     * @returns {string} Default user prompt
+     */
     getDefaultUserPrompt() {
         return `Please help me with this diagram request: {{userPrompt}}
 
@@ -1441,10 +1645,24 @@ Current code: {{currentCode}}
 Please provide the updated or new diagram code in a code block, along with a brief explanation of the changes.`;
     }
 
+    /**
+     * Get default retry prompt template
+     * @returns {string} Default retry prompt
+     */
     getDefaultRetryPrompt() {
         return `The previous diagram code failed validation. Original request: {{userPrompt}}. Type: {{diagramType}}. Original code: {{currentCode}}. Failed code: {{failedCode}}. Error: {{validationError}}. Fix the code and respond with ONLY the JSON object. No other text.`;
     }
 
+    /**
+     * Compose retry prompt for failed requests
+     * @param {string|Object} originalPrompt - Original prompt
+     * @param {string} failedCode - Code that failed
+     * @param {string} validationError - Validation error message
+     * @param {string} originalUserPrompt - Original user request
+     * @param {string} diagramType - Type of diagram
+     * @param {string} currentCode - Current diagram code
+     * @returns {Object} Retry prompt object
+     */
     async composeRetryPrompt(originalPrompt, failedCode, validationError, originalUserPrompt, diagramType, currentCode) {
         // Fetch the retry prompt template from backend
         const promptTemplates = await this.fetchPromptTemplates();
@@ -1471,8 +1689,23 @@ Please provide the updated or new diagram code in a code block, along with a bri
         };
     }
 
+    // ========================================
+    // CONFIGURATION METHODS
+    // ========================================
+
+    /**
+     * Helper method to get config manager instance with fallback
+     */
+    getConfigManager() {
+        return this.configManager || window.configManager;
+    }
+
+    /**
+     * Get AI configuration with fallbacks
+     * @returns {Object} AI configuration object
+     */
     getAIConfig() {
-        const manager = this.configManager || window.configManager;
+        const manager = this.getConfigManager();
         if (manager && typeof manager.get === 'function') {
             const aiConfig = manager.get('ai');
             if (aiConfig) {
@@ -1506,6 +1739,9 @@ Please provide the updated or new diagram code in a code block, along with a bri
         };
     }
 
+    /**
+     * Load configuration when system is ready
+     */
     loadConfiguration() {
         if (window.configManager) {
             this.applyConfiguration();
@@ -1516,6 +1752,9 @@ Please provide the updated or new diagram code in a code block, along with a bri
         }
     }
 
+    /**
+     * Open settings dialog
+     */
     openSettings() {
         if (window.configUI) {
             window.configUI.open();
@@ -1526,8 +1765,11 @@ Please provide the updated or new diagram code in a code block, along with a bri
         }
     }
 
+    /**
+     * Apply configuration settings
+     */
     applyConfiguration() {
-        const manager = this.configManager || window.configManager; // Use local first, then global
+        const manager = this.getConfigManager();
         if (!manager) {
             console.warn("AI Assistant: ConfigManager not available for applyConfiguration.");
             return;
@@ -1548,6 +1790,46 @@ Please provide the updated or new diagram code in a code block, along with a bri
         }
     }
 
+    /**
+     * Update backend indicator based on current configuration
+     */
+    updateBackendIndicator() {
+        if (!this.backendIndicator) return;
+
+        // Ensure configManager is available before calling getAIConfig
+        const manager = this.getConfigManager();
+        if (!manager) {
+            console.warn("AI Assistant: Config manager not available for updateBackendIndicator.");
+            this.backendIndicator.textContent = 'Config Loading...';
+            this.backendIndicator.className = 'ai-backend-indicator loading';
+            return;
+        }
+
+        try {
+            const config = this.getAIConfig();
+            if (config.useCustomAPI && config.endpoint && config.apiKey) {
+                // Show model name and user settings indicator when using custom API
+                let modelName = config.model || 'Unknown';
+                if (config.model === 'custom' && config.customModel) {
+                    modelName = config.customModel;
+                }
+                this.backendIndicator.textContent = `${modelName} (Custom)`;
+                this.backendIndicator.className = 'ai-backend-indicator custom';
+            } else {
+                this.backendIndicator.textContent = 'Server Backend';
+                this.backendIndicator.className = 'ai-backend-indicator default';
+            }
+        } catch (error) {
+            console.warn("AI Assistant: Error updating backend indicator:", error);
+            this.backendIndicator.textContent = 'Config Error';
+            this.backendIndicator.className = 'ai-backend-indicator error';
+        }
+    }
+
+    /**
+     * Update diagram code in the editor
+     * @param {string} code - New diagram code
+     */
     updateDiagramCode(code) {
         const codeTextarea = document.getElementById('code');
         if (codeTextarea) {
@@ -1586,6 +1868,12 @@ Please provide the updated or new diagram code in a code block, along with a bri
         }
     }
 
+    /**
+     * Make retry explanation more user-friendly
+     * @param {string} explanation - Original explanation
+     * @param {string} originalUserPrompt - Original user request
+     * @returns {string} User-friendly explanation
+     */
     makeRetryExplanationUserFriendly(explanation, originalUserPrompt) {
         // Remove error-fixing language that confuses users who didn't see the original error
         let userFriendlyExplanation = explanation;
@@ -1648,6 +1936,9 @@ Please provide the updated or new diagram code in a code block, along with a bri
 
     /**
      * Get user-friendly error message based on error type and response
+     * @param {Error} error - Error object
+     * @param {Response} response - HTTP response object
+     * @returns {string} User-friendly error message
      */
     getErrorMessage(error, response = null) {
         // Check for specific error messages that should be preserved
