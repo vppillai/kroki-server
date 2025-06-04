@@ -1,10 +1,59 @@
-// Default PlantUML example
+/**
+ * Main Application Controller for Kroki Diagram Editor
+ * 
+ * Central orchestration module for the Kroki diagram editor application.
+ * Handles core functionality including diagram rendering, file operations,
+ * UI state management, zoom controls, search functionality, and integration
+ * with configuration, AI assistant, and code history modules.
+ * 
+ * Features:
+ * - Multi-format diagram rendering with Kroki API integration
+ * - Comprehensive file operations with File System Access API support
+ * - Advanced zoom and pan controls with touch support
+ * - Real-time search with syntax highlighting
+ * - Fullscreen editing mode with keyboard shortcuts
+ * - Theme management with light/dark/auto modes
+ * - Configuration-driven behavior with reactive updates
+ * - URL state management for shareable diagram links
+ * - Auto-refresh and manual refresh capabilities
+ * - Responsive layout with resizable panels
+ * 
+ * Organization:
+ * - CONSTANTS AND CONFIGURATION: Default values and format mappings
+ * - STATE MANAGEMENT: Application state variables and tracking
+ * - FILE OPERATIONS: File handling, save, load, auto-save functionality
+ * - URL HANDLING: Parameter processing and state synchronization
+ * - DIAGRAM OPERATIONS: Rendering, encoding, format management
+ * - ZOOM AND PAN SYSTEM: Interactive diagram navigation controls
+ * - SEARCH FUNCTIONALITY: Text search with highlighting and navigation
+ * - FULLSCREEN MODE: Enhanced editing experience
+ * - THEME SYSTEM: Visual appearance management
+ * - CONFIGURATION INTEGRATION: Settings application and listeners
+ * - EVENT HANDLING: User interaction and lifecycle management
+ * - INITIALIZATION: Application startup and component coordination
+ * 
+ * @author Kroki Team
+ * @version 1.0.0
+ */
+
+// ========================================
+// CONSTANTS AND CONFIGURATION
+// ========================================
+
+/**
+ * Default diagram example code
+ * @constant {string}
+ */
 const defaultExample = `@startuml
 Alice -> Bob: Hello
 Bob --> Alice: Hi there
 @enduml`;
 
-// Supported formats for each diagram type
+/**
+ * Supported output formats for each diagram type
+ * Maps diagram types to their compatible export formats
+ * @constant {Object.<string, string[]>}
+ */
 const formatCompatibility = {
     blockdiag: ['png', 'svg', 'pdf'],
     bpmn: ['svg'],
@@ -37,7 +86,11 @@ const formatCompatibility = {
     wireviz: ['png', 'svg']
 };
 
-// Display type for each format
+/**
+ * Display behavior mapping for output formats
+ * Defines how each format should be presented to the user
+ * @constant {Object.<string, string>}
+ */
 const formatDisplayTypes = {
     svg: 'image',
     png: 'image',
@@ -47,20 +100,66 @@ const formatDisplayTypes = {
     base64: 'text'
 };
 
-// State variables
+// ========================================
+// STATE MANAGEMENT
+// ========================================
+
+/**
+ * User content modification tracking
+ * Tracks whether user has manually edited the diagram content
+ * @type {boolean}
+ */
 let userHasEditedContent = false;
+
+/**
+ * Current diagram data cache
+ * Stores the last successfully rendered diagram data
+ * @type {*}
+ */
 let currentDiagramData = null;
+
+/**
+ * Active diagram type identifier
+ * @type {string}
+ */
 let currentDiagramType = 'plantuml';
+
+/**
+ * Current output format selection
+ * @type {string}
+ */
 let currentOutputFormat = 'svg';
+
+/**
+ * Generated diagram URL for sharing and downloads
+ * @type {string}
+ */
 let currentDiagramUrl = '';
+
+/**
+ * Debounce timer for diagram updates
+ * @type {number|null}
+ */
 let diagramUpdateTimer = null;
-let autoRefreshEnabled = true; // Auto-refresh state
 
-// Configuration-driven constants (will be updated from config)
-let DEBOUNCE_DELAY = 1000; // 1 second delay
-let AUTO_SAVE_DELAY = 2000; // 2 seconds delay
+/**
+ * Auto-refresh feature state
+ * @type {boolean}
+ */
+let autoRefreshEnabled = true;
 
-// Zoom and pan state (will be updated from config)
+/**
+ * Configuration-driven timing constants
+ * Updated from user configuration settings
+ */
+let DEBOUNCE_DELAY = 1000; // Milliseconds delay for diagram updates
+let AUTO_SAVE_DELAY = 2000; // Milliseconds delay for auto-save
+
+/**
+ * Zoom and pan interaction state
+ * Manages diagram viewport transformation and user interaction tracking
+ * @type {Object}
+ */
 let zoomState = {
     scale: 1,
     translateX: 0,
@@ -71,12 +170,20 @@ let zoomState = {
     userHasInteracted: false // Track if user has manually zoomed/panned
 };
 
-// Cache for loaded examples
+/**
+ * Example code cache for diagram types
+ * Prevents repeated network requests for example content
+ * @type {Object.<string, string>}
+ */
 const exampleCache = {
     plantuml: defaultExample
 };
 
-// File operations state
+/**
+ * File operations state management
+ * Tracks current file information and operations
+ * @type {Object}
+ */
 let currentFile = {
     name: null,
     content: '',
@@ -86,10 +193,22 @@ let currentFile = {
     autoSaveEnabled: false // Track auto-save state
 };
 
-// Auto-save timer
+/**
+ * Auto-save timer reference
+ * @type {number|null}
+ */
 let autoSaveTimer = null;
 
-// File operations functionality
+// ========================================
+// FILE OPERATIONS
+// ========================================
+/**
+ * Update file status display in UI
+ * Updates file name, save status, and button states based on current file state
+ * Handles visibility of file status elements when no file is open
+ * 
+ * @public
+ */
 function updateFileStatus() {
     const fileNameElement = document.getElementById('file-name');
     const saveStatusElement = document.getElementById('save-status');
@@ -149,6 +268,13 @@ function updateFileStatus() {
     }
 }
 
+/**
+ * Mark current file as modified
+ * Updates UI to reflect unsaved changes and provides visual feedback
+ * Only acts if a file is currently open and was previously saved
+ * 
+ * @public
+ */
 function markFileAsModified() {
     if (currentFile.isOpen && currentFile.saved) {
         currentFile.saved = false;
@@ -165,6 +291,12 @@ function markFileAsModified() {
     }
 }
 
+/**
+ * Mark current file as saved
+ * Updates file state and UI to reflect saved status with visual feedback
+ * 
+ * @public
+ */
 function markFileAsSaved() {
     currentFile.saved = true;
     updateFileStatus();
@@ -179,12 +311,25 @@ function markFileAsSaved() {
     }
 }
 
-// Check if File System Access API is supported
+/**
+ * Check File System Access API support
+ * Determines if the browser supports modern file system APIs
+ * 
+ * @returns {boolean} True if File System Access API is available
+ * @public
+ */
 function isFileSystemAccessSupported() {
     return 'showOpenFilePicker' in window;
 }
 
-// Open file using File System Access API or fallback to input
+/**
+ * Open file dialog and load file content
+ * Uses File System Access API when available, falls back to file input
+ * Handles file content loading, diagram type detection, and UI updates
+ * 
+ * @async
+ * @public
+ */
 async function openFile() {
     try {
         if (isFileSystemAccessSupported()) {
@@ -228,7 +373,14 @@ async function openFile() {
     }
 }
 
-// Handle file input change (fallback method)
+/**
+ * Handle file input change for fallback file loading
+ * Processes file selection from traditional file input element
+ * Updates application state and detects diagram type
+ * 
+ * @param {Event} event - File input change event
+ * @public
+ */
 function handleFileInputChange(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -258,7 +410,15 @@ function handleFileInputChange(event) {
     event.target.value = '';
 }
 
-// Detect diagram type from content or filename
+/**
+ * Detect diagram type from file content or filename
+ * Analyzes content patterns and file extensions to determine diagram type
+ * Updates diagram type dropdown and format options
+ * 
+ * @param {string} content - File content to analyze
+ * @param {string} filename - Original filename for extension detection
+ * @public
+ */
 function detectDiagramType(content, filename) {
     const diagramTypeSelect = document.getElementById('diagramType');
     const lowerContent = content.toLowerCase();
@@ -282,7 +442,14 @@ function detectDiagramType(content, filename) {
     currentDiagramType = diagramTypeSelect.value;
 }
 
-// Save file using File System Access API or fallback to download
+/**
+ * Save current file content
+ * Uses existing file handle when available, prompts for save location otherwise
+ * Handles File System Access API and fallback download methods
+ * 
+ * @async
+ * @public
+ */
 async function saveFile() {
     const content = document.getElementById('code').value;
 
@@ -308,7 +475,14 @@ async function saveFile() {
     }
 }
 
-// Save as new file
+/**
+ * Save file with new name or location
+ * Always prompts user for save location regardless of existing file handle
+ * Creates new file handle for future save operations
+ * 
+ * @async
+ * @public
+ */
 async function saveAsFile() {
     const content = document.getElementById('code').value;
 
@@ -347,7 +521,13 @@ async function saveAsFile() {
     }
 }
 
-// Get default filename based on diagram type
+/**
+ * Generate default filename based on current diagram type
+ * Provides appropriate file extensions for different diagram formats
+ * 
+ * @returns {string} Default filename with appropriate extension
+ * @public
+ */
 function getDefaultFileName() {
     const extensions = {
         plantuml: '.puml',
@@ -365,7 +545,14 @@ function getDefaultFileName() {
     return `diagram${extension}`;
 }
 
-// Fallback download function
+/**
+ * Fallback download function for browsers without File System Access API
+ * Creates and triggers download of file content using blob URLs
+ * Updates file state and provides user feedback
+ * 
+ * @param {string} content - File content to download
+ * @public
+ */
 function downloadAsFile(content) {
     const filename = getDefaultFileName();
     const blob = new Blob([content], { type: 'text/plain' });
@@ -389,7 +576,13 @@ function downloadAsFile(content) {
     showSuccessMessage('File downloaded successfully!');
 }
 
-// Show success message
+/**
+ * Display success message to user
+ * Shows temporary success feedback in the save status area
+ * 
+ * @param {string} message - Success message to display
+ * @public
+ */
 function showSuccessMessage(message) {
     const saveStatus = document.getElementById('save-status');
     const originalClass = saveStatus.className;
@@ -404,7 +597,13 @@ function showSuccessMessage(message) {
     }, 2000);
 }
 
-// Show error message
+/**
+ * Display error message to user
+ * Shows error feedback in the main error message area
+ * 
+ * @param {string} message - Error message to display
+ * @public
+ */
 function showErrorMessage(message) {
     const errorElement = document.getElementById('errorMessage');
     errorElement.textContent = message;
@@ -415,7 +614,13 @@ function showErrorMessage(message) {
     }, 5000);
 }
 
-// Show image error banner (non-dismissable banner at bottom of image pane)
+/**
+ * Show non-dismissible error banner in diagram pane
+ * Displays persistent error information at bottom of image area
+ * 
+ * @param {string} message - Error message to display in banner
+ * @public
+ */
 function showImageErrorBanner(message) {
     const banner = document.getElementById('image-error-banner');
     const messageElement = document.getElementById('error-banner-message');
@@ -426,7 +631,12 @@ function showImageErrorBanner(message) {
     }
 }
 
-// Hide image error banner
+/**
+ * Hide image error banner
+ * Removes error banner from diagram pane when error is resolved
+ * 
+ * @public
+ */
 function hideImageErrorBanner() {
     const banner = document.getElementById('image-error-banner');
 
@@ -435,7 +645,14 @@ function hideImageErrorBanner() {
     }
 }
 
-// New file function
+/**
+ * Create new file with example content
+ * Prompts user about unsaved changes, loads appropriate example for current diagram type
+ * Resets file state and user edit tracking
+ * 
+ * @async
+ * @public
+ */
 async function newFile() {
     // Check for unsaved changes either in an open file or user-edited content
     const hasUnsavedChanges = (currentFile.isOpen && !currentFile.saved) ||
@@ -468,7 +685,13 @@ async function newFile() {
     updateFileStatus();
 }
 
-// Keyboard shortcuts for file operations
+/**
+ * Handle keyboard shortcuts for file operations
+ * Processes Ctrl/Cmd key combinations for file operations and settings
+ * 
+ * @param {KeyboardEvent} event - Keyboard event to process
+ * @public
+ */
 function handleFileShortcuts(event) {
     if (event.ctrlKey || event.metaKey) {
         switch (event.key) {
@@ -505,7 +728,13 @@ function handleFileShortcuts(event) {
     }
 }
 
-// Initialize file operations
+/**
+ * Initialize file operations system
+ * Sets up event listeners for file operation buttons and keyboard shortcuts
+ * Establishes file content change tracking
+ * 
+ * @public
+ */
 function initializeFileOperations() {
     // Set up event listeners
     const newBtn = document.getElementById('new-file-btn');
@@ -556,7 +785,12 @@ function initializeFileOperations() {
     }
 }
 
-// Toggle auto-save functionality
+/**
+ * Toggle auto-save functionality for current file
+ * Enables or disables automatic file saving and updates UI indicators
+ * 
+ * @public
+ */
 function toggleAutoSave() {
     currentFile.autoSaveEnabled = !currentFile.autoSaveEnabled;
     const autoSaveLabel = document.getElementById('auto-save-label');
@@ -572,7 +806,12 @@ function toggleAutoSave() {
     }
 }
 
-// Start auto-save timer
+/**
+ * Start auto-save timer for current file
+ * Initiates periodic automatic saving based on configuration delay
+ * 
+ * @public
+ */
 function startAutoSave() {
     stopAutoSave(); // Clear any existing timer
     autoSaveTimer = setInterval(() => {
@@ -582,7 +821,12 @@ function startAutoSave() {
     }, AUTO_SAVE_DELAY);
 }
 
-// Stop auto-save timer
+/**
+ * Stop auto-save timer
+ * Clears active auto-save interval to prevent further automatic saves
+ * 
+ * @public
+ */
 function stopAutoSave() {
     if (autoSaveTimer) {
         clearInterval(autoSaveTimer);
@@ -590,7 +834,17 @@ function stopAutoSave() {
     }
 }
 
-// Parse URL parameters
+// ========================================
+// URL HANDLING
+// ========================================
+
+/**
+ * Parse URL parameters for application state
+ * Extracts diagram type, format, and encoded content from query string
+ * 
+ * @returns {Object} Object containing parsed URL parameters
+ * @public
+ */
 function getUrlParameters() {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -600,7 +854,13 @@ function getUrlParameters() {
     };
 }
 
-// Process URL parameters and update UI
+/**
+ * Process URL parameters and update application state
+ * Sets diagram type, format, and content based on URL query parameters
+ * Handles format compatibility and provides fallbacks for invalid combinations
+ * 
+ * @public
+ */
 function processUrlParameters() {
     const params = getUrlParameters();
 
@@ -647,7 +907,13 @@ function processUrlParameters() {
     }
 }
 
-// Load the default example for a diagram type
+/**
+ * Load default example content for a diagram type
+ * Loads and displays appropriate example code, with fallback handling
+ * 
+ * @param {string} diagramType - Type of diagram to load example for
+ * @public
+ */
 function loadDefaultExample(diagramType) {
     loadExampleForDiagramType(diagramType).then(example => {
         document.getElementById('code').value = example;
@@ -659,7 +925,13 @@ function loadDefaultExample(diagramType) {
     });
 }
 
-// Update the URL with current diagram state
+/**
+ * Update URL with current application state
+ * Synchronizes URL parameters with current diagram type, format, and content
+ * Enables shareable links and browser history support
+ * 
+ * @public
+ */
 function updateUrl() {
     const diagramType = document.getElementById('diagramType').value;
     const outputFormat = document.getElementById('outputFormat').value;
@@ -680,7 +952,17 @@ function updateUrl() {
     window.history.replaceState({}, '', url);
 }
 
-// Debounce diagram updates
+// ========================================
+// DIAGRAM OPERATIONS
+// ========================================
+
+/**
+ * Debounce diagram updates to prevent excessive API calls
+ * Delays diagram generation during rapid content changes
+ * Only triggers updates when auto-refresh is enabled
+ * 
+ * @public
+ */
 function debounceUpdateDiagram() {
     // Only auto-refresh if enabled
     if (!autoRefreshEnabled) {
@@ -702,7 +984,13 @@ function debounceUpdateDiagram() {
     }, DEBOUNCE_DELAY);
 }
 
-// Update format dropdown based on selected diagram type
+/**
+ * Update format dropdown based on selected diagram type
+ * Populates format options with compatible formats for current diagram type
+ * Preserves current selection when possible, falls back to suitable defaults
+ * 
+ * @public
+ */
 function updateFormatDropdown() {
     const diagramType = document.getElementById('diagramType').value;
     const formatDropdown = document.getElementById('outputFormat');
@@ -730,7 +1018,15 @@ function updateFormatDropdown() {
     currentOutputFormat = formatDropdown.value;
 }
 
-// Load example for a diagram type
+/**
+ * Load example content for specific diagram type
+ * Fetches example content from server, with caching and error handling
+ * 
+ * @param {string} type - Diagram type identifier
+ * @returns {Promise<string>} Promise resolving to example content
+ * @async
+ * @public
+ */
 async function loadExampleForDiagramType(type) {
     if (exampleCache[type]) {
         return exampleCache[type];
@@ -756,7 +1052,15 @@ async function loadExampleForDiagramType(type) {
     }
 }
 
-// Encode text to UTF-8
+/**
+ * Encode text to UTF-8 byte array
+ * Converts string text to UTF-8 encoded byte array for diagram processing
+ * Uses TextEncoder when available, falls back to manual encoding
+ * 
+ * @param {string} str - Text string to encode
+ * @returns {Uint8Array} UTF-8 encoded byte array
+ * @private
+ */
 function textEncode(str) {
     if (window.TextEncoder) {
         return new TextEncoder('utf-8').encode(str);
@@ -769,7 +1073,14 @@ function textEncode(str) {
     return result;
 }
 
-// Convert Uint8Array to string
+/**
+ * Convert Uint8Array to string representation
+ * Transforms byte array back to string for base64 encoding
+ * 
+ * @param {Uint8Array} array - Byte array to convert
+ * @returns {string} String representation of byte array
+ * @private
+ */
 function uint8ArrayToString(array) {
     let result = '';
     for (let i = 0; i < array.length; i++) {
@@ -778,7 +1089,15 @@ function uint8ArrayToString(array) {
     return result;
 }
 
-// Encode diagram text for Kroki
+/**
+ * Encode diagram text for Kroki API
+ * Compresses and encodes diagram source code for URL-safe transmission
+ * Uses deflate compression and base64 encoding with URL-safe characters
+ * 
+ * @param {string} text - Diagram source code to encode
+ * @returns {string} URL-safe encoded diagram string
+ * @public
+ */
 function encodeKrokiDiagram(text) {
     const bytes = textEncode(text);
     const compressed = pako.deflate(bytes);
@@ -788,7 +1107,16 @@ function encodeKrokiDiagram(text) {
         .replace(/\//g, '_');
 }
 
-// Decode a Kroki diagram string
+/**
+ * Decode Kroki diagram string back to source text
+ * Reverses the encoding process to retrieve original diagram code
+ * Handles base64 decoding and deflate decompression with error handling
+ * 
+ * @param {string} encodedString - URL-safe encoded diagram string
+ * @returns {string} Original diagram source code
+ * @throws {Error} When decoding fails
+ * @public
+ */
 function decodeKrokiDiagram(encodedString) {
     try {
         const base64String = encodedString
@@ -811,7 +1139,13 @@ function decodeKrokiDiagram(encodedString) {
     }
 }
 
-// Update the image link text
+/**
+ * Update image link display and content
+ * Shows or hides image link row based on output format type
+ * Updates link text with current diagram URL for image formats
+ * 
+ * @public
+ */
 function updateImageLink() {
     const imageLinkText = document.getElementById('image-link-text');
     const imageLinkRow = document.getElementById('image-link-row');
@@ -824,7 +1158,18 @@ function updateImageLink() {
     }
 }
 
-// Initialize zoom and pan functionality
+// ========================================
+// ZOOM AND PAN SYSTEM
+// ========================================
+
+/**
+ * Initialize zoom and pan functionality for diagram viewing
+ * Sets up interactive navigation controls, mouse/wheel events, and zoom state management
+ * Provides zoom in/out, reset, and pan capabilities with proper bounds checking
+ * 
+ * @returns {Object} Object with resetZoom and updateTransform methods
+ * @public
+ */
 function initializeZoomPan() {
     const viewport = document.getElementById('diagram-viewport');
     const canvas = document.getElementById('diagram-canvas');
@@ -854,13 +1199,25 @@ function initializeZoomPan() {
     let lastMouseX = 0;
     let lastMouseY = 0;
 
-    // Update transform
+    /**
+     * Update canvas transform based on current zoom state
+     * Applies scale and translation transformations to diagram canvas
+     * Updates zoom level display indicator
+     * 
+     * @private
+     */
     function updateTransform() {
         canvas.style.transform = `translate(${zoomState.translateX}px, ${zoomState.translateY}px) scale(${zoomState.scale})`;
         zoomLevelSpan.textContent = Math.round(zoomState.scale * 100) + '%';
     }
 
-    // Reset zoom and pan to fit image
+    /**
+     * Reset zoom and pan to fit image in viewport
+     * Calculates optimal scale and positioning to center diagram
+     * Respects configuration padding and prevents upscaling beyond 100%
+     * 
+     * @private
+     */
     function resetZoom() {
         if (!diagram.naturalWidth || !diagram.naturalHeight) {
             // If image dimensions aren't available yet, try again after a short delay
@@ -900,7 +1257,16 @@ function initializeZoomPan() {
         updateTransform();
     }
 
-    // Zoom at a specific point
+    /**
+     * Zoom at specific screen coordinates
+     * Performs zoom operation while keeping the point under cursor/mouse in place
+     * Applies zoom bounds checking and updates interaction state
+     * 
+     * @param {number} clientX - Screen X coordinate for zoom center
+     * @param {number} clientY - Screen Y coordinate for zoom center  
+     * @param {number} delta - Zoom change amount (positive for zoom in, negative for zoom out)
+     * @private
+     */
     function zoomAt(clientX, clientY, delta) {
         const viewportRect = viewport.getBoundingClientRect();
         const offsetX = clientX - viewportRect.left;
@@ -1100,7 +1466,14 @@ function initializeZoomPan() {
     return { resetZoom, updateTransform };
 }
 
-// Preserve zoom state when updating diagram
+/**
+ * Preserve current zoom state before diagram update
+ * Captures current scale and translation values for restoration after update
+ * Used to maintain user's view position when refreshing diagrams
+ * 
+ * @returns {Object} Object containing scale, translateX, and translateY values
+ * @private
+ */
 function preserveZoomState() {
     // Store current zoom state before updating
     return {
@@ -1110,7 +1483,15 @@ function preserveZoomState() {
     };
 }
 
-// Update the diagram
+/**
+ * Update and render the current diagram
+ * Processes diagram code, generates image/text output, handles errors and loading states
+ * Manages zoom state preservation, format-specific display logic, and user feedback
+ * Integrates with code history tracking and URL synchronization
+ * 
+ * @async
+ * @public
+ */
 async function updateDiagram() {
     const code = document.getElementById('code').value;
     const diagramType = document.getElementById('diagramType').value;
@@ -1334,7 +1715,13 @@ async function updateDiagram() {
     }
 }
 
-// Download the current diagram
+/**
+ * Download current diagram to user's device
+ * Creates appropriate download based on output format (text blob or direct URL)
+ * Generates filename based on current output format
+ * 
+ * @public
+ */
 function downloadDiagram() {
     if (!currentDiagramData) return;
 
@@ -1358,7 +1745,17 @@ function downloadDiagram() {
     document.body.removeChild(a);
 }
 
-// Initialize line numbers and scroll synchronization
+// ========================================
+// SEARCH FUNCTIONALITY
+// ========================================
+
+/**
+ * Initialize line numbers display and scroll synchronization
+ * Sets up bidirectional scroll synchronization between code editor and line numbers
+ * Handles resize events and ensures proper alignment
+ * 
+ * @public
+ */
 function initializeLineNumbers() {
     const codeTextarea = document.getElementById('code');
     const lineNumbersDiv = document.getElementById('lineNumbers');
@@ -1410,7 +1807,13 @@ function initializeLineNumbers() {
     resizeObserver.observe(codeTextarea);
 }
 
-// Update line numbers in the editor
+/**
+ * Update line numbers display in the code editor
+ * Generates line numbers matching the current code content
+ * Synchronizes scroll position between editor and line numbers
+ * 
+ * @public
+ */
 function updateLineNumbers() {
     const codeTextarea = document.getElementById('code');
     const lineNumbersDiv = document.getElementById('lineNumbers');
@@ -1436,7 +1839,13 @@ function updateLineNumbers() {
     });
 }
 
-// Handle the decode button click
+/**
+ * Handle decode button functionality
+ * Decodes Kroki-encoded diagram text and loads it into the editor
+ * Supports both full URLs and encoded strings, with error handling
+ * 
+ * @public
+ */
 function handleDecode() {
     const encodedTextInput = document.getElementById('encoded-text');
     const encodedText = encodedTextInput.value.trim();
@@ -1465,7 +1874,17 @@ function handleDecode() {
     }
 }
 
-// Handle auto-refresh checkbox toggle
+// ========================================
+// FULLSCREEN MODE
+// ========================================
+
+/**
+ * Handle auto-refresh checkbox toggle
+ * Updates auto-refresh state, saves preference, and adjusts UI visibility
+ * Controls whether diagrams update automatically or require manual refresh
+ * 
+ * @public
+ */
 function handleAutoRefreshToggle() {
     const checkbox = document.getElementById('auto-refresh-checkbox');
     const refreshBtn = document.getElementById('manual-refresh-btn');
@@ -1479,7 +1898,13 @@ function handleAutoRefreshToggle() {
     refreshBtn.style.display = autoRefreshEnabled ? 'none' : 'inline-flex';
 }
 
-// Handle manual refresh button click
+/**
+ * Handle manual refresh button click
+ * Triggers diagram update with visual feedback animation
+ * Provides manual control when auto-refresh is disabled
+ * 
+ * @public
+ */
 function handleManualRefresh() {
     const refreshBtn = document.getElementById('manual-refresh-btn');
     if (refreshBtn) {
@@ -1496,7 +1921,13 @@ function handleManualRefresh() {
     updateDiagram();
 }
 
-// Initialize auto-refresh functionality
+/**
+ * Initialize auto-refresh functionality and preferences
+ * Sets up auto-refresh toggle, manual refresh button, and keyboard shortcuts
+ * Loads saved user preferences and configures initial UI state
+ * 
+ * @public
+ */
 function initializeAutoRefresh() {
     const checkbox = document.getElementById('auto-refresh-checkbox');
     const refreshBtn = document.getElementById('manual-refresh-btn');
@@ -1527,7 +1958,17 @@ function initializeAutoRefresh() {
     });
 }
 
-// Initialize diagram type dropdown
+// ========================================
+// THEME SYSTEM
+// ========================================
+
+/**
+ * Initialize diagram type dropdown with available formats
+ * Populates dropdown with sorted diagram types from format compatibility
+ * Sets default selection to PlantUML or first available type
+ * 
+ * @public
+ */
 function initializeDiagramTypeDropdown() {
     const diagramTypeDropdown = document.getElementById('diagramType');
     if (!diagramTypeDropdown) {
@@ -1554,7 +1995,13 @@ function initializeDiagramTypeDropdown() {
     }
 }
 
-// Resize functionality
+/**
+ * Initialize resize handle for editor panel
+ * Sets up draggable resize functionality between editor and preview panels
+ * Includes bounds checking and layout adjustment callbacks
+ * 
+ * @public
+ */
 function initializeResizeHandle() {
     const container = document.querySelector('.container');
     const editor = document.querySelector('.editor');
@@ -1600,7 +2047,13 @@ function initializeResizeHandle() {
     });
 }
 
-// Function to adjust controls layout based on available width
+/**
+ * Adjust controls layout based on available width
+ * Switches between horizontal and stacked layout for diagram controls
+ * Responsive design adaptation for narrow editor panels
+ * 
+ * @public
+ */
 function adjustControlsLayout() {
     const controlsContainer = document.querySelector('.diagram-controls');
     const editor = document.querySelector('.editor');
@@ -1622,7 +2075,14 @@ function adjustControlsLayout() {
     }
 }
 
-// Fullscreen mode functionality
+/**
+ * Initialize fullscreen mode functionality
+ * Sets up fullscreen toggle, keyboard shortcuts, and notification system
+ * Provides enhanced editing experience with full-screen diagram viewing
+ * 
+ * @returns {Object} Object with toggle, enter, exit methods and isActive state
+ * @public
+ */
 function initializeFullscreenMode() {
     const fullscreenToggle = document.getElementById('fullscreen-toggle');
     const body = document.body;
@@ -1630,6 +2090,12 @@ function initializeFullscreenMode() {
     let isFullscreen = false;
     let notificationTimeout = null;
 
+    /**
+     * Show fullscreen mode notification to user
+     * Displays temporary notification with auto-hide timer
+     * 
+     * @private
+     */
     function showNotification() {
         if (notificationTimeout) {
             clearTimeout(notificationTimeout);
@@ -1642,6 +2108,12 @@ function initializeFullscreenMode() {
         }, 3000);
     }
 
+    /**
+     * Enter fullscreen mode
+     * Activates fullscreen layout, updates controls, and prevents body scrolling
+     * 
+     * @private
+     */
     function enterFullscreen() {
         isFullscreen = true;
         body.classList.add('fullscreen-mode');
@@ -1670,6 +2142,12 @@ function initializeFullscreenMode() {
         body.style.overflow = 'hidden';
     }
 
+    /**
+     * Exit fullscreen mode
+     * Restores normal layout, updates controls, and re-enables body scrolling
+     * 
+     * @private
+     */
     function exitFullscreen() {
         isFullscreen = false;
         body.classList.remove('fullscreen-mode');
@@ -1696,6 +2174,12 @@ function initializeFullscreenMode() {
         body.style.overflow = '';
     }
 
+    /**
+     * Toggle between fullscreen and normal mode
+     * Switches fullscreen state based on current mode
+     * 
+     * @private
+     */
     function toggleFullscreen() {
         if (isFullscreen) {
             exitFullscreen();
@@ -1743,7 +2227,14 @@ function initializeFullscreenMode() {
     };
 }
 
-// Theme system
+/**
+ * Theme management system for visual appearance control
+ * Handles light, dark, and auto themes with persistent user preferences
+ * Provides theme switching functionality and UI updates
+ * 
+ * @constant
+ * @public
+ */
 const ThemeManager = {
     themes: ['light', 'dark', 'auto'],
     currentTheme: 'light', // Default to light mode
@@ -1813,7 +2304,17 @@ const ThemeManager = {
     }
 };
 
-// Configuration integration
+// ========================================
+// CONFIGURATION INTEGRATION
+// ========================================
+
+/**
+ * Initialize configuration system integration
+ * Sets up configuration manager integration and applies initial settings
+ * Coordinates between configuration UI and application state
+ * 
+ * @public
+ */
 function initializeConfigurationSystem() {
     if (!window.configManager) {
         console.warn('Configuration manager not available');
@@ -1827,6 +2328,13 @@ function initializeConfigurationSystem() {
     setupConfigurationListeners();
 }
 
+/**
+ * Apply configuration values to application state
+ * Updates debounce delays, zoom settings, theme, and UI preferences
+ * Ensures application state matches current configuration
+ * 
+ * @public
+ */
 function applyConfiguration() {
     const config = window.configManager;
 
@@ -1874,6 +2382,13 @@ function applyConfiguration() {
     applyUIVisibilityConfig();
 }
 
+/**
+ * Apply UI element visibility configuration
+ * Shows or hides toolbar, zoom controls, and file status based on settings
+ * Provides customizable interface layout options
+ * 
+ * @public
+ */
 function applyUIVisibilityConfig() {
     const config = window.configManager;
 
@@ -1896,6 +2411,13 @@ function applyUIVisibilityConfig() {
     }
 }
 
+/**
+ * Set up configuration change listeners
+ * Registers callbacks for configuration updates to apply changes in real-time
+ * Handles theme, auto-refresh, zoom, editor, and layout configuration changes
+ * 
+ * @public
+ */
 function setupConfigurationListeners() {
     const config = window.configManager;
 
@@ -2006,7 +2528,14 @@ function setupConfigurationListeners() {
     });
 }
 
-// Event Listeners
+// ========================================
+// EVENT HANDLING AND INITIALIZATION
+// ========================================
+
+/**
+ * Main DOMContentLoaded event handler - initializes all application systems
+ * @private
+ */
 document.addEventListener('DOMContentLoaded', function () {
     initializeDiagramTypeDropdown();
     updateFormatDropdown();
@@ -2092,12 +2621,18 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 150); // Slightly longer delay to ensure all scripts are loaded
 });
 
-// Add window resize listener
+/**
+ * Window resize event handler - adjusts layout when viewport changes
+ * @private
+ */
 window.addEventListener('resize', function () {
     adjustControlsLayout();
 });
 
-// Warn about unsaved changes before page unload
+/**
+ * Before unload event handler - warns about unsaved changes
+ * @private
+ */
 window.addEventListener('beforeunload', function (e) {
     if (currentFile.isOpen && !currentFile.saved) {
         e.preventDefault();
@@ -2108,7 +2643,10 @@ window.addEventListener('beforeunload', function (e) {
 
 const codeTextarea = document.getElementById('code');
 
-// Add tab key handling for proper indentation
+/**
+ * Code textarea tab key handler - provides proper indentation support
+ * @private
+ */
 codeTextarea.addEventListener('keydown', function (e) {
     if (e.key === 'Tab') {
         e.preventDefault();
@@ -2187,6 +2725,10 @@ codeTextarea.addEventListener('keydown', function (e) {
     }
 });
 
+/**
+ * Code textarea input event handler - handles content changes and updates
+ * @private
+ */
 codeTextarea.addEventListener('input', function () {
     const code = this.value.trim();
 
@@ -2204,6 +2746,10 @@ codeTextarea.addEventListener('input', function () {
     updateUrl();
 });
 
+/**
+ * Diagram type dropdown change handler - updates format options and loads examples
+ * @private
+ */
 document.getElementById('diagramType').addEventListener('change', async function () {
     const diagramType = this.value;
     const currentCode = codeTextarea.value;
@@ -2226,14 +2772,30 @@ document.getElementById('diagramType').addEventListener('change', async function
     }
 });
 
+/**
+ * Output format dropdown change handler - updates diagram when format changes
+ * @private
+ */
 document.getElementById('outputFormat').addEventListener('change', function () {
     if (autoRefreshEnabled) {
         updateDiagram();
     }
 });
 
+/**
+ * Download button click handler - triggers diagram download
+ * @private
+ */
 document.getElementById('downloadButton').addEventListener('click', downloadDiagram);
 
+/**
+ * Copy link button click handler - copies image link to clipboard
+ * @private
+ */
+/**
+ * Copy link button click handler - copies image link to clipboard
+ * @private
+ */
 const copyLinkBtn = document.getElementById('copy-link-btn');
 if (copyLinkBtn) {
     copyLinkBtn.addEventListener('click', function () {
@@ -2251,11 +2813,29 @@ if (copyLinkBtn) {
     });
 }
 
+/**
+ * Decode button click handler - handles diagram decoding functionality
+ * @private
+ */
+
+/**
+ * Decode button click handler - handles diagram decoding functionality
+ * @private
+ */
 const decodeBtn = document.getElementById('decode-btn');
 if (decodeBtn) {
     decodeBtn.addEventListener('click', handleDecode);
 }
 
+/**
+ * Encoded text input keypress handler - triggers decode on Enter key
+ * @private
+ */
+
+/**
+ * Encoded text input keypress handler - triggers decode on Enter key
+ * @private
+ */
 const encodedTextInput = document.getElementById('encoded-text');
 if (encodedTextInput) {
     encodedTextInput.addEventListener('keypress', function (e) {
@@ -2265,7 +2845,10 @@ if (encodedTextInput) {
     });
 }
 
-// Help modal controls
+/**
+ * Help modal event handlers - manages zoom help modal display and interaction
+ * @private
+ */
 const helpBtn = document.getElementById('zoom-help');
 const helpModal = document.getElementById('help-modal');
 const closeHelpBtn = document.getElementById('close-help');
@@ -2295,7 +2878,20 @@ if (helpBtn && helpModal && closeHelpBtn) {
     });
 }
 
-// Search functionality for code editor
+// ========================================
+// SEARCH FUNCTIONALITY
+// ========================================
+
+/**
+ * State object for search functionality
+ * @constant {Object} searchState - Current search state
+ * @property {boolean} isVisible - Whether search bar is currently visible
+ * @property {string} currentQuery - Current search query string
+ * @property {Array<Object>} matches - Array of search match objects with index, length, and text
+ * @property {number} currentIndex - Index of currently selected match (-1 if none)
+ * @property {boolean} caseSensitive - Whether search is case sensitive
+ * @property {string} lastSearchValue - Last search value to detect query changes
+ */
 let searchState = {
     isVisible: false,
     currentQuery: '',
@@ -2305,7 +2901,10 @@ let searchState = {
     lastSearchValue: ''
 };
 
-// Show search bar
+/**
+ * Show search bar and focus on search input
+ * @public
+ */
 function showSearchBar() {
     const searchBar = document.getElementById('search-bar');
     const searchInput = document.getElementById('search-input');
@@ -2326,7 +2925,10 @@ function showSearchBar() {
     }
 }
 
-// Hide search bar
+/**
+ * Hide search bar and clear highlights
+ * @public
+ */
 function hideSearchBar() {
     const searchBar = document.getElementById('search-bar');
     if (!searchBar) return;
@@ -2342,7 +2944,11 @@ function hideSearchBar() {
     }
 }
 
-// Perform search in code textarea
+/**
+ * Perform search in code textarea and update results
+ * @public
+ * @param {string} query - Search query string
+ */
 function performSearch(query) {
     const codeTextarea = document.getElementById('code');
     if (!codeTextarea || !query) {
@@ -2402,7 +3008,10 @@ function performSearch(query) {
     }
 }
 
-// Clear search highlights
+/**
+ * Clear all search highlights and reset selection
+ * @public
+ */
 function clearSearchHighlights() {
     // Clear any selection in the textarea
     const codeTextarea = document.getElementById('code');
@@ -2417,7 +3026,10 @@ function clearSearchHighlights() {
     }
 }
 
-// Highlight search results with overlay
+/**
+ * Highlight search results with overlay spans
+ * @public
+ */
 function highlightSearchResults() {
     const codeTextarea = document.getElementById('code');
     const overlay = document.getElementById('search-highlight-overlay');
@@ -2488,14 +3100,22 @@ function highlightSearchResults() {
     }
 }
 
-// Helper function to escape HTML
+/**
+ * Escape HTML special characters in text
+ * @private
+ * @param {string} text - Text to escape
+ * @returns {string} HTML-escaped text
+ */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Debug function for search highlighting (available in console)
+/**
+ * Debug function for search highlighting (available in console)
+ * @public
+ */
 function debugSearchHighlighting() {
     const codeTextarea = document.getElementById('code');
     const overlay = document.getElementById('search-highlight-overlay');
@@ -2548,7 +3168,10 @@ function debugSearchHighlighting() {
 // Make debug function globally available
 window.debugSearchHighlighting = debugSearchHighlighting;
 
-// Scroll to current match
+/**
+ * Scroll textarea to show current search match
+ * @public
+ */
 function scrollToCurrentMatch() {
     const codeTextarea = document.getElementById('code');
     if (!codeTextarea || searchState.currentIndex === -1 || searchState.matches.length === 0) {
@@ -2585,7 +3208,10 @@ function scrollToCurrentMatch() {
     }
 }
 
-// Navigate to next match
+/**
+ * Navigate to next search match
+ * @public
+ */
 function goToNextMatch() {
     if (searchState.matches.length === 0) return;
 
@@ -2595,7 +3221,10 @@ function goToNextMatch() {
     updateSearchCount(searchState.currentIndex + 1, searchState.matches.length);
 }
 
-// Navigate to previous match
+/**
+ * Navigate to previous search match
+ * @public
+ */
 function goToPreviousMatch() {
     if (searchState.matches.length === 0) return;
 
@@ -2607,7 +3236,10 @@ function goToPreviousMatch() {
     updateSearchCount(searchState.currentIndex + 1, searchState.matches.length);
 }
 
-// Toggle case sensitivity
+/**
+ * Toggle case sensitivity for search
+ * @public
+ */
 function toggleCaseSensitive() {
     searchState.caseSensitive = !searchState.caseSensitive;
     const caseSensitiveBtn = document.getElementById('search-case');
@@ -2622,7 +3254,12 @@ function toggleCaseSensitive() {
     }
 }
 
-// Update search count display
+/**
+ * Update search count display
+ * @private
+ * @param {number} current - Current match index (1-based)
+ * @param {number} total - Total number of matches
+ */
 function updateSearchCount(current, total) {
     const searchCount = document.getElementById('search-count');
     if (searchCount) {
@@ -2634,7 +3271,10 @@ function updateSearchCount(current, total) {
     }
 }
 
-// Update search button states
+/**
+ * Update search navigation button states
+ * @private
+ */
 function updateSearchButtons() {
     const prevBtn = document.getElementById('search-prev');
     const nextBtn = document.getElementById('search-next');
@@ -2649,7 +3289,10 @@ function updateSearchButtons() {
     }
 }
 
-// Initialize search functionality
+/**
+ * Initialize search functionality with event listeners
+ * @public
+ */
 function initializeSearchFunctionality() {
     const searchInput = document.getElementById('search-input');
     const searchPrev = document.getElementById('search-prev');
