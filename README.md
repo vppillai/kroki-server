@@ -172,6 +172,138 @@ The editor automatically detects diagram types from file content and extensions:
 - **Modern Browsers** (Chrome 86+, Edge 86+): Full File System Access API support for direct file system integration
 - **Other Browsers** (Firefox, Safari): Automatic fallback to download/upload methods
 
+## AI Assistant Features
+
+The demo site includes an integrated AI assistant that can help you create, modify, and understand diagrams. The AI assistant supports multiple models and can be configured to use either the server's backend or your own API credentials.
+
+### AI Model Support
+
+The AI assistant supports a wide range of modern language models:
+
+**GPT Models:**
+- `gpt-4.1` - Latest GPT-4.1 model
+- `gpt-4.1-mini` - Optimized GPT-4.1 for faster responses
+- `gpt-4.1-nano` - Lightweight GPT-4.1 variant
+- `gpt-4.5-preview` - Preview of GPT-4.5 capabilities
+- `gpt-4o` - GPT-4 Omni model
+- `gpt-4o-mini` - Compact GPT-4 Omni variant
+
+**O-Series Models:**
+- `o4-mini` - OpenAI's o4-mini reasoning model
+- `o3` - OpenAI's o3 reasoning model
+- `o3-mini` - Compact o3 reasoning model
+
+**Custom Models:**
+- `custom` - Use your own model name with custom API configuration
+
+### AI Assistant Interface
+
+The AI assistant is accessible through:
+
+- **Chat Window**: Click the "🤖 AI Assistant" button to open the interactive chat interface
+- **Backend Indicator**: A badge showing the current AI backend configuration:
+  - `Server Backend` - Using the server's default AI configuration
+  - `ModelName (Custom)` - Using your custom API settings with the specified model
+
+### AI Configuration Options
+
+#### Using Server Backend (Default)
+
+By default, the AI assistant uses the server's configured AI backend. No additional setup is required from the user.
+
+#### Using Custom API Configuration
+
+You can configure your own AI API credentials through the settings:
+
+1. **Access Settings**: Click the gear icon (⚙️) in the AI assistant window
+2. **Configure API**: Enter your custom settings:
+   - **API Key**: Your OpenAI or compatible API key
+   - **Base URL**: Custom API endpoint (optional, defaults to OpenAI)
+   - **Model**: Select from supported models or choose "custom" to specify your own
+   - **Custom Model Name**: When "custom" is selected, specify your model name
+
+3. **Save Settings**: Settings are automatically saved and persisted locally
+
+### AI Capabilities
+
+The AI assistant can help you with:
+
+#### Diagram Creation and Modification
+- **Generate Diagrams**: Create new diagrams from natural language descriptions
+- **Modify Existing**: Update and enhance existing diagram code
+- **Format Conversion**: Help convert between different diagram formats
+- **Best Practices**: Suggest improvements and follow diagram-specific conventions
+
+#### Diagram Understanding
+- **Code Explanation**: Explain what existing diagram code does
+- **Troubleshooting**: Help debug diagram rendering issues
+- **Optimization**: Suggest ways to improve diagram clarity and structure
+
+#### Interactive Features
+- **Context Awareness**: The AI can see your current diagram code and provide relevant suggestions
+- **Real-time Assistance**: Get help while actively editing diagrams
+- **Multi-turn Conversations**: Build on previous interactions for complex diagram development
+
+### AI Usage Examples
+
+#### Creating a New Diagram
+```
+User: "Create a PlantUML sequence diagram showing a user login flow"
+AI: [Generates appropriate PlantUML code for a login sequence diagram]
+```
+
+#### Modifying Existing Diagrams
+```
+User: "Add error handling to this sequence diagram"
+AI: [Analyzes current diagram and adds error handling flows]
+```
+
+#### Understanding Complex Diagrams
+```
+User: "Explain what this GraphViz diagram represents"
+AI: [Provides detailed explanation of the diagram structure and relationships]
+```
+
+### Privacy and Security
+
+- **Local Storage**: Custom API settings are stored locally in your browser
+- **No Server Storage**: When using custom API configuration, your credentials are not sent to the server
+- **Secure Communication**: All API communications use HTTPS encryption
+- **Optional Feature**: The AI assistant is completely optional and can be ignored if not needed
+
+### Troubleshooting AI Features
+
+#### Common Issues
+
+1. **"Server Backend" Not Working**
+   - Ensure the server is configured with AI credentials (see `.env` file)
+   - Check server logs for AI service availability
+
+2. **Custom API Configuration Issues**
+   - Verify your API key is valid and has sufficient credits
+   - Check that the base URL is correct for your API provider
+   - Ensure the selected model is available with your API key
+
+3. **Model Not Responding**
+   - Try switching to a different model
+   - Check your internet connection
+   - Verify API rate limits haven't been exceeded
+
+#### Settings Management
+
+- **Reset Settings**: Clear your browser's local storage to reset AI configuration
+- **Export/Import**: Settings can be manually exported from browser developer tools if needed
+- **Multiple Configurations**: Each browser/device maintains its own AI settings
+
+### Integration with Diagram Workflow
+
+The AI assistant seamlessly integrates with the diagram creation workflow:
+
+- **Context Preservation**: AI understands your current diagram type and content
+- **Format Awareness**: Suggestions are tailored to your selected diagram format
+- **Real-time Updates**: Changes suggested by AI can be immediately applied and previewed
+- **File Operations**: AI-generated content works with all file operations (save, load, etc.)
+
 ## Architecture
 
 The system consists of several containerized services:

@@ -1,23 +1,82 @@
 /**
  * Configuration Settings UI Component
- * Provides a user interface for managing Kroki editor configuration
+ * 
+ * Manages the comprehensive settings interface for the Kroki diagram editor.
+ * Provides tabbed configuration panels for different aspects of the application
+ * including general settings, editor preferences, zoom controls, layout options,
+ * AI assistant configuration, and advanced features.
+ * 
+ * Organization:
+ * - INITIALIZATION METHODS: Constructor and setup logic
+ * - UI CREATION METHODS: Modal HTML generation and structure
+ * - EVENT HANDLING METHODS: User interaction handlers and listeners
+ * - TAB MANAGEMENT: Tab switching and content organization
+ * - CONFIGURATION MANAGEMENT: Loading, saving, and validation
+ * - IMPORT/EXPORT FUNCTIONALITY: Settings backup and restore
+ * - UI STATE MANAGEMENT: Visual feedback and status updates
+ * - UTILITY METHODS: Helper functions and form handling
+ * 
+ * @class ConfigUI
+ * @author Kroki Team
+ * @version 1.0.0
  */
-
 class ConfigUI {
+    /**
+     * Initialize the Configuration UI component
+     * 
+     * @param {Object} configManager - The configuration manager instance for persistent settings
+     */
     constructor(configManager) {
+        // ========================================
+        // CONFIGURATION STATE
+        // ========================================
+        /** @type {Object} Configuration manager instance */
         this.configManager = configManager;
-        this.modal = null;
-        this.activeTab = 'general';
-        this.unsavedChanges = false;
+
+        /** @type {Object} Temporary configuration changes before saving */
         this.tempConfig = {};
-        
+
+        // ========================================
+        // UI STATE
+        // ========================================
+        /** @type {HTMLElement|null} The modal dialog element */
+        this.modal = null;
+
+        /** @type {string} Currently active configuration tab */
+        this.activeTab = 'general';
+
+        /** @type {boolean} Flag indicating if there are unsaved changes */
+        this.unsavedChanges = false;
+
+        // Initialize the UI
         this.init();
     }
 
+    // ========================================
+    // INITIALIZATION METHODS
+    // ========================================
+
+    /**
+     * Initialize the configuration UI component
+     * Sets up the modal dialog and event listeners
+     * 
+     * @private
+     */
     init() {
         this.createModal();
         this.setupEventListeners();
     }
+
+    // ========================================
+    // UI CREATION METHODS
+    // ========================================
+
+    /**
+     * Create the modal dialog HTML structure
+     * Generates the complete configuration interface with all tabs and settings
+     * 
+     * @private
+     */
 
     createModal() {
         const modalHTML = `
@@ -33,6 +92,7 @@ class ConfigUI {
                             <button class="config-tab" data-tab="editor">Editor</button>
                             <button class="config-tab" data-tab="zoom">Zoom & Pan</button>
                             <button class="config-tab" data-tab="layout">Layout</button>
+                            <button class="config-tab" data-tab="ai">AI Assistant</button>
                             <button class="config-tab" data-tab="advanced">Advanced</button>
                         </div>
                         
@@ -226,6 +286,129 @@ class ConfigUI {
                             </div>
                         </div>
                         
+                        <div id="config-tab-ai" class="config-tab-content">
+                            <div class="config-section">
+                                <h4 class="config-section-title">AI Assistant</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.enabled" checked>
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Enable AI Assistant</span>
+                                        </label>
+                                        <div class="config-description">Show the AI Assistant button and chat interface</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">API Configuration</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.useCustomAPI" id="ai-use-custom-api">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Use Custom API Configuration</span>
+                                        </label>
+                                        <div class="config-description">Enable to configure your own AI API endpoint and key. Otherwise, the default backend proxy will be used.</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">AI Endpoint URL</label>
+                                        <input type="text" class="config-input" data-config="ai.endpoint" placeholder="https://api.openai.com/v1/chat/completions">
+                                        <div class="config-description">API endpoint for AI chat completions</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">API Key</label>
+                                        <div class="password-input-container">
+                                            <input type="password" class="config-input" data-config="ai.apiKey" placeholder="sk-..." id="ai-api-key-input">
+                                            <button type="button" class="password-toggle-btn" id="api-key-toggle" aria-label="Toggle password visibility">
+                                                <svg class="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
+                                                </svg>
+                                                <svg class="eye-slash-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                                                    <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" fill="currentColor"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="config-description">Your API key for the AI service</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">AI Model</label>
+                                        <select class="config-select" data-config="ai.model">
+                                            <option value="gpt-4.1">GPT-4.1</option>
+                                            <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                                            <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
+                                            <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
+                                            <option value="gpt-4o">GPT-4o</option>
+                                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                            <option value="o4-mini">O4 Mini</option>
+                                            <option value="o3">O3</option>
+                                            <option value="o3-mini">O3 Mini</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                        <div class="config-description">Choose the AI model to use for diagram assistance</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI" id="custom-model-field" style="display: none;">
+                                        <label class="config-label">Custom Model Name</label>
+                                        <input type="text" class="config-input" data-config="ai.customModel" placeholder="Enter custom model name">
+                                        <div class="config-description">Specify the exact model name for custom models</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Behavior Settings</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">Maximum Retry Attempts</label>
+                                        <div class="config-range">
+                                            <input type="range" min="1" max="5" step="1" class="config-input" data-config="ai.maxRetryAttempts">
+                                            <span class="config-range-value">3</span>
+                                        </div>
+                                        <div class="config-description">Number of times to retry failed diagram validation</div>
+                                    </div>
+                                    
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="ai.autoValidate" checked>
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Auto-validate Generated Code</span>
+                                        </label>
+                                        <div class="config-description">Automatically validate AI-generated diagram code with Kroki</div>
+                                    </div>
+                                    
+                                    <div class="config-field" data-depends="ai.useCustomAPI">
+                                        <label class="config-label">Custom User Prompt Template</label>
+                                        <textarea 
+                                            class="config-input config-textarea" 
+                                            data-config="ai.userPromptTemplate" 
+                                            rows="6"
+                                            placeholder="Use {{diagramType}}, {{currentCode}}, and {{userPrompt}} as placeholders"
+                                        ></textarea>
+                                        <div class="config-description">Template for AI prompts. Only available when using custom API configuration.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Privacy & Performance</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">Request Timeout (seconds)</label>
+                                        <div class="config-range">
+                                            <input type="range" min="10" max="120" step="5" class="config-input" data-config="ai.timeout">
+                                            <span class="config-range-value">30</span>
+                                        </div>
+                                        <div class="config-description">Timeout for AI API requests</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div id="config-tab-advanced" class="config-tab-content">
                             <div class="config-section">
                                 <h4 class="config-section-title">File Operations</h4>
@@ -338,16 +521,27 @@ class ConfigUI {
         this.modal = document.getElementById('config-modal');
     }
 
+    // ========================================
+    // EVENT HANDLING METHODS
+    // ========================================
+
+    /**
+     * Set up all event listeners for the configuration UI
+     * Handles modal interactions, form changes, and keyboard shortcuts
+     * 
+     * @private
+     */
+
     setupEventListeners() {
         // Modal close handlers
         document.getElementById('config-modal-close').addEventListener('click', () => this.close());
         document.getElementById('config-cancel').addEventListener('click', () => this.close());
-        
+
         // Tab switching
         document.querySelectorAll('.config-tab').forEach(tab => {
             tab.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
         });
-        
+
         // Config field handlers
         document.querySelectorAll('[data-config]').forEach(element => {
             if (element.type === 'checkbox') {
@@ -358,21 +552,21 @@ class ConfigUI {
                 element.addEventListener('change', (e) => this.handleConfigChange(e));
             }
         });
-        
+
         // Footer buttons
         document.getElementById('config-save').addEventListener('click', () => this.save());
         document.getElementById('config-reset').addEventListener('click', () => this.reset());
         document.getElementById('config-export').addEventListener('click', () => this.export());
         document.getElementById('config-import').addEventListener('click', () => this.import());
         document.getElementById('config-file-input').addEventListener('change', (e) => this.handleFileImport(e));
-        
+
         // Close on outside click
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {
                 this.close();
             }
         });
-        
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (this.modal.style.display === 'block') {
@@ -383,14 +577,156 @@ class ConfigUI {
                 }
             }
         });
+
+        // AI configuration conditional logic
+        this.setupAIConfigLogic();
+
+        // Password toggle functionality
+        this.setupPasswordToggle();
     }
 
+    /**
+     * Set up AI configuration conditional logic
+     * Handles visibility and interaction of AI-related configuration fields
+     * 
+     * @private
+     */
+
+    setupAIConfigLogic() {
+        const customApiCheckbox = document.getElementById('ai-use-custom-api');
+        const modelSelect = document.querySelector('[data-config="ai.model"]');
+        const customModelField = document.getElementById('custom-model-field');
+
+        // Handle custom API checkbox change
+        if (customApiCheckbox) {
+            customApiCheckbox.addEventListener('change', () => {
+                this.toggleDependentFields();
+            });
+        }
+
+        // Handle model selection change
+        if (modelSelect) {
+            modelSelect.addEventListener('change', (e) => {
+                if (customModelField) {
+                    customModelField.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                }
+            });
+        }
+
+        // Initial setup
+        this.toggleDependentFields();
+    }
+
+    /**
+     * Set up password visibility toggle functionality
+     * Configures the show/hide password button for API key input
+     * 
+     * @private
+     */
+
+    setupPasswordToggle() {
+        const toggleBtn = document.getElementById('api-key-toggle');
+        const passwordInput = document.getElementById('ai-api-key-input');
+        const eyeIcon = toggleBtn.querySelector('.eye-icon');
+        const eyeSlashIcon = toggleBtn.querySelector('.eye-slash-icon');
+
+        if (toggleBtn && passwordInput && eyeIcon && eyeSlashIcon) {
+            // Always start with password hidden when modal opens
+            this.resetPasswordVisibility();
+
+            toggleBtn.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+
+                // Toggle input type
+                passwordInput.type = isPassword ? 'text' : 'password';
+
+                // Toggle icon visibility
+                if (isPassword) {
+                    eyeIcon.style.display = 'none';
+                    eyeSlashIcon.style.display = 'block';
+                    toggleBtn.setAttribute('aria-label', 'Hide password');
+                    toggleBtn.title = 'Hide password';
+                } else {
+                    eyeIcon.style.display = 'block';
+                    eyeSlashIcon.style.display = 'none';
+                    toggleBtn.setAttribute('aria-label', 'Show password');
+                    toggleBtn.title = 'Show password';
+                }
+            });
+        }
+    }
+
+    /**
+     * Reset password input to hidden state
+     * Ensures API key field starts in password mode when modal opens
+     * 
+     * @private
+     */
+
+    resetPasswordVisibility() {
+        const passwordInput = document.getElementById('ai-api-key-input');
+        const toggleBtn = document.getElementById('api-key-toggle');
+        const eyeIcon = toggleBtn?.querySelector('.eye-icon');
+        const eyeSlashIcon = toggleBtn?.querySelector('.eye-slash-icon');
+
+        if (passwordInput && toggleBtn && eyeIcon && eyeSlashIcon) {
+            // Always start with password type (hidden)
+            passwordInput.type = 'password';
+
+            // Show eye icon, hide eye-slash icon
+            eyeIcon.style.display = 'block';
+            eyeSlashIcon.style.display = 'none';
+
+            // Set appropriate aria-label and title
+            toggleBtn.setAttribute('aria-label', 'Show password');
+            toggleBtn.title = 'Show password';
+        }
+    }
+
+    /**
+     * Toggle visibility of fields that depend on custom AI API configuration
+     * Enables/disables fields based on the custom API checkbox state
+     * 
+     * @private
+     */
+    toggleDependentFields() {
+        const customApiCheckbox = document.getElementById('ai-use-custom-api');
+        const isCustom = customApiCheckbox && customApiCheckbox.checked;
+
+        // Enable/disable fields that depend on custom API
+        document.querySelectorAll('[data-depends="ai.useCustomAPI"]').forEach(field => {
+            const inputs = field.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.disabled = !isCustom;
+            });
+            field.style.opacity = isCustom ? '1' : '0.5';
+        });
+    }
+
+    // ========================================
+    // MODAL CONTROL METHODS
+    // ========================================
+
+    /**
+     * Open the configuration modal
+     * Loads current configuration and displays the modal dialog
+     * 
+     * @public
+     */
     open() {
         this.loadCurrentConfig();
+        // Always reset password visibility to hidden when modal opens
+        this.resetPasswordVisibility();
         this.modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Close the configuration modal
+     * Checks for unsaved changes and closes the modal if confirmed
+     * 
+     * @public
+     */
     close() {
         if (this.unsavedChanges) {
             if (!confirm('You have unsaved changes. Are you sure you want to close?')) {
@@ -403,26 +739,47 @@ class ConfigUI {
         this.tempConfig = {};
     }
 
+    // ========================================
+    // TAB MANAGEMENT
+    // ========================================
+
+    /**
+     * Switch between configuration tabs
+     * Updates active tab display and content visibility
+     * 
+     * @param {string} tabName - The name of the tab to switch to
+     * @public
+     */
     switchTab(tabName) {
         // Update tab buttons
         document.querySelectorAll('.config-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.tab === tabName);
         });
-        
+
         // Update tab content
         document.querySelectorAll('.config-tab-content').forEach(content => {
             content.classList.toggle('active', content.id === `config-tab-${tabName}`);
         });
-        
+
         this.activeTab = tabName;
     }
 
+    // ========================================
+    // CONFIGURATION MANAGEMENT
+    // ========================================
+
+    /**
+     * Load current configuration values into the form
+     * Populates all form fields with values from the configuration manager
+     * 
+     * @private
+     */
     loadCurrentConfig() {
         // Load all configuration values into the form
         document.querySelectorAll('[data-config]').forEach(element => {
             const configPath = element.dataset.config;
             const value = this.configManager.get(configPath);
-            
+
             if (element.type === 'checkbox') {
                 element.checked = value;
             } else if (element.type === 'range') {
@@ -432,15 +789,32 @@ class ConfigUI {
                 element.value = value;
             }
         });
-        
+
+        // Handle AI-specific logic after loading config
+        this.toggleDependentFields();
+
+        // Handle custom model field visibility
+        const modelSelect = document.querySelector('[data-config="ai.model"]');
+        const customModelField = document.getElementById('custom-model-field');
+        if (modelSelect && customModelField) {
+            customModelField.style.display = modelSelect.value === 'custom' ? 'block' : 'none';
+        }
+
         this.unsavedChanges = false;
     }
 
+    /**
+     * Handle configuration field changes
+     * Processes user input and stores temporary changes
+     * 
+     * @param {Event} event - The change event from form elements
+     * @private
+     */
     handleConfigChange(event) {
         const element = event.target;
         const configPath = element.dataset.config;
         let value;
-        
+
         if (element.type === 'checkbox') {
             value = element.checked;
         } else if (element.type === 'range' || element.type === 'number') {
@@ -449,22 +823,30 @@ class ConfigUI {
         } else {
             value = element.value;
         }
-        
+
         // Store in temporary config
         this.tempConfig[configPath] = value;
         this.unsavedChanges = true;
-        
+
         // Update save button state
         const saveBtn = document.getElementById('config-save');
         saveBtn.textContent = 'Save Changes';
         saveBtn.classList.add('primary');
     }
 
+    /**
+     * Update the display value for range input controls
+     * Formats values with appropriate units based on the configuration type
+     * 
+     * @param {HTMLElement} rangeElement - The range input element
+     * @param {number} value - The current value to display
+     * @private
+     */
     updateRangeDisplay(rangeElement, value) {
         const valueDisplay = rangeElement.parentElement.querySelector('.config-range-value');
         if (valueDisplay) {
             const configPath = rangeElement.dataset.config;
-            
+
             if (configPath.includes('Scale') || configPath.includes('Step')) {
                 valueDisplay.textContent = Math.round(value * 100) + '%';
             } else if (configPath.includes('Delay') || configPath.includes('Duration') || configPath.includes('Timeout')) {
@@ -481,37 +863,49 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Save all configuration changes
+     * Applies temporary changes to the configuration manager and provides user feedback
+     * 
+     * @public
+     */
     save() {
         try {
             // Apply all temporary configuration changes
             for (const [path, value] of Object.entries(this.tempConfig)) {
                 this.configManager.set(path, value);
             }
-            
+
             this.showStatus('Settings saved successfully!', 'success');
             this.unsavedChanges = false;
             this.tempConfig = {};
-            
+
             // Update save button state
             const saveBtn = document.getElementById('config-save');
             saveBtn.textContent = 'Saved ✓';
             saveBtn.classList.remove('primary');
-            
+
             setTimeout(() => {
                 saveBtn.textContent = 'Save Changes';
             }, 2000);
-            
+
         } catch (error) {
             console.error('Failed to save configuration:', error);
             this.showStatus('Failed to save settings!', 'error');
         }
     }
 
+    /**
+     * Reset all configuration settings to default values
+     * Prompts user for confirmation before resetting all settings
+     * 
+     * @public
+     */
     reset() {
         if (confirm('Are you sure you want to reset all settings to their default values? This cannot be undone.')) {
             this.configManager.reset();
             this.loadCurrentConfig();
-            
+
             // Reset zoom state to fit the current diagram
             setTimeout(() => {
                 const zoomPanControls = window.diagramZoomPan;
@@ -519,17 +913,27 @@ class ConfigUI {
                     zoomPanControls.resetZoom();
                 }
             }, 100);
-            
+
             this.showStatus('Settings reset to defaults', 'success');
         }
     }
 
+    // ========================================
+    // IMPORT/EXPORT FUNCTIONALITY
+    // ========================================
+
+    /**
+     * Export current configuration settings to a JSON file
+     * Creates and downloads a JSON file containing all current settings
+     * 
+     * @public
+     */
     export() {
         try {
             const config = this.configManager.export();
             const blob = new Blob([config], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            
+
             const a = document.createElement('a');
             a.href = url;
             a.download = 'kroki-settings.json';
@@ -537,7 +941,7 @@ class ConfigUI {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            
+
             this.showStatus('Settings exported successfully!', 'success');
         } catch (error) {
             console.error('Failed to export configuration:', error);
@@ -545,14 +949,27 @@ class ConfigUI {
         }
     }
 
+    /**
+     * Trigger file import dialog
+     * Opens the file input dialog for importing configuration settings
+     * 
+     * @public
+     */
     import() {
         document.getElementById('config-file-input').click();
     }
 
+    /**
+     * Handle file import from user selection
+     * Processes uploaded JSON configuration file and applies settings
+     * 
+     * @param {Event} event - The file input change event
+     * @private
+     */
     handleFileImport(event) {
         const file = event.target.files[0];
         if (!file) return;
-        
+
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
@@ -569,16 +986,28 @@ class ConfigUI {
             }
         };
         reader.readAsText(file);
-        
+
         // Reset file input
         event.target.value = '';
     }
 
+    // ========================================
+    // UI STATE MANAGEMENT
+    // ========================================
+
+    /**
+     * Display status message to user
+     * Shows temporary status messages with appropriate styling
+     * 
+     * @param {string} message - The message to display
+     * @param {string} type - The message type ('success', 'error', etc.)
+     * @private
+     */
     showStatus(message, type) {
         const status = document.getElementById('config-status');
         status.textContent = message;
         status.className = `config-status ${type} show`;
-        
+
         setTimeout(() => {
             status.classList.remove('show');
         }, 3000);

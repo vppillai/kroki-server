@@ -8,6 +8,7 @@
 @import './buttons.css';
 @import './editor.css';
 @import './diagram.css';
+@import './code-history.css';
 @import './theme-toggle.css';
 @import './auto-save-toggle.css';
 @import './modal.css';
@@ -15,3 +16,62 @@
 @import './animations.css';
 @import './responsive.css';
 @import './accessibility.css';
+
+/* AI Assistant Chat Messages - Preserve Formatting */
+.ai-message.user .ai-message-content {
+    white-space: pre-wrap !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Ensure other message types maintain normal formatting */
+.ai-message:not(.user) .ai-message-content {
+    white-space: normal;
+}
+
+/* Fix status message positioning to not cover chat messages */
+.ai-chat-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ai-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 10px;
+    /* Add bottom margin when status is visible */
+    transition: margin-bottom 0.2s ease;
+}
+
+.ai-chat-input-container.status-visible+.ai-chat-messages,
+.ai-chat-input-container.status-visible~.ai-chat-messages {
+    margin-bottom: 40px;
+    /* Space for status message */
+}
+
+/* Alternative: Target when status is visible anywhere in chat body */
+.ai-chat-body:has(.ai-chat-status[style*="display: flex"]) .ai-chat-messages,
+.ai-chat-body .ai-chat-messages:has(~ .ai-chat-input-container .ai-chat-status[style*="display: flex"]) {
+    margin-bottom: 40px !important;
+}
+
+.ai-chat-input-container {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.ai-chat-status {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    font-size: 12px;
+    z-index: 1000;
+    border-radius: 4px 4px 0 0;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}

@@ -397,6 +397,52 @@
     animation: slideDown 0.3s ease;
 }
 
+/* Password input container styling */
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-container .config-input {
+    padding-right: 40px; /* Make room for the toggle button */
+    flex: 1;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.password-toggle-btn:hover {
+    background: var(--background-secondary);
+    color: var(--text-primary);
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.password-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .config-modal-content {

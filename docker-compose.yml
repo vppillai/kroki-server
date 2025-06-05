@@ -1,4 +1,4 @@
-version: "3.3" 
+version: '3.3'
 
 services:
   core:
@@ -34,7 +34,6 @@ services:
     networks:
       - kroki_network
 
-  # experimental!
   diagramsnet:
     image: yuzutech/kroki-diagramsnet
     expose:
@@ -46,6 +45,10 @@ services:
     image: kroki-demosite:latest
     expose:
       - "8006"
+    environment:
+      - PORT=8006
+    env_file:
+      - .env
     networks:
       - kroki_network
 
