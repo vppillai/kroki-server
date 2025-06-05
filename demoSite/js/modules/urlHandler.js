@@ -4,6 +4,8 @@
  * Manages URL parameters for the Kroki diagram editor.
  * Handles parsing URL parameters, updating URL state, and synchronizing
  * application state with URL parameters for shareable links.
+ * 
+ * @author Vysakh Pillai
  */
 
 import {

@@ -3,6 +3,8 @@
  * 
  * Handles all diagram-related operations including rendering, encoding/decoding,
  * format management, and diagram type handling for the Kroki diagram editor.
+ * 
+ * @author Vysakh Pillai
  */
 
 import {

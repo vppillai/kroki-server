@@ -4,6 +4,8 @@
  * Handles all file-related operations including open, save, save as,
  * auto-save functionality, and file status management.
  * Supports both File System Access API and fallback methods.
+ * 
+ * @author Vysakh Pillai
  */
 
 import { state, updateCurrentFile, updateAutoSaveTimer } from './state.js';
@@ -48,6 +50,9 @@ export function updateFileStatus() {
         fileStatusContainer.style.display = 'block';
     }
 
+    // Determine if this is truly a new file (no handle and not opened from disk)
+    const isNewFile = !state.currentFile.handle && !state.currentFile.isOpen;
+
     // Show auto-save pill only when file has been saved at least once
     if (autoSaveLabel) {
         // For new files, always hide auto-save
@@ -71,9 +76,6 @@ export function updateFileStatus() {
     }
 
     fileNameElement.textContent = state.currentFile.name || 'Untitled';
-
-    // Determine if this is truly a new file (no handle and not opened from disk)
-    const isNewFile = !state.currentFile.handle && !state.currentFile.isOpen;
 
     if (isNewFile) {
         // New file - never show "Saved" status

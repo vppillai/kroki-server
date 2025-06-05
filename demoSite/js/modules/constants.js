@@ -3,6 +3,8 @@
  * 
  * Centralized constants, default values, and format mappings for the Kroki diagram editor.
  * This module defines supported diagram types, output formats, and display behaviors.
+ * 
+ * @author Vysakh Pillai
  */
 
 /**

@@ -3,6 +3,8 @@
  * 
  * Provides fullscreen viewing mode for the diagram editor.
  * Manages fullscreen state, UI updates, and keyboard shortcuts.
+ * 
+ * @author Vysakh Pillai
  */
 
 /**

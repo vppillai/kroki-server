@@ -3,6 +3,8 @@
  * 
  * Manages visual appearance themes for the diagram editor.
  * Supports light, dark, and auto (system) themes with persistent preferences.
+ * 
+ * @author Vysakh Pillai
  */
 
 /**

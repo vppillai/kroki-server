@@ -5,7 +5,7 @@
  * This file now serves as the entry point that imports and coordinates
  * all the modular components of the application.
  * 
- * @author Kroki Team
+ * @author Vysakh Pillai
  * @version 2.0.0
  */
 

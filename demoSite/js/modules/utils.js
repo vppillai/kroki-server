@@ -3,6 +3,8 @@
  * 
  * Common utility functions used across the Kroki diagram editor.
  * Provides helper functions for UI updates, text encoding, and DOM manipulation.
+ * 
+ * @author Vysakh Pillai
  */
 
 /**

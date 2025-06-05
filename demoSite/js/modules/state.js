@@ -4,6 +4,8 @@
  * Centralized state management for the Kroki diagram editor.
  * Manages application state including diagram data, user interactions,
  * file operations, and UI state.
+ * 
+ * @author Vysakh Pillai
  */
 
 import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, defaultExample } from './constants.js';

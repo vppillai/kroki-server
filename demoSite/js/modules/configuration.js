@@ -4,6 +4,8 @@
  * Manages configuration integration for the Kroki diagram editor.
  * Handles applying configuration values and setting up change listeners
  * for reactive configuration updates.
+ * 
+ * @author Vysakh Pillai
  */
 
 import {

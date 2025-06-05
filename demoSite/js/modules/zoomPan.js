@@ -3,6 +3,8 @@
  * 
  * Provides interactive zoom and pan controls for diagram viewing.
  * Supports mouse wheel zoom, drag-to-pan, touch gestures, and keyboard shortcuts.
+ * 
+ * @author Vysakh Pillai
  */
 
 import { state, updateZoomState } from './state.js';

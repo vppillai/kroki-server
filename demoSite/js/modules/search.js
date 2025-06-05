@@ -3,6 +3,8 @@
  * 
  * Provides text search capabilities within the code editor with
  * real-time highlighting, navigation, and case-sensitive options.
+ * 
+ * @author Vysakh Pillai
  */
 
 import { state, updateSearchState } from './state.js';
