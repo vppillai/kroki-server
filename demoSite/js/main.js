@@ -9,8 +9,20 @@
  * @version 2.0.0
  */
 
-// Import all modules
-import { defaultExample, formatCompatibility, formatDisplayTypes, DEBOUNCE_DELAY, AUTO_SAVE_DELAY } from './modules/constants.js';
+// ========================================
+// MODULE IMPORTS
+// ========================================
+
+// Core constants and configuration
+import {
+    defaultExample,
+    formatCompatibility,
+    formatDisplayTypes,
+    DEBOUNCE_DELAY,
+    AUTO_SAVE_DELAY
+} from './modules/constants.js';
+
+// State management
 import {
     state,
     updateUserHasEditedContent,
@@ -27,6 +39,8 @@ import {
     getExampleCache,
     setExampleCache
 } from './modules/state.js';
+
+// File operations
 import {
     updateFileStatus,
     markFileAsModified,
@@ -50,6 +64,8 @@ import {
     showImageErrorBanner,
     hideImageErrorBanner
 } from './modules/fileOperations.js';
+
+// Utility functions
 import {
     updateLineNumbers,
     initializeLineNumbers,
@@ -59,12 +75,16 @@ import {
     adjustControlsLayout,
     escapeHtml
 } from './modules/utils.js';
+
+// URL handling and parameters
 import {
     getUrlParameters,
     processUrlParameters,
     loadDefaultExample,
     updateUrl
 } from './modules/urlHandler.js';
+
+// Diagram operations
 import {
     debounceUpdateDiagram,
     updateFormatDropdown,
@@ -77,9 +97,9 @@ import {
     handleDecode,
     initializeDiagramTypeDropdown
 } from './modules/diagramOperations.js';
-import {
-    initializeZoomPan
-} from './modules/zoomPan.js';
+
+// UI features
+import { initializeZoomPan } from './modules/zoomPan.js';
 import {
     showSearchBar,
     hideSearchBar,
@@ -92,12 +112,10 @@ import {
     toggleCaseSensitive,
     initializeSearchFunctionality
 } from './modules/search.js';
-import {
-    initializeFullscreenMode
-} from './modules/fullscreen.js';
-import {
-    ThemeManager
-} from './modules/theme.js';
+import { initializeFullscreenMode } from './modules/fullscreen.js';
+import { ThemeManager } from './modules/theme.js';
+
+// Configuration system
 import {
     initializeConfigurationSystem,
     applyConfiguration,
@@ -190,13 +208,15 @@ function initializeAutoRefresh() {
  * @private
  */
 document.addEventListener('DOMContentLoaded', function () {
+    // First process URL parameters to set up initial state
+    processUrlParameters();
+
+    // Then initialize UI components
     initializeDiagramTypeDropdown();
     updateFormatDropdown();
-    processUrlParameters();
-    initializeLineNumbers(); // Initialize line numbers before other operations
-    updateDiagram();
-    initializeResizeHandle(); // Initialize the resize handle
-    adjustControlsLayout(); // Initial layout adjustment
+    initializeLineNumbers();
+    initializeResizeHandle();
+    adjustControlsLayout();
 
     // Initialize zoom and pan functionality
     window.diagramZoomPan = initializeZoomPan();
@@ -272,6 +292,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         initializeConfigurationSystem();
     }, 150); // Slightly longer delay to ensure all scripts are loaded
+
+    // Finally, update the diagram after all initialization is complete
+    setTimeout(() => {
+        updateDiagram();
+    }, 200);
 });
 
 /**
@@ -519,12 +544,4 @@ if (helpBtn && helpModal && closeHelpBtn) {
 
 // Export functions that need to be globally accessible
 window.showSearchBar = showSearchBar;
-window.debugSearchHighlighting = () => {
-    // Re-export the debug function from search module
-    import('./modules/search.js').then(module => {
-        if (module.debugSearchHighlighting) {
-            module.debugSearchHighlighting();
-        }
-    });
-};
 

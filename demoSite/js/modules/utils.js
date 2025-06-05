@@ -4,14 +4,20 @@
  * Common utility functions used across the Kroki diagram editor.
  * Provides helper functions for UI updates, text encoding, and DOM manipulation.
  * 
+ * @module utils
  * @author Vysakh Pillai
  */
+
+// ========================================
+// LINE NUMBER MANAGEMENT
+// ========================================
 
 /**
  * Update line numbers display in the code editor
  * Generates line numbers matching the current code content
  * Synchronizes scroll position between editor and line numbers
  * 
+ * @function updateLineNumbers
  * @public
  */
 export function updateLineNumbers() {
@@ -97,11 +103,16 @@ export function initializeLineNumbers() {
     resizeObserver.observe(codeTextarea);
 }
 
+// ========================================
+// TEXT ENCODING UTILITIES
+// ========================================
+
 /**
  * Encode text to UTF-8 byte array
  * Converts string text to UTF-8 encoded byte array for diagram processing
  * Uses TextEncoder when available, falls back to manual encoding
  * 
+ * @function textEncode
  * @param {string} str - Text string to encode
  * @returns {Uint8Array} UTF-8 encoded byte array
  * @public
@@ -134,11 +145,16 @@ export function uint8ArrayToString(array) {
     return result;
 }
 
+// ========================================
+// LAYOUT & UI UTILITIES
+// ========================================
+
 /**
  * Adjust controls layout based on available width
  * Switches between horizontal and stacked layout for diagram controls
  * Responsive design adaptation for narrow editor panels
  * 
+ * @function adjustControlsLayout
  * @public
  */
 export function adjustControlsLayout() {
@@ -214,8 +230,15 @@ export function initializeResizeHandle() {
     });
 }
 
+// ========================================
+// HTML UTILITIES
+// ========================================
+
 /**
  * Escape HTML special characters in text
+ * Prevents XSS by converting special characters to HTML entities
+ * 
+ * @function escapeHtml
  * @param {string} text - Text to escape
  * @returns {string} HTML-escaped text
  * @public

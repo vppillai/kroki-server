@@ -5,6 +5,7 @@
  * Handles parsing URL parameters, updating URL state, and synchronizing
  * application state with URL parameters for shareable links.
  * 
+ * @module urlHandler
  * @author Vysakh Pillai
  */
 
@@ -16,11 +17,19 @@ import {
 import { formatCompatibility } from './constants.js';
 import { updateLineNumbers } from './utils.js';
 
+// ========================================
+// URL PARAMETER PARSING
+// ========================================
+
 /**
  * Parse URL parameters for application state
  * Extracts diagram type, format, and encoded content from query string
  * 
+ * @function getUrlParameters
  * @returns {Object} Object containing parsed URL parameters
+ * @property {string} [diag] - Diagram type identifier
+ * @property {string} [fmt] - Output format
+ * @property {string} [im] - Encoded diagram content
  * @public
  */
 export function getUrlParameters() {
@@ -32,11 +41,16 @@ export function getUrlParameters() {
     };
 }
 
+// ========================================
+// URL PARAMETER PROCESSING
+// ========================================
+
 /**
  * Process URL parameters and update application state
  * Sets diagram type, format, and content based on URL query parameters
  * Handles format compatibility and provides fallbacks for invalid combinations
  * 
+ * @function processUrlParameters
  * @public
  */
 export function processUrlParameters() {
@@ -92,10 +106,15 @@ export function processUrlParameters() {
     }
 }
 
+// ========================================
+// DEFAULT CONTENT MANAGEMENT
+// ========================================
+
 /**
  * Load default example content for a diagram type
  * Loads and displays appropriate example code, with fallback handling
  * 
+ * @function loadDefaultExample
  * @param {string} diagramType - Type of diagram to load example for
  * @public
  */
@@ -114,11 +133,16 @@ export function loadDefaultExample(diagramType) {
     });
 }
 
+// ========================================
+// URL STATE SYNCHRONIZATION
+// ========================================
+
 /**
  * Update URL with current application state
  * Synchronizes URL parameters with current diagram type, format, and content
  * Enables shareable links and browser history support
  * 
+ * @function updateUrl
  * @public
  */
 export function updateUrl() {

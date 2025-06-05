@@ -4,14 +4,20 @@
  * Provides fullscreen viewing mode for the diagram editor.
  * Manages fullscreen state, UI updates, and keyboard shortcuts.
  * 
+ * @module fullscreen
  * @author Vysakh Pillai
  */
+
+// ========================================
+// FULLSCREEN MODE INITIALIZATION
+// ========================================
 
 /**
  * Initialize fullscreen mode functionality
  * Sets up fullscreen toggle, keyboard shortcuts, and notification system
  * Provides enhanced editing experience with full-screen diagram viewing
  * 
+ * @function initializeFullscreenMode
  * @returns {Object} Object with toggle, enter, exit methods and isActive state
  * @public
  */
@@ -22,10 +28,15 @@ export function initializeFullscreenMode() {
     let isFullscreen = false;
     let notificationTimeout = null;
 
+    // ========================================
+    // NOTIFICATION SYSTEM
+    // ========================================
+
     /**
      * Show fullscreen mode notification to user
      * Displays temporary notification with auto-hide timer
      * 
+     * @function showNotification
      * @private
      */
     function showNotification() {
@@ -40,10 +51,15 @@ export function initializeFullscreenMode() {
         }, 3000);
     }
 
+    // ========================================
+    // FULLSCREEN STATE MANAGEMENT
+    // ========================================
+
     /**
      * Enter fullscreen mode
      * Activates fullscreen layout, updates controls, and prevents body scrolling
      * 
+     * @function enterFullscreen
      * @private
      */
     function enterFullscreen() {
@@ -78,6 +94,7 @@ export function initializeFullscreenMode() {
      * Exit fullscreen mode
      * Restores normal layout, updates controls, and re-enables body scrolling
      * 
+     * @function exitFullscreen
      * @private
      */
     function exitFullscreen() {
@@ -110,6 +127,7 @@ export function initializeFullscreenMode() {
      * Toggle between fullscreen and normal mode
      * Switches fullscreen state based on current mode
      * 
+     * @function toggleFullscreen
      * @private
      */
     function toggleFullscreen() {
@@ -119,6 +137,10 @@ export function initializeFullscreenMode() {
             enterFullscreen();
         }
     }
+
+    // ========================================
+    // EVENT HANDLERS
+    // ========================================
 
     // Toggle button click handler
     fullscreenToggle.addEventListener('click', toggleFullscreen);
@@ -150,7 +172,10 @@ export function initializeFullscreenMode() {
         }
     });
 
-    // Return public API
+    // ========================================
+    // PUBLIC API
+    // ========================================
+
     return {
         toggle: toggleFullscreen,
         enter: enterFullscreen,

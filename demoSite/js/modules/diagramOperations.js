@@ -242,6 +242,7 @@ export async function updateDiagram() {
     try {
         const encodedDiagram = encodeKrokiDiagram(code);
 
+        // Use the same protocol as the current page
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : '';

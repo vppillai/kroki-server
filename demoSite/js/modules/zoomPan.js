@@ -4,16 +4,22 @@
  * Provides interactive zoom and pan controls for diagram viewing.
  * Supports mouse wheel zoom, drag-to-pan, touch gestures, and keyboard shortcuts.
  * 
+ * @module zoomPan
  * @author Vysakh Pillai
  */
 
 import { state, updateZoomState } from './state.js';
+
+// ========================================
+// ZOOM AND PAN INITIALIZATION
+// ========================================
 
 /**
  * Initialize zoom and pan functionality for diagram viewing
  * Sets up interactive navigation controls, mouse/wheel events, and zoom state management
  * Provides zoom in/out, reset, and pan capabilities with proper bounds checking
  * 
+ * @function initializeZoomPan
  * @returns {Object} Object with resetZoom and updateTransform methods
  * @public
  */
@@ -45,12 +51,18 @@ export function initializeZoomPan() {
     let isPanning = false;
     let lastMouseX = 0;
     let lastMouseY = 0;
+    let lastClickTime = 0;
+
+    // ========================================
+    // TRANSFORM MANAGEMENT
+    // ========================================
 
     /**
      * Update canvas transform based on current zoom state
      * Applies scale and translation transformations to diagram canvas
      * Updates zoom level display indicator
      * 
+     * @function updateTransform
      * @private
      */
     function updateTransform() {
@@ -63,6 +75,7 @@ export function initializeZoomPan() {
      * Calculates optimal scale and positioning to center diagram
      * Respects configuration padding and prevents upscaling beyond 100%
      * 
+     * @function resetZoom
      * @private
      */
     function resetZoom() {
@@ -106,11 +119,16 @@ export function initializeZoomPan() {
         updateTransform();
     }
 
+    // ========================================
+    // ZOOM OPERATIONS
+    // ========================================
+
     /**
      * Zoom at specific screen coordinates
      * Performs zoom operation while keeping the point under cursor/mouse in place
      * Applies zoom bounds checking and updates interaction state
      * 
+     * @function zoomAt
      * @param {number} clientX - Screen X coordinate for zoom center
      * @param {number} clientY - Screen Y coordinate for zoom center  
      * @param {number} delta - Zoom change amount (positive for zoom in, negative for zoom out)
@@ -140,6 +158,10 @@ export function initializeZoomPan() {
         updateTransform();
     }
 
+    // ========================================
+    // MOUSE EVENT HANDLERS
+    // ========================================
+
     // Mouse wheel zoom
     viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
@@ -150,6 +172,18 @@ export function initializeZoomPan() {
     // Mouse pan
     viewport.addEventListener('mousedown', (e) => {
         if (e.button === 0) { // Left mouse button
+            const currentTime = new Date().getTime();
+            const timeSinceLastClick = currentTime - lastClickTime;
+
+            // Check for double click (within 300ms)
+            if (timeSinceLastClick < 300) {
+                e.preventDefault();
+                resetZoom();
+                return;
+            }
+
+            lastClickTime = currentTime;
+
             isPanning = true;
             lastMouseX = e.clientX;
             lastMouseY = e.clientY;
@@ -183,7 +217,10 @@ export function initializeZoomPan() {
         }
     });
 
-    // Touch support for mobile
+    // ========================================
+    // TOUCH EVENT HANDLERS
+    // ========================================
+
     let touchStartDistance = 0;
     let touchStartScale = 1;
     let touches = [];
@@ -255,7 +292,8 @@ export function initializeZoomPan() {
                 updateZoomState({
                     translateX: state.zoomState.translateX - (pointX * scaleDelta),
                     translateY: state.zoomState.translateY - (pointY * scaleDelta),
-                    scale: newScale
+                    scale: newScale,
+                    userHasInteracted: true
                 });
 
                 updateTransform();
@@ -263,15 +301,17 @@ export function initializeZoomPan() {
         }
     });
 
-    viewport.addEventListener('touchend', (e) => {
-        if (e.touches.length === 0) {
-            isPanning = false;
-            viewport.classList.remove('panning');
-            touchStartDistance = 0;
-        }
+    viewport.addEventListener('touchend', () => {
+        isPanning = false;
+        viewport.classList.remove('panning');
+        touchStartDistance = 0;
     });
 
-    // Zoom controls
+    // ========================================
+    // BUTTON CONTROLS
+    // ========================================
+
+    // Zoom in button
     zoomInBtn.addEventListener('click', () => {
         const viewportRect = viewport.getBoundingClientRect();
         const centerX = viewportRect.left + viewportRect.width / 2;
@@ -279,6 +319,7 @@ export function initializeZoomPan() {
         zoomAt(centerX, centerY, state.zoomState.scaleStep);
     });
 
+    // Zoom out button
     zoomOutBtn.addEventListener('click', () => {
         const viewportRect = viewport.getBoundingClientRect();
         const centerX = viewportRect.left + viewportRect.width / 2;
@@ -286,40 +327,15 @@ export function initializeZoomPan() {
         zoomAt(centerX, centerY, -state.zoomState.scaleStep);
     });
 
+    // Reset zoom button
     resetZoomBtn.addEventListener('click', resetZoom);
 
-    // Double click to reset zoom
-    viewport.addEventListener('dblclick', resetZoom);
+    // ========================================
+    // PUBLIC API
+    // ========================================
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-        // Only handle shortcuts when the viewport area is focused/active
-        if (document.activeElement === document.body || viewport.contains(document.activeElement)) {
-            if (e.ctrlKey || e.metaKey) { // Ctrl on Windows/Linux, Cmd on Mac
-                switch (e.key) {
-                    case '=':
-                    case '+':
-                        e.preventDefault();
-                        const centerRect = viewport.getBoundingClientRect();
-                        const centerX = centerRect.left + centerRect.width / 2;
-                        const centerY = centerRect.top + centerRect.height / 2;
-                        zoomAt(centerX, centerY, state.zoomState.scaleStep);
-                        break;
-                    case '-':
-                        e.preventDefault();
-                        const centerRect2 = viewport.getBoundingClientRect();
-                        const centerX2 = centerRect2.left + centerRect2.width / 2;
-                        const centerY2 = centerRect2.top + centerRect2.height / 2;
-                        zoomAt(centerX2, centerY2, -state.zoomState.scaleStep);
-                        break;
-                    case '0':
-                        e.preventDefault();
-                        resetZoom();
-                        break;
-                }
-            }
-        }
-    });
-
-    return { resetZoom, updateTransform };
+    return {
+        resetZoom,
+        updateTransform
+    };
 } 
