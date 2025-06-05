@@ -4,6 +4,7 @@ services:
   core:
     image: yuzutech/kroki
     environment:
+      - KROKI_MAX_URL_LENGTH=8192
       - KROKI_MERMAID_HOST=mermaid
       - KROKI_BPMN_HOST=bpmn
       - KROKI_EXCALIDRAW_HOST=excalidraw
