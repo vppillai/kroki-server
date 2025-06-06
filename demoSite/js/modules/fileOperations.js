@@ -732,8 +732,8 @@ export function startFileMonitoring() {
         }
     };
 
-    // Start monitoring with efficient polling interval (2 seconds)
-    const timer = setInterval(checkFileChanges, 2000);
+    // Start monitoring with configurable polling interval
+    const timer = setInterval(checkFileChanges, state.AUTO_RELOAD_DELAY);
     updateFileMonitoring({
         watchTimer: timer,
         isWatching: true
@@ -756,6 +756,20 @@ export function stopFileMonitoring() {
         isWatching: false,
         lastModified: null
     });
+}
+
+/**
+ * Restart file monitoring with updated delay
+ * Stops current monitoring and starts again with new delay from state
+ * Used when auto-reload delay configuration changes
+ * 
+ * @public
+ */
+export function restartFileMonitoring() {
+    if (state.fileMonitoring.isWatching) {
+        stopFileMonitoring();
+        startFileMonitoring();
+    }
 }
 
 /**

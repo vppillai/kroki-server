@@ -9,7 +9,7 @@
  * @author Vysakh Pillai
  */
 
-import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, defaultExample } from './constants.js';
+import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, DEFAULT_AUTO_RELOAD_DELAY, defaultExample } from './constants.js';
 
 // ========================================
 // APPLICATION STATE
@@ -69,6 +69,11 @@ export const state = {
      * @property {number} AUTO_SAVE_DELAY - Configurable auto-save delay (ms)
      */
     AUTO_SAVE_DELAY: DEFAULT_AUTO_SAVE_DELAY,
+
+    /**
+     * @property {number} AUTO_RELOAD_DELAY - Configurable auto-reload monitoring delay (ms)
+     */
+    AUTO_RELOAD_DELAY: DEFAULT_AUTO_RELOAD_DELAY,
 
     // ---- Zoom & Pan State ----
     /**
@@ -216,6 +221,14 @@ export function updateDebounceDelay(delay) {
  */
 export function updateAutoSaveDelay(delay) {
     state.AUTO_SAVE_DELAY = delay;
+}
+
+/**
+ * Update auto-reload delay
+ * @param {number} delay - New auto-reload delay in milliseconds
+ */
+export function updateAutoReloadDelay(delay) {
+    state.AUTO_RELOAD_DELAY = delay;
 }
 
 /**
