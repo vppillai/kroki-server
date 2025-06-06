@@ -66,24 +66,28 @@ The demo site, accessible at https://localhost:8443/, provides an interactive in
   - File modification tracking with unsaved changes warnings
   - Support for multiple diagram file formats (.puml, .mmd, .dot, .d2, etc.)
   - Modern File System Access API with fallback for older browsers
+  - **Auto-reload file monitoring** with configurable delay (500-5000ms, default 1 second)
+  - Real-time file change detection and automatic diagram updates
+  - Smart file monitoring that activates only when needed
 
 ### URL Parameter Functionality
 
 The demo site supports URL parameters for sharing and bookmarking diagrams:
 
 - `diag` - Sets the diagram type (e.g., plantuml, mermaid, graphviz)
-- `fm`t  - Sets the output format (e.g., svg, png, pdf)
+- `fmt`  - Sets the output format (e.g., svg, png, pdf)
 - `im`   - Contains the encoded diagram content
 
-These URL parameters work seamlessly:
+These URL parameters work seamlessly with improved initialization:
 
+- **Smart initialization order** ensures dropdowns are ready before URL processing
 - When changing diagram types in the UI, the URL is automatically updated
-- If an empty editor is loaded with a diagram type, the default example is shown
+- **Fixed URL loading**: Pages loaded with format parameters now properly show default examples
 - When you edit diagram code, the URL updates in real-time for sharing
 - If you specify an unsupported format for a diagram type, it automatically defaults to a supported one
 - When the code editor is emptied, the im parameter is removed from the URL
-
-Formats are preserved when switching diagram types if the format is supported
+- Formats are preserved when switching diagram types if the format is supported
+- **Race condition fixes** ensure proper loading of content and format combinations
 
 Example URL:
 
@@ -171,6 +175,55 @@ The editor automatically detects diagram types from file content and extensions:
 
 - **Modern Browsers** (Chrome 86+, Edge 86+): Full File System Access API support for direct file system integration
 - **Other Browsers** (Firefox, Safari): Automatic fallback to download/upload methods
+
+### Advanced Configuration
+
+The demo site includes comprehensive configuration options accessible through Settings:
+
+#### Editor Settings
+- **Auto-reload Monitoring Delay**: Configurable file monitoring interval (500-5000ms, default 1000ms)
+- **Auto-save**: Automatic saving of changes with configurable delay
+- **Debounce Delay**: Diagram update delay for performance optimization
+- **Code Editor**: Line numbers, word wrap, tab size, and other editor preferences
+- **Theme Settings**: Dark/light mode with system preference detection
+
+#### File Operations
+- **Auto-save Toggle**: Enable/disable automatic file saving
+- **Auto-reload Toggle**: Enable/disable automatic file monitoring and reloading
+- **File Type Detection**: Automatic diagram type detection from file content
+
+#### UI Preferences
+- **Layout Options**: Responsive design settings and layout preferences
+- **Zoom Settings**: Default zoom behavior and interaction preferences
+- **Accessibility**: High contrast mode and keyboard navigation options
+
+All configuration changes are applied in real-time and persist across browser sessions.
+
+## Recent Improvements (June 2025)
+
+### Auto-reload Configuration Enhancement
+- **Configurable Monitoring Delay**: Auto-reload delay is now user-configurable (500-5000ms range, default 1000ms)
+- **Settings Reorganization**: Auto-reload delay moved from File Operations to Editor Settings section for better organization
+- **Real-time Updates**: Configuration changes immediately restart file monitoring with new delay settings
+- **Performance Optimization**: Smart file monitoring that only activates when files are loaded
+
+### URL Parameter Loading Fixes
+- **Initialization Order Fix**: Resolved race condition where URL parameters were processed before dropdown initialization
+- **Default Content Loading**: URLs with format parameters now properly load default examples when no content is specified
+- **Improved Error Handling**: Better fallback behavior for invalid format/diagram type combinations
+- **Seamless Integration**: URL processing now works reliably with dynamic imports and async operations
+
+### Configuration System Improvements
+- **Centralized Management**: Unified configuration system with proper state synchronization
+- **Persistent Settings**: All user preferences are saved and restored across sessions
+- **Real-time Application**: Configuration changes take effect immediately without requiring page refresh
+- **Modular Architecture**: Clean separation between configuration UI, storage, and application logic
+
+### Technical Enhancements
+- **ES6 Module Structure**: Improved code organization with proper module dependencies
+- **State Management**: Centralized application state with reactive updates
+- **Error Recovery**: Enhanced error handling with user-friendly feedback
+- **Performance**: Optimized file monitoring and diagram update processes
 
 ## AI Assistant Features
 
@@ -388,17 +441,26 @@ You can provide your own SSL certificates:
 
 ## Demo Site
 
-The demo site, accessible at https://localhost:8443/, provides an interactive interface for creating and previewing diagrams.
+The demo site, accessible at https://localhost:8443/, provides a comprehensive interactive interface for creating and previewing diagrams with advanced features.
 
-### Features
+### Core Features
 
-- Supports all diagram types provided by Kroki
-- Real-time diagram preview
-- Format conversion (SVG, PNG, PDF, etc.)
-- Diagram code examples for all supported formats
-- Download rendered diagrams
-- URL sharing
-- Encode/decode utilities for diagram text
+- **Full Diagram Support**: All diagram types provided by Kroki are supported
+- **Real-time Preview**: Live diagram updates as you type with configurable debouncing
+- **Multi-format Export**: SVG, PNG, PDF, and other format conversions
+- **Code Examples**: Built-in examples for all supported diagram formats
+- **Download & Sharing**: Export diagrams and share via URL parameters
+- **Professional Editor**: Line numbers, syntax awareness, and code formatting
+- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+
+### Advanced Workflow Features
+
+- **File System Integration**: Native file operations with auto-save and auto-reload
+- **Smart Configuration**: Comprehensive settings with real-time application
+- **URL Parameter Support**: Seamless sharing and bookmarking with improved initialization
+- **Interactive Zoom/Pan**: Professional image viewing with state preservation
+- **AI-Powered Assistance**: Integrated AI for diagram creation and modification
+- **Configuration Management**: Persistent settings with import/export capabilities
 
 ### Supported Diagram Types
 
@@ -426,10 +488,36 @@ The demo site, accessible at https://localhost:8443/, provides an interactive in
 
 ### Demo Site Structure
 
-- [`demoSite/index.html`](demoSite/index.html) - Main HTML file
-- [`demoSite/js/main.js`](demoSite/js/main.js) - JavaScript for the demo site
-- [`demoSite/css/main.css`](demoSite/css/main.css) - Styling
-- [`demoSite/examples`](demoSite/examples) - Example diagram code for each format
+The demo site is built with a modular architecture for maintainability and extensibility:
+
+- [`demoSite/index.html`](demoSite/index.html) - Main HTML structure with responsive layout
+- [`demoSite/js/main.js`](demoSite/js/main.js) - Core application initialization and coordination
+- [`demoSite/js/config.js`](demoSite/js/config.js) - Configuration definitions and defaults
+- [`demoSite/js/config-ui.js`](demoSite/js/config-ui.js) - Settings interface and user preferences
+- [`demoSite/js/modules/`](demoSite/js/modules/) - Modular JavaScript components:
+  - `state.js` - Application state management
+  - `constants.js` - Application constants and defaults
+  - `configuration.js` - Configuration system integration
+  - `fileOperations.js` - File handling and monitoring with auto-reload
+  - `urlHandler.js` - URL parameter processing with improved initialization
+  - `diagramOperations.js` - Diagram rendering and format management
+  - `utils.js` - Utility functions and helpers
+  - `theme.js` - Theme management and dark/light mode
+  - `zoomPan.js` - Interactive image viewing controls
+  - `fullscreen.js` - Fullscreen mode functionality
+  - `search.js` - Code search and navigation
+- [`demoSite/css/`](demoSite/css/) - Modular CSS with theme support
+- [`demoSite/examples/`](demoSite/examples/) - Example diagram code for each format
+
+### Key Implementation Features
+
+- **Modular Architecture**: Clean separation of concerns with ES6 modules
+- **State Management**: Centralized application state with reactive updates  
+- **Configuration System**: Comprehensive settings with real-time application
+- **File Monitoring**: Auto-reload functionality with configurable delays (500-5000ms)
+- **URL Processing**: Fixed initialization order for proper parameter handling
+- **Error Handling**: Robust error management with user-friendly feedback
+- **Performance Optimization**: Debounced updates and efficient rendering
 
 ### Nginx Configuration
 
@@ -471,6 +559,36 @@ docker network list
 # Inspect the Kroki network
 docker network inspect kroki-server_kroki_network
 ```
+
+## Quick Reference
+
+### New Feature Access
+
+#### Auto-reload Configuration
+1. Open Settings (⚙️ gear icon)
+2. Navigate to Advanced → Editor Settings  
+3. Adjust "Auto-reload Monitoring Delay" slider (500-5000ms)
+4. Enable auto-reload toggle in the toolbar
+5. Changes apply immediately to active file monitoring
+
+#### URL Parameter Usage
+- **Format-only URLs**: `https://localhost:8443/?format=plantuml` (loads PlantUML with default example)
+- **Full URLs**: `https://localhost:8443/?format=svg&diag=mermaid&im=encoded_content`
+- **Smart defaults**: Invalid format combinations automatically use supported alternatives
+
+#### File Operations with Auto-reload
+1. **Load a file**: File → Open or Ctrl/Cmd + O
+2. **Enable auto-reload**: Toggle auto-reload button in toolbar  
+3. **Configure delay**: Settings → Advanced → Editor Settings → Auto-reload Monitoring Delay
+4. **Edit externally**: Modify the file in any external editor
+5. **Automatic update**: Diagram updates automatically after the configured delay
+
+#### Configuration Access
+- **Settings Panel**: Click gear icon (⚙️) in the main interface
+- **Advanced Settings**: Navigate to Advanced tab for developer options
+- **Editor Settings**: File monitoring, auto-save, and editor preferences
+- **File Operations**: Auto-save toggle and file handling options
+- **UI Preferences**: Theme, layout, and visual settings
 
 ## License
 
