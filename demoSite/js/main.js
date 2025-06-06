@@ -61,6 +61,9 @@ import {
     toggleAutoSave,
     startAutoSave,
     stopAutoSave,
+    toggleAutoReload,
+    startFileMonitoring,
+    stopFileMonitoring,
     showImageErrorBanner,
     hideImageErrorBanner
 } from './modules/fileOperations.js';

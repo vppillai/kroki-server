@@ -94,13 +94,24 @@ export const state = {
         saved: false,           // Save status
         handle: null,           // File System Access API handle
         isOpen: false,          // Whether a file is actually open
-        autoSaveEnabled: false  // Auto-save toggle state
+        autoSaveEnabled: false, // Auto-save toggle state
+        autoReloadEnabled: true // Auto-reload toggle state (enabled by default)
     },
 
     /**
      * @property {number|null} autoSaveTimer - Auto-save interval timer ID
      */
     autoSaveTimer: null,
+
+    // ---- File Monitoring State ----
+    /**
+     * @property {Object} fileMonitoring - File monitoring state and timers
+     */
+    fileMonitoring: {
+        watchTimer: null,       // File watching interval timer ID
+        lastModified: null,     // Last modification timestamp
+        isWatching: false       // Whether file monitoring is active
+    },
 
     // ---- Search State ----
     /**
@@ -237,6 +248,14 @@ export function updateZoomState(updates) {
  */
 export function updateSearchState(updates) {
     Object.assign(state.searchState, updates);
+}
+
+/**
+ * Update file monitoring state with partial updates
+ * @param {Object} updates - Partial file monitoring state object to merge
+ */
+export function updateFileMonitoring(updates) {
+    Object.assign(state.fileMonitoring, updates);
 }
 
 // ========================================

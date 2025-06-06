@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/config.css">
     <link rel="stylesheet" href="css/ai-assistant.css">
+    <link rel="stylesheet" href="css/auto-save-toggle.css">
     <!-- Include pako library for deflate compression -->
     <script src="js/pako.min.js" defer></script>
     <script src="js/config.js" defer></script>
@@ -63,6 +64,10 @@
                 <label id="auto-save-label" class="switch-label" style="display:none;">
                     <span class="switch-slider"></span>
                     <span class="switch-label-text">Auto-save</span>
+                </label>
+                <label id="auto-reload-label" class="switch-label" style="display:none;">
+                    <span class="switch-slider"></span>
+                    <span class="switch-label-text">Auto-reload</span>
                 </label>
             </div>
         </div>
@@ -320,6 +325,17 @@ Bob --> Alice: Hi there
                         <li><strong>Ctrl/Cmd + Shift + S:</strong> Save As</li>
                         <li><strong>Ctrl/Cmd + F:</strong> Open search bar</li>
                         <li><strong>Ctrl/Cmd + ,:</strong> Open settings</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h4>📁 File Management</h4>
+                    <ul>
+                        <li><strong>Auto-save toggle:</strong> Automatically save changes to opened files</li>
+                        <li><strong>Auto-reload toggle:</strong> Automatically reload file content when modified externally</li>
+                        <li><em>Auto-reload only works with files opened using the File System Access API (Chrome/Edge)</em></li>
+                        <li><em>Auto-reload is enabled by default and monitors files every 2 seconds</em></li>
+                        <li><em>Both toggles appear only when working with actual files (not for new/untitled files)</em></li>
                     </ul>
                 </div>
 
