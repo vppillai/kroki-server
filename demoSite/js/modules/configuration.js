@@ -12,11 +12,12 @@ import {
     state,
     updateDebounceDelay,
     updateAutoSaveDelay,
+    updateAutoReloadDelay,
     updateAutoRefreshEnabled,
     updateZoomState
 } from './state.js';
 import { ThemeManager } from './theme.js';
-import { startAutoSave } from './fileOperations.js';
+import { startAutoSave, restartFileMonitoring } from './fileOperations.js';
 import { updateLineNumbers, adjustControlsLayout } from './utils.js';
 
 /**
@@ -52,6 +53,7 @@ export function applyConfiguration() {
     // Apply configuration-driven values
     updateDebounceDelay(config.get('editor.debounceDelay'));
     updateAutoSaveDelay(config.get('editor.autoSaveDelay'));
+    updateAutoReloadDelay(config.get('editor.autoReloadDelay'));
 
     // Update zoom state with configuration values
     updateZoomState({
@@ -244,6 +246,15 @@ export function setupConfigurationListeners() {
         // Restart auto-save timer if it's running
         if (state.currentFile.autoSaveEnabled) {
             startAutoSave();
+        }
+    });
+
+    // Listen for auto-reload delay changes
+    config.addListener('editor.autoReloadDelay', (newValue) => {
+        updateAutoReloadDelay(newValue);
+        // Restart file monitoring if it's active
+        if (state.fileMonitoring.isWatching) {
+            restartFileMonitoring();
         }
     });
 

@@ -9,7 +9,7 @@
  * @author Vysakh Pillai
  */
 
-import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, defaultExample } from './constants.js';
+import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, DEFAULT_AUTO_RELOAD_DELAY, defaultExample } from './constants.js';
 
 // ========================================
 // APPLICATION STATE
@@ -70,6 +70,11 @@ export const state = {
      */
     AUTO_SAVE_DELAY: DEFAULT_AUTO_SAVE_DELAY,
 
+    /**
+     * @property {number} AUTO_RELOAD_DELAY - Configurable auto-reload monitoring delay (ms)
+     */
+    AUTO_RELOAD_DELAY: DEFAULT_AUTO_RELOAD_DELAY,
+
     // ---- Zoom & Pan State ----
     /**
      * @property {Object} zoomState - Zoom and pan interaction state
@@ -94,13 +99,24 @@ export const state = {
         saved: false,           // Save status
         handle: null,           // File System Access API handle
         isOpen: false,          // Whether a file is actually open
-        autoSaveEnabled: false  // Auto-save toggle state
+        autoSaveEnabled: false, // Auto-save toggle state
+        autoReloadEnabled: true // Auto-reload toggle state (enabled by default)
     },
 
     /**
      * @property {number|null} autoSaveTimer - Auto-save interval timer ID
      */
     autoSaveTimer: null,
+
+    // ---- File Monitoring State ----
+    /**
+     * @property {Object} fileMonitoring - File monitoring state and timers
+     */
+    fileMonitoring: {
+        watchTimer: null,       // File watching interval timer ID
+        lastModified: null,     // Last modification timestamp
+        isWatching: false       // Whether file monitoring is active
+    },
 
     // ---- Search State ----
     /**
@@ -208,6 +224,14 @@ export function updateAutoSaveDelay(delay) {
 }
 
 /**
+ * Update auto-reload delay
+ * @param {number} delay - New auto-reload delay in milliseconds
+ */
+export function updateAutoReloadDelay(delay) {
+    state.AUTO_RELOAD_DELAY = delay;
+}
+
+/**
  * Update auto-save timer
  * @param {number|null} timer - Timer ID or null
  */
@@ -237,6 +261,14 @@ export function updateZoomState(updates) {
  */
 export function updateSearchState(updates) {
     Object.assign(state.searchState, updates);
+}
+
+/**
+ * Update file monitoring state with partial updates
+ * @param {Object} updates - Partial file monitoring state object to merge
+ */
+export function updateFileMonitoring(updates) {
+    Object.assign(state.fileMonitoring, updates);
 }
 
 // ========================================

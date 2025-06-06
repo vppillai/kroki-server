@@ -117,3 +117,20 @@
     color: var(--text-primary);
     margin-left: 2px;
 }
+
+/* Auto-reload specific styles - matches auto-save theme */
+#auto-reload-label .switch-slider {
+    background: #888; /* Same as default switch */
+}
+
+#auto-reload-label.active .switch-slider {
+    background: var(--primary-color); /* Same as auto-save active */
+}
+
+#auto-reload-label .switch-label-text {
+    color: var(--text-primary);
+}
+
+#auto-reload-label:hover {
+    opacity: 0.8;
+}

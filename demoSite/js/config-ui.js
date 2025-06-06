@@ -157,6 +157,15 @@ class ConfigUI {
                                         </div>
                                         <div class="config-description">Time to wait before updating diagram while typing</div>
                                     </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">Auto-reload Monitoring Delay</label>
+                                        <div class="config-range">
+                                            <input type="range" min="500" max="5000" step="250" class="config-input" data-config="editor.autoReloadDelay">
+                                            <span class="config-range-value">1000ms</span>
+                                        </div>
+                                        <div class="config-description">Time between file change checks when auto-reload is enabled</div>
+                                    </div>
                                 </div>
                             </div>
                             

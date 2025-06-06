@@ -37,6 +37,7 @@ const DEFAULT_CONFIG = {
         tabSize: 4,
         autoSave: false,
         autoSaveDelay: 2000, // milliseconds
+        autoReloadDelay: 1000, // milliseconds for file monitoring interval
         debounceDelay: 1000, // milliseconds for diagram updates
         showLineNumbers: true,
         wordWrap: false,

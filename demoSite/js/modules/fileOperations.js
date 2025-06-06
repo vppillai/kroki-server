@@ -8,7 +8,7 @@
  * @author Vysakh Pillai
  */
 
-import { state, updateCurrentFile, updateAutoSaveTimer } from './state.js';
+import { state, updateCurrentFile, updateAutoSaveTimer, updateFileMonitoring } from './state.js';
 import { updateLineNumbers } from './utils.js';
 import { updateDiagram } from './diagramOperations.js';
 
@@ -24,6 +24,7 @@ export function updateFileStatus() {
     const saveStatusElement = document.getElementById('save-status');
     const saveBtn = document.getElementById('save-file-btn');
     const autoSaveLabel = document.getElementById('auto-save-label');
+    const autoReloadLabel = document.getElementById('auto-reload-label');
     const fileStatusContainer = document.querySelector('.file-status');
 
     // Check if we have any content to work with (either open file or new file with content)
@@ -41,6 +42,10 @@ export function updateFileStatus() {
         if (autoSaveLabel) {
             autoSaveLabel.style.display = 'none';
             autoSaveLabel.classList.remove('active');
+        }
+        if (autoReloadLabel) {
+            autoReloadLabel.style.display = 'none';
+            autoReloadLabel.classList.remove('active');
         }
         return;
     }
@@ -66,6 +71,29 @@ export function updateFileStatus() {
         } else {
             // Hide auto-save for other cases
             autoSaveLabel.style.display = 'none';
+        }
+    }
+
+    // Show auto-reload pill only when file has been saved at least once and has a handle
+    if (autoReloadLabel) {
+        // For new files, always hide auto-reload
+        if (isNewFile) {
+            autoReloadLabel.style.display = 'none';
+            autoReloadLabel.classList.remove('active');
+        } else if (state.currentFile.handle && isFileSystemAccessSupported()) {
+            // Show auto-reload for files that have been opened with File System Access API
+            autoReloadLabel.style.display = 'inline-flex';
+            autoReloadLabel.classList.toggle('active', !!state.currentFile.autoReloadEnabled);
+        } else if (state.currentFile.isOpen) {
+            // FALLBACK: Show auto-reload for any opened file (for testing purposes)
+            autoReloadLabel.style.display = 'inline-flex';
+            autoReloadLabel.classList.toggle('active', !!state.currentFile.autoReloadEnabled);
+            // Add a note that auto-reload won't work without File System Access API
+            autoReloadLabel.title = 'Auto-reload requires File System Access API (not available)';
+        } else {
+            // Hide auto-reload for files without handles or browsers without File System Access API
+            autoReloadLabel.style.display = 'none';
+            autoReloadLabel.classList.remove('active');
         }
     }
 
@@ -201,6 +229,11 @@ export async function openFile() {
 
             // Detect diagram type from content or filename
             detectDiagramType(content, file.name);
+
+            // Start file monitoring if auto-reload is enabled
+            if (state.currentFile.autoReloadEnabled) {
+                startFileMonitoring();
+            }
 
         } else {
             // Fallback to file input
@@ -532,6 +565,11 @@ export async function newFile() {
         stopAutoSave();
     }
 
+    // Stop file monitoring if it's running (new files don't need monitoring)
+    if (state.fileMonitoring.isWatching) {
+        stopFileMonitoring();
+    }
+
     // Completely reset file state for new file
     updateCurrentFile({
         name: null,  // Will show as "Untitled" in UI
@@ -539,7 +577,8 @@ export async function newFile() {
         content: exampleCode,
         saved: true,  // Start as "saved" since it's just the example
         isOpen: false,  // Not actually "open" from disk
-        autoSaveEnabled: false  // Disable auto-save for new files
+        autoSaveEnabled: false,  // Disable auto-save for new files
+        autoReloadEnabled: true  // Keep auto-reload enabled by default for future files
     });
 
     const codeTextarea = document.getElementById('code');
@@ -650,6 +689,155 @@ export function stopAutoSave() {
 }
 
 /**
+ * Start file monitoring for auto-reload functionality
+ * Uses efficient polling to check for file changes when a file is open
+ * Only works with File System Access API enabled files
+ * 
+ * @public
+ */
+export function startFileMonitoring() {
+    stopFileMonitoring(); // Clear any existing monitoring
+
+    if (!state.currentFile.handle || !state.currentFile.autoReloadEnabled) {
+        return;
+    }
+
+    const checkFileChanges = async () => {
+        try {
+            const file = await state.currentFile.handle.getFile();
+            const currentModified = file.lastModified;
+
+            // Initialize last modified on first check
+            if (state.fileMonitoring.lastModified === null) {
+                updateFileMonitoring({ lastModified: currentModified });
+                return;
+            }
+
+            // Check if file has been modified
+            if (currentModified > state.fileMonitoring.lastModified) {
+                updateFileMonitoring({ lastModified: currentModified });
+                
+                // Read the new content
+                const newContent = await file.text();
+                
+                // Only update if content actually changed
+                if (newContent !== state.currentFile.content) {
+                    await reloadFileContent(newContent);
+                }
+            }
+        } catch (error) {
+            console.warn('File monitoring error:', error);
+            // Stop monitoring if file becomes inaccessible
+            stopFileMonitoring();
+        }
+    };
+
+    // Start monitoring with configurable polling interval
+    const timer = setInterval(checkFileChanges, state.AUTO_RELOAD_DELAY);
+    updateFileMonitoring({
+        watchTimer: timer,
+        isWatching: true
+    });
+}
+
+/**
+ * Stop file monitoring
+ * Clears the monitoring timer and resets monitoring state
+ * 
+ * @public
+ */
+export function stopFileMonitoring() {
+    if (state.fileMonitoring.watchTimer) {
+        clearInterval(state.fileMonitoring.watchTimer);
+    }
+    
+    updateFileMonitoring({
+        watchTimer: null,
+        isWatching: false,
+        lastModified: null
+    });
+}
+
+/**
+ * Restart file monitoring with updated delay
+ * Stops current monitoring and starts again with new delay from state
+ * Used when auto-reload delay configuration changes
+ * 
+ * @public
+ */
+export function restartFileMonitoring() {
+    if (state.fileMonitoring.isWatching) {
+        stopFileMonitoring();
+        startFileMonitoring();
+    }
+}
+
+/**
+ * Reload file content when external changes are detected
+ * Updates the editor content and provides user feedback
+ * 
+ * @param {string} newContent - The new file content
+ * @private
+ */
+async function reloadFileContent(newContent) {
+    // Update the current file state
+    updateCurrentFile({
+        content: newContent,
+        saved: true
+    });
+
+    // Update the editor
+    const codeTextarea = document.getElementById('code');
+    if (codeTextarea) {
+        // Save cursor position
+        const cursorPosition = codeTextarea.selectionStart;
+        
+        // Update content
+        codeTextarea.value = newContent;
+        
+        // Try to restore cursor position if still valid
+        if (cursorPosition <= newContent.length) {
+            codeTextarea.setSelectionRange(cursorPosition, cursorPosition);
+        }
+        
+        // Visual feedback for reload
+        codeTextarea.style.borderLeftColor = 'var(--success-color)';
+        setTimeout(() => {
+            codeTextarea.style.borderLeftColor = '';
+        }, 1000);
+    }
+
+    // Update UI
+    updateLineNumbers();
+    updateDiagram();
+    updateFileStatus();
+
+    // Show subtle notification
+    showSuccessMessage('File reloaded from disk');
+}
+
+/**
+ * Toggle auto-reload functionality for current file
+ * Enables or disables automatic file reloading and updates UI indicators
+ * 
+ * @public
+ */
+export function toggleAutoReload() {
+    updateCurrentFile({ autoReloadEnabled: !state.currentFile.autoReloadEnabled });
+    const autoReloadLabel = document.getElementById('auto-reload-label');
+
+    if (autoReloadLabel) {
+        autoReloadLabel.classList.toggle('active', state.currentFile.autoReloadEnabled);
+    }
+
+    if (state.currentFile.autoReloadEnabled && state.currentFile.handle) {
+        startFileMonitoring();
+    } else {
+        stopFileMonitoring();
+    }
+}
+
+/**
  * Initialize file operations system
  * Sets up event listeners for file operation buttons and keyboard shortcuts
  * Establishes file content change tracking
@@ -663,6 +851,7 @@ export function initializeFileOperations() {
     const saveBtn = document.getElementById('save-file-btn');
     const saveAsBtn = document.getElementById('save-as-btn');
     const autoSaveLabel = document.getElementById('auto-save-label');
+    const autoReloadLabel = document.getElementById('auto-reload-label');
     const fileInput = document.getElementById('file-input');
 
     if (newBtn) {
@@ -683,6 +872,10 @@ export function initializeFileOperations() {
 
     if (autoSaveLabel) {
         autoSaveLabel.addEventListener('click', toggleAutoSave);
+    }
+
+    if (autoReloadLabel) {
+        autoReloadLabel.addEventListener('click', toggleAutoReload);
     }
 
     if (fileInput) {
@@ -706,4 +899,4 @@ export function initializeFileOperations() {
             }
         });
     }
-} 
+}

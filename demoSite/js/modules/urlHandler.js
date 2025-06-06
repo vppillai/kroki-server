@@ -61,12 +61,24 @@ export function processUrlParameters() {
         document.getElementById('diagramType').value = params.diag;
         setCurrentDiagramType(params.diag);
 
-        // Import and call updateFormatDropdown
+        // Import and call updateFormatDropdown, then continue with processing
         import('./diagramOperations.js').then(module => {
             module.updateFormatDropdown();
+            continueProcessing(params, module);
+        });
+    } else {
+        // No diagram type in URL, continue with current type
+        import('./diagramOperations.js').then(module => {
+            continueProcessing(params, module);
         });
     }
+}
 
+/**
+ * Continue processing URL parameters after diagram operations module is loaded
+ * @private
+ */
+function continueProcessing(params, diagramModule) {
     // Get current diagram type and its supported formats
     const diagramType = document.getElementById('diagramType').value;
     const supportedFormats = formatCompatibility[diagramType] || ['svg'];
@@ -90,18 +102,16 @@ export function processUrlParameters() {
     // Set diagram code if encoded content is provided
     if (params.im) {
         try {
-            // Import decode function dynamically to avoid circular dependency
-            import('./diagramOperations.js').then(module => {
-                const decodedText = module.decodeKrokiDiagram(params.im);
-                document.getElementById('code').value = decodedText;
-                updateLineNumbers();
-                setUserHasEditedContent(true);
-            });
+            const decodedText = diagramModule.decodeKrokiDiagram(params.im);
+            document.getElementById('code').value = decodedText;
+            updateLineNumbers();
+            setUserHasEditedContent(true);
         } catch (error) {
             console.error('Failed to decode diagram from URL:', error);
             loadDefaultExample(diagramType);
         }
     } else {
+        // No encoded content, load default example for current diagram type
         loadDefaultExample(diagramType);
     }
 }

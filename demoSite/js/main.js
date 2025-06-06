@@ -61,6 +61,9 @@ import {
     toggleAutoSave,
     startAutoSave,
     stopAutoSave,
+    toggleAutoReload,
+    startFileMonitoring,
+    stopFileMonitoring,
     showImageErrorBanner,
     hideImageErrorBanner
 } from './modules/fileOperations.js';
@@ -208,12 +211,14 @@ function initializeAutoRefresh() {
  * @private
  */
 document.addEventListener('DOMContentLoaded', function () {
-    // First process URL parameters to set up initial state
-    processUrlParameters();
-
-    // Then initialize UI components
+    // First initialize dropdown components to ensure proper state
     initializeDiagramTypeDropdown();
     updateFormatDropdown();
+    
+    // Then process URL parameters to set up initial state
+    processUrlParameters();
+
+    // Initialize UI components
     initializeLineNumbers();
     initializeResizeHandle();
     adjustControlsLayout();

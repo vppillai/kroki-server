@@ -120,6 +120,16 @@ export const DEFAULT_DEBOUNCE_DELAY = 1000;
  */
 export const DEFAULT_AUTO_SAVE_DELAY = 2000;
 
+/**
+ * Default delay for auto-reload file monitoring
+ * Time between file change checks when auto-reload is enabled
+ * 
+ * @constant {number} - Milliseconds
+ * @default 1000
+ */
+export const DEFAULT_AUTO_RELOAD_DELAY = 1000;
+
 // Legacy exports for backward compatibility
 export const DEBOUNCE_DELAY = DEFAULT_DEBOUNCE_DELAY;
-export const AUTO_SAVE_DELAY = DEFAULT_AUTO_SAVE_DELAY; 
+export const AUTO_SAVE_DELAY = DEFAULT_AUTO_SAVE_DELAY;
+export const AUTO_RELOAD_DELAY = DEFAULT_AUTO_RELOAD_DELAY; 
