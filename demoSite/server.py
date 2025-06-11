@@ -45,11 +45,17 @@ CORS(app)
 
 # Configuration
 PORT = int(os.environ.get('PORT', 8006))
-HTTPS_PORT = int(os.environ.get('HTTPS_PORT', 8443))
+
+# Parse comma-separated HTTPS ports and hostnames
+HTTPS_PORTS_STR = os.environ.get('HTTPS_PORT', '8443')
+HTTPS_PORTS = [int(port.strip()) for port in HTTPS_PORTS_STR.split(',') if port.strip()]
+
+HOSTNAMES_STR = os.environ.get('HOSTNAME', 'localhost')
+HOSTNAMES = [hostname.strip() for hostname in HOSTNAMES_STR.split(',') if hostname.strip()]
+
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 AI_TIMEOUT = 30  # Default timeout for AI API requests
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
-HOSTNAME= os.environ.get('HOSTNAME', 'localhost')
 
 # Default AI configuration - can be overridden by environment variables
 DEFAULT_AI_CONFIG = {
@@ -111,25 +117,29 @@ def validate_origin(request):
     origin = request.headers.get('Origin', '')
     referer = request.headers.get('Referer', '')
     
-    # Allow requests from the same host or localhost
-    allowed_origins = [
-        f"https://localhost:{HTTPS_PORT}",
-        f"https://127.0.0.1:{HTTPS_PORT}",
-        f"https://{HOSTNAME}:{HTTPS_PORT}",
-        f"https://{HOSTNAME}",
-        "https://localhost",
-    ]
+    # Generate all combinations of hostnames and HTTPS ports
+    allowed_origins = []
     
-    # If HOSTNAME is not localhost, also add localhost variants for development
-    if HOSTNAME != 'localhost':
-        allowed_origins.extend([
-            f"https://localhost:{HTTPS_PORT}",
-            "https://localhost",
-        ])
+    for hostname in HOSTNAMES:
+        for https_port in HTTPS_PORTS:
+            allowed_origins.extend([
+                f"https://{hostname}:{https_port}",
+                f"https://{hostname}",
+            ])
+    
+    # Always add common localhost variants for development
+    allowed_origins.extend([
+        "https://localhost",
+        "https://127.0.0.1",
+    ])
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    allowed_origins = [x for x in allowed_origins if not (x in seen or seen.add(x))]
     
     # In production, you might want to be more restrictive
     if origin and not any(origin.startswith(allowed) for allowed in allowed_origins):
-        logger.warning(f"Rejected request from origin: {origin}")
+        logger.warning(f"Rejected request from origin: {origin}. Allowed origins: {allowed_origins}")
         return False
     
     return True
