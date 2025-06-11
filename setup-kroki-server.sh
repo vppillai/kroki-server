@@ -8,9 +8,21 @@ NGINX_CONF="${SCRIPT_DIR}/nginx.conf"
 DOCKER_COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.yml"
 
 # Default configuration
-HOSTNAME="localhost"
 CUSTOM_CERT_KEY=""
 CUSTOM_CERT_CRT=""
+
+# Load environment variables
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+    # Source the .env file to get HOSTNAME
+    set -a
+    source "${SCRIPT_DIR}/.env"
+    set +a
+    echo "Loaded configuration from .env file"
+else
+    # Fallback if no .env file exists
+    HOSTNAME="localhost"
+    echo "No .env file found, using default hostname: ${HOSTNAME}"
+fi
 
 # Check if docker is installed
 check_dependencies() {
@@ -200,7 +212,7 @@ check_services() {
     
     echo "Checking if services are up and running..."
     while [ $attempt -le $max_attempts ]; do
-        if curl -k -s -o /dev/null -w "%{http_code}" https://localhost:8443 | grep -q "200"; then
+        if curl -k -s -o /dev/null -w "%{http_code}" https://${HOSTNAME}:8443 | grep -q "200"; then
             echo "Services are up and running!"
             return 0
         fi
@@ -292,7 +304,7 @@ case "$COMMAND" in
             echo "Waiting for services to start..."
             sleep 5
             check_services
-            echo "Kroki is available at https://localhost:8443"
+            echo "Kroki is available at https://${HOSTNAME}:8443"
             if [ "$HOSTNAME" != "localhost" ]; then
                 echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
             fi
@@ -330,7 +342,7 @@ case "$COMMAND" in
         $DOCKER_COMPOSE up -d
         sleep 5
         check_services
-        echo "Kroki is available at https://localhost:8443"
+        echo "Kroki is available at https://${HOSTNAME}:8443"
         if [ "$HOSTNAME" != "localhost" ]; then
             echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
         fi
