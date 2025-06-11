@@ -112,17 +112,19 @@ def validate_origin(request):
     
     # Allow requests from the same host or localhost
     allowed_origins = [
-        f"http://localhost:{PORT}",
         f"https://localhost:{PORT}",
-        "http://127.0.0.1:" + str(PORT),
         "https://127.0.0.1:" + str(PORT),
-        f"http://{HOSTNAME}:{PORT}",
         f"https://{HOSTNAME}:{PORT}",
-        f"http://{HOSTNAME}",
         f"https://{HOSTNAME}",
-        "http://localhost",
         "https://localhost",
     ]
+    
+    # If HOSTNAME is not localhost, also add localhost variants for development
+    if HOSTNAME != 'localhost':
+        allowed_origins.extend([
+            f"https://localhost:{PORT}",
+            "https://localhost",
+        ])
     
     # In production, you might want to be more restrictive
     if origin and not any(origin.startswith(allowed) for allowed in allowed_origins):
