@@ -58,7 +58,7 @@ If you have an idea for an enhancement:
 
 1. Clone the repository
 2. Run `./setup-kroki-server.sh start`
-3. Access the server at https://localhost:8443/
+3. Access the server at https://localhost:8443/ (default port, configurable in .env file)
 
 ## Testing
 

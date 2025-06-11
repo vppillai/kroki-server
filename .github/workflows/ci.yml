@@ -36,7 +36,9 @@ jobs:
           chmod +x ./setup-kroki-server.sh
           ./setup-kroki-server.sh start
           sleep 30
-          curl -k -s -o /dev/null -w "%{http_code}" https://localhost:8443 | grep -q "200"
+          # Use the HTTPS_PORT from .env file (default 8443)
+          HTTPS_PORT=$(grep HTTPS_PORT .env | cut -d '=' -f2 | tr -d ' ' || echo "8443")
+          curl -k -s -o /dev/null -w "%{http_code}" https://localhost:${HTTPS_PORT} | grep -q "200"
           ./setup-kroki-server.sh stop
   demo-site-container:
     name: Build Demo Site Docker Image

@@ -13,7 +13,7 @@ CUSTOM_CERT_CRT=""
 
 # Load environment variables
 if [ -f "${SCRIPT_DIR}/.env" ]; then
-    # Source the .env file to get HOSTNAME
+    # Source the .env file to get HOSTNAME and port configurations
     set -a
     source "${SCRIPT_DIR}/.env"
     set +a
@@ -21,6 +21,9 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
 else
     # Fallback if no .env file exists
     HOSTNAME="localhost"
+    HTTP_PORT="8000"
+    HTTPS_PORT="8443"
+    DEMOSITE_CONTAINER_PORT="8006"
     echo "No .env file found, using default hostname: ${HOSTNAME}"
 fi
 
@@ -145,7 +148,7 @@ http {
 
         # Root path (serves the demo site index)
         location = / {
-            proxy_pass http://demosite:8006/index.html;
+            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}/index.html;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -154,7 +157,7 @@ http {
 
         # Static resources in static directories
         location ~* ^/(css|js|examples)/ {
-            proxy_pass http://demosite:8006\$uri;
+            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}\$uri;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -167,7 +170,7 @@ http {
 
         # Static files at root level
         location ~* ^/[^/]+\.(html|ico|svg|png|jpg|jpeg|gif)$ {
-            proxy_pass http://demosite:8006\$uri;
+            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}\$uri;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -180,7 +183,7 @@ http {
 
         # Match Kroki API pattern (diagram-type/format/encoded-diagram)
         location ~* ^/[^/]+/[^/]+/[^/]+$ {
-            proxy_pass http://core:8000;
+            proxy_pass http://core:${HTTP_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -192,7 +195,7 @@ http {
 
         # Fallback for any other paths
         location / {
-            proxy_pass http://demosite:8006;
+            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -212,7 +215,7 @@ check_services() {
     
     echo "Checking if services are up and running..."
     while [ $attempt -le $max_attempts ]; do
-        if curl -k -s -o /dev/null -w "%{http_code}" https://${HOSTNAME}:8443 | grep -q "200"; then
+        if curl -k -s -o /dev/null -w "%{http_code}" https://${HOSTNAME}:${HTTPS_PORT} | grep -q "200"; then
             echo "Services are up and running!"
             return 0
         fi
@@ -304,7 +307,7 @@ case "$COMMAND" in
             echo "Waiting for services to start..."
             sleep 5
             check_services
-            echo "Kroki is available at https://${HOSTNAME}:8443"
+            echo "Kroki is available at https://${HOSTNAME}:${HTTPS_PORT}"
             if [ "$HOSTNAME" != "localhost" ]; then
                 echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
             fi
@@ -342,7 +345,7 @@ case "$COMMAND" in
         $DOCKER_COMPOSE up -d
         sleep 5
         check_services
-        echo "Kroki is available at https://${HOSTNAME}:8443"
+        echo "Kroki is available at https://${HOSTNAME}:${HTTPS_PORT}"
         if [ "$HOSTNAME" != "localhost" ]; then
             echo "Configured with hostname: $HOSTNAME (you may need to add it to your hosts file)"
         fi

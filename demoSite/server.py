@@ -45,6 +45,7 @@ CORS(app)
 
 # Configuration
 PORT = int(os.environ.get('PORT', 8006))
+HTTPS_PORT = int(os.environ.get('HTTPS_PORT', 8443))
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 AI_TIMEOUT = 30  # Default timeout for AI API requests
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
@@ -112,9 +113,9 @@ def validate_origin(request):
     
     # Allow requests from the same host or localhost
     allowed_origins = [
-        f"https://localhost:{PORT}",
-        "https://127.0.0.1:" + str(PORT),
-        f"https://{HOSTNAME}:{PORT}",
+        f"https://localhost:{HTTPS_PORT}",
+        f"https://127.0.0.1:{HTTPS_PORT}",
+        f"https://{HOSTNAME}:{HTTPS_PORT}",
         f"https://{HOSTNAME}",
         "https://localhost",
     ]
@@ -122,7 +123,7 @@ def validate_origin(request):
     # If HOSTNAME is not localhost, also add localhost variants for development
     if HOSTNAME != 'localhost':
         allowed_origins.extend([
-            f"https://localhost:{PORT}",
+            f"https://localhost:{HTTPS_PORT}",
             "https://localhost",
         ])
     

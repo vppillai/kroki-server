@@ -1,6 +1,11 @@
 # Kroki Diagram Server
 
-A complete setup for running a local Kroki diagram rendering server with a custom interactive demo site.
+A complete setup for running a local Kroki diagram rendering server with a custom interExample URL:
+
+```
+https://localhost:{HTTPS_PORT}/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ4dyAh--P0aAaKv0D06i__ztEH1KuA9EXc_S4KWqKIcTLqxzf4a_WjRinoqZX4-cUk7PbSvMjuopdAzjOJCpudPeEoVb5PA0q4hoKbQ2X_uhSYLDP7xDyzXZjwqKPMz0fYwsRquxLiuxYHH7y-K7-4fV3rbfQbI%3D
+```
+*(Replace {HTTPS_PORT} with your configured port, default is 8443)*e demo site.
 
 <blockquote style="background:#f9f9f9; border-left: 6px solid #ccc; padding: 1em; font-size: 0.95em;">
   <strong>Note:</strong><br>
@@ -22,7 +27,8 @@ cd kroki-server
 ./setup-kroki-server.sh start
 
 # Access the demo site
-# Open https://localhost:8443/ in your browser
+# Open https://localhost:8443/ in your browser (default HTTPS port)
+# Port can be configured in .env file
 ```
 
 ## Overview
@@ -32,11 +38,43 @@ This project provides a complete solution for running a [Kroki](https://kroki.io
 - A Docker Compose setup for running the Kroki server and its dependencies
 - An interactive demo site for creating and previewing diagrams
 - HTTPS support via self-signed certificates
+- Configurable ports via environment variables (.env file)
 - Comprehensive deployment scripts and utilities
+
+## Configuration
+
+### Port Configuration
+
+The server ports can be configured through the `.env` file:
+
+```bash
+# Port Configuration
+HTTP_PORT=8000        # Kroki core server port
+HTTPS_PORT=8443       # Nginx HTTPS proxy port
+DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port
+```
+
+#### Port Usage:
+- **`HTTP_PORT`**: The internal Kroki core server port (defaults to 8000)
+  - Used for direct API access to Kroki rendering services
+  - Mapped to host for development access
+- **`HTTPS_PORT`**: The external HTTPS access point (defaults to 8443)
+  - This is the port you use in your browser
+  - Nginx proxy routes requests to appropriate internal services
+- **`DEMOSITE_CONTAINER_PORT`**: The internal demo site server port (defaults to 8006)
+  - Flask server hosting the interactive demo interface
+  - Only accessible internally, routed through Nginx
+
+#### Changing Ports:
+1. Edit the `.env` file with your desired port numbers
+2. Restart the services: `./setup-kroki-server.sh restart`
+3. Access the site at `https://localhost:{HTTPS_PORT}/`
+
+**Note**: After changing ports, the Nginx configuration is automatically regenerated to use the new port settings.
 
 ## DemoSite
 
-The demo site, accessible at https://localhost:8443/, provides an interactive interface for creating and previewing diagrams.
+The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/), and provides an interactive interface for creating and previewing diagrams.
 
 ### Features
 
@@ -441,7 +479,7 @@ You can provide your own SSL certificates:
 
 ## Demo Site
 
-The demo site, accessible at https://localhost:8443/, provides a comprehensive interactive interface for creating and previewing diagrams with advanced features.
+The demo site provides a comprehensive interactive interface for creating and previewing diagrams with advanced features. Access it at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/).
 
 ### Core Features
 
@@ -537,7 +575,11 @@ The [`docker-compose.yml`](docker-compose.yml) file defines the container relati
 
 1. **Certificate Errors**: The default setup uses self-signed certificates, which will trigger browser warnings. Add an exception or provide trusted certificates.
 
-2. **Port Conflicts**: If port 8443 is already in use, you can modify the [`docker-compose.yml`](docker-compose.yml) file to use a different port.
+2. **Port Conflicts**: If the default HTTPS port (8443) is already in use, you can change it in the `.env` file:
+   ```bash
+   # Edit .env file
+   HTTPS_PORT=9443  # or any other available port
+   ```
 
 3. **Container Issues**: Check logs for more details if any service fails to start.
 
@@ -572,9 +614,11 @@ docker network inspect kroki-server_kroki_network
 5. Changes apply immediately to active file monitoring
 
 #### URL Parameter Usage
-- **Format-only URLs**: `https://localhost:8443/?format=plantuml` (loads PlantUML with default example)
-- **Full URLs**: `https://localhost:8443/?format=svg&diag=mermaid&im=encoded_content`
+- **Format-only URLs**: `https://localhost:{HTTPS_PORT}/?format=plantuml` (loads PlantUML with default example)
+- **Full URLs**: `https://localhost:{HTTPS_PORT}/?format=svg&diag=mermaid&im=encoded_content`
 - **Smart defaults**: Invalid format combinations automatically use supported alternatives
+
+*Note: Replace {HTTPS_PORT} with your configured port (default: 8443)*
 
 #### File Operations with Auto-reload
 1. **Load a file**: File → Open or Ctrl/Cmd + O
