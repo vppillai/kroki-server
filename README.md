@@ -1,18 +1,12 @@
 # Kroki Diagram Server
 
-A complete setup for running a local Kroki diagram rendering server with a custom interExample URL:
-
-```
-https://localhost:{HTTPS_PORT}/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ4dyAh--P0aAaKv0D06i__ztEH1KuA9EXc_S4KWqKIcTLqxzf4a_WjRinoqZX4-cUk7PbSvMjuopdAzjOJCpudPeEoVb5PA0q4hoKbQ2X_uhSYLDP7xDyzXZjwqKPMz0fYwsRquxLiuxYHH7y-K7-4fV3rbfQbI%3D
-```
-*(Replace {HTTPS_PORT} with your configured port, default is 8443)*e demo site.
+A complete setup for running a local Kroki diagram rendering server with a custom interactive demo site.
 
 <blockquote style="background:#f9f9f9; border-left: 6px solid #ccc; padding: 1em; font-size: 0.95em;">
   <strong>Note:</strong><br>
   While the initial framework and specifications were manually crafted, over <strong>90%</strong> of the code in this repository was generated using AI tools. As such, the code quality and structure may not fully reflect best practices and have not undergone extensive manual review.<br><br>
   That said, I have been actively <em>dogfooding</em> the tool, and it is functional and working as intended in real-world usage.
 </blockquote>
-
 
 ![](./images/demoSite.png)
 
@@ -26,9 +20,13 @@ cd kroki-server
 # Start the server
 ./setup-kroki-server.sh start
 
-# Access the demo site
-# Open https://localhost:8443/ in your browser (default HTTPS port)
-# Port can be configured in .env file
+# Access the demo site (multiple ports supported)
+# Default: https://localhost:8443/
+# With multi-port: https://localhost:8443/, https://localhost:9443/, https://localhost:10443/
+# Ports configurable in .env file
+
+# Test all configured endpoints
+./setup-kroki-server.sh health
 ```
 
 ## Overview
@@ -45,34 +43,184 @@ This project provides a complete solution for running a [Kroki](https://kroki.io
 
 ### Port Configuration
 
-The server ports can be configured through the `.env` file:
+The server ports can be configured through the `.env` file with support for both single and multiple ports:
 
 ```bash
-# Port Configuration
-HTTP_PORT=8000        # Kroki core server port
-HTTPS_PORT=8443       # Nginx HTTPS proxy port
-DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port
+# Port Configuration - Single Port (Default)
+HTTP_PORT=8000                  # Single Kroki core server port
+HTTPS_PORT=8443                 # Single Nginx HTTPS proxy port
+DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port (always single)
+HOSTNAME=localhost,127.0.0.1,kroki.local  # Multiple hostnames supported
+
+# Port Configuration - Multi-Port (Advanced)
+HTTP_PORT=8000,8001,8002        # Multiple Kroki core server ports
+HTTPS_PORT=8443,9443,10443      # Multiple Nginx HTTPS proxy ports
+DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port (always single)
+HOSTNAME=localhost,127.0.0.1,kroki.local  # Multiple hostnames supported
 ```
 
+#### Configuration Flexibility
+- **Single Port Mode**: Use single values for simple deployments (default configuration)
+- **Multi-Port Mode**: Use comma-separated values for advanced deployments with multiple endpoints
+- **Mixed Configuration**: You can use single ports for some services and multiple for others
+- **Hostname Support**: Multiple hostnames are always supported regardless of port configuration
+
 #### Port Usage:
-- **`HTTP_PORT`**: The internal Kroki core server port (defaults to 8000)
+- **`HTTP_PORT`**: The internal Kroki core server port(s) (defaults to 8000)
   - Used for direct API access to Kroki rendering services
-  - Mapped to host for development access
-- **`HTTPS_PORT`**: The external HTTPS access point (defaults to 8443)
-  - This is the port you use in your browser
+  - Multiple ports mapped to host for load distribution
+  - All ports serve the same Kroki core functionality
+- **`HTTPS_PORT`**: The external HTTPS access point(s) (defaults to 8443)
+  - These are the ports you use in your browser
   - Nginx proxy routes requests to appropriate internal services
+  - Multiple ports provide redundancy and load distribution
 - **`DEMOSITE_CONTAINER_PORT`**: The internal demo site server port (defaults to 8006)
   - Flask server hosting the interactive demo interface
   - Only accessible internally, routed through Nginx
+- **`HOSTNAME`**: Supported hostnames for SSL certificate and CORS (defaults to localhost)
+  - Multiple hostnames enable access from different network interfaces
+  - Automatically configured in CORS whitelist for security
 
 #### Changing Ports:
-1. Edit the `.env` file with your desired port numbers
+1. Edit the `.env` file with your desired port numbers:
+   - **Single Port**: `HTTP_PORT=8000` and `HTTPS_PORT=8443`
+   - **Multiple Ports**: `HTTP_PORT=8000,8001,8002` and `HTTPS_PORT=8443,9443,10443`
 2. Restart the services: `./setup-kroki-server.sh restart`
-3. Access the site at `https://localhost:{HTTPS_PORT}/`
+3. Access the site at any configured combination: `https://{hostname}:{HTTPS_PORT}/`
 
-**Note**: After changing ports, the Nginx configuration is automatically regenerated to use the new port settings.
+**Examples**:
+- Single port: `https://localhost:8443/`
+- Multi-port: `https://localhost:8443/`, `https://localhost:9443/`, `https://localhost:10443/`
 
-## DemoSite
+**Note**: After changing ports, the Nginx configuration and Docker Compose override files are automatically regenerated to use the new port settings.
+
+### Docker Compose Override System
+
+The server uses a dynamic Docker Compose override system for port management:
+
+#### How It Works
+- **Automatic Generation**: `docker-compose.override.yml` is automatically created based on `.env` configuration
+- **Dynamic Port Mapping**: All port combinations from comma-separated values are mapped automatically
+- **Git Ignored**: Override files are excluded from version control (added to `.gitignore`)
+- **Template Available**: `docker-compose.override.yml.template` provides a reference example
+
+#### Benefits
+- **Flexible Configuration**: Easy multi-port setup without manual Docker Compose editing
+- **Clean Repository**: Generated files don't clutter the git repository
+- **Consistent Deployment**: Automatic regeneration ensures configuration consistency
+- **Development Friendly**: Local port customization without affecting shared configuration
+
+#### Example Generated Override
+```yaml
+# docker-compose.override.yml (auto-generated)
+services:
+  nginx:
+    ports:
+      - "8443:8443"
+      - "9443:8443" 
+      - "10443:8443"
+  core:
+    ports:
+      - "8000:8000"
+      - "8001:8000"
+      - "8002:8000"
+```
+
+### Security and CORS
+
+The server includes CORS (Cross-Origin Resource Sharing) configuration:
+
+#### Multi-Origin Support
+- **Dynamic Whitelist**: Automatically generates CORS whitelist from all hostname/port combinations
+- **Secure by Default**: Only configured hostnames and ports are allowed
+- **Development Friendly**: Includes common localhost variants for development
+- **Production Ready**: Strict origin validation for production deployments
+
+#### CORS Configuration
+All combinations of configured hostnames and HTTPS ports are automatically whitelisted:
+- `https://localhost:8443`, `https://localhost:9443`, `https://localhost:10443`
+- `https://127.0.0.1:8443`, `https://127.0.0.1:9443`, `https://127.0.0.1:10443`
+- `https://kroki.local:8443`, `https://kroki.local:9443`, `https://kroki.local:10443`
+
+### Health Monitoring System
+
+Comprehensive health monitoring for all configured endpoints:
+
+#### Health Check Features
+- **Multi-Endpoint Testing**: Tests all hostname/port combinations automatically
+- **Detailed Reporting**: Shows success/failure status for each endpoint
+- **Summary Statistics**: Provides overview of healthy vs failed endpoints
+- **Optional Execution**: Health checks are available on-demand, not run automatically
+- **Fast Execution**: Configurable timeouts for quick assessment
+
+#### Usage
+```bash
+# Run comprehensive health checks
+./setup-kroki-server.sh health
+
+# Example output:
+# Testing https://localhost:8443... ✓ OK
+# Testing https://localhost:9443... ✓ OK
+# Testing https://localhost:10443... ✓ OK
+# Testing https://127.0.0.1:8443... ✓ OK
+# Testing https://127.0.0.1:9443... ✓ OK
+# Testing https://127.0.0.1:10443... ✓ OK
+# Testing https://kroki.local:8443... ✗ FAILED
+# Testing https://kroki.local:9443... ✗ FAILED
+# Testing https://kroki.local:10443... ✗ FAILED
+#
+# Health Check Summary:
+#   Total endpoints tested: 9
+#   Successful: 6
+#   Failed: 3
+#   Status: Some endpoints failed ✗
+```
+
+### AI Assistant Configuration
+
+The demo site includes an integrated AI assistant for diagram creation and modification:
+
+#### AI Configuration in .env
+
+```bash
+# AI Assistant Settings
+AI_ENABLED=true                                    # Enable/disable AI features
+AI_ENDPOINT="https://api.openai.com/v1/chat/completions"  # OpenAI API endpoint
+AI_MODEL=gpt-4.1                                   # AI model to use
+AI_TIMEOUT=30                                      # Request timeout in seconds
+AI_API_KEY=                                        # Your OpenAI API key (required for AI features)
+
+# AI Prompt Templates (advanced configuration)
+AI_SYSTEM_PROMPT="..."                             # System prompt for diagram generation
+AI_USER_PROMPT="..."                               # User request template
+AI_RETRY_PROMPT="..."                              # Error recovery template
+```
+
+#### AI Features
+
+- **Diagram Generation**: Create diagrams from natural language descriptions
+- **Code Assistance**: Get help with diagram syntax and structure  
+- **Error Recovery**: Automatic syntax error detection and correction
+- **Multi-Format Support**: Works with all supported Kroki diagram types
+- **Context Awareness**: Understands current diagram type and existing code
+
+#### Setting Up AI Features
+
+1. **Get OpenAI API Key**: Sign up at [OpenAI](https://platform.openai.com/) and generate an API key
+2. **Configure .env**: Add your API key to `AI_API_KEY=your_key_here`
+3. **Restart Services**: Run `./setup-kroki-server.sh restart` to apply changes
+4. **Test AI Assistant**: Use the AI chat interface in the demo site
+
+#### AI Assistant Usage
+
+- **Natural Language**: "Create a sequence diagram showing user login process"
+- **Code Modification**: "Add error handling to this flowchart"
+- **Syntax Help**: "Fix the syntax errors in my PlantUML code"
+- **Format Conversion**: "Convert this flowchart to Mermaid format"
+
+**Note**: AI features require a valid OpenAI API key. Set `AI_ENABLED=false` to disable AI features if not needed.
+
+## Demo Site
 
 The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/), and provides an interactive interface for creating and previewing diagrams.
 
@@ -85,16 +233,16 @@ The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https
 - Download rendered diagrams
 - Line numbers in the editor
 - Responsive design for different screen sizes
-- **Interactive zoom and pan for diagram images**
+- Interactive zoom and pan for diagram images
   - Mouse wheel zoom with precise cursor positioning
   - Click and drag to pan around large diagrams
   - Touch support for mobile devices (pinch to zoom, drag to pan)
   - Keyboard shortcuts (Ctrl/Cmd + +/- for zoom, Ctrl/Cmd + 0 to reset)
   - Zoom controls with visual feedback
-  - **Zoom state preservation** - maintains zoom level and position when updating diagram code
+  - Zoom state preservation - maintains zoom level and position when updating diagram code
   - Double-click to reset zoom to fit
   - Help modal with detailed usage instructions
-- **File Operations and Local File Support**
+- File Operations and Local File Support
   - Create new diagrams with automatic type detection
   - Open local diagram files directly from your file system
   - Save diagrams to local files with proper extensions
@@ -104,7 +252,7 @@ The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https
   - File modification tracking with unsaved changes warnings
   - Support for multiple diagram file formats (.puml, .mmd, .dot, .d2, etc.)
   - Modern File System Access API with fallback for older browsers
-  - **Auto-reload file monitoring** with configurable delay (500-5000ms, default 1 second)
+  - Auto-reload file monitoring with configurable delay (500-5000ms, default 1 second)
   - Real-time file change detection and automatic diagram updates
   - Smart file monitoring that activates only when needed
 
@@ -116,21 +264,20 @@ The demo site supports URL parameters for sharing and bookmarking diagrams:
 - `fmt`  - Sets the output format (e.g., svg, png, pdf)
 - `im`   - Contains the encoded diagram content
 
-These URL parameters work seamlessly with improved initialization:
+These URL parameters work with smart initialization:
 
-- **Smart initialization order** ensures dropdowns are ready before URL processing
+- Smart initialization order ensures dropdowns are ready before URL processing
 - When changing diagram types in the UI, the URL is automatically updated
-- **Fixed URL loading**: Pages loaded with format parameters now properly show default examples
+- URL loading: Pages loaded with format parameters properly show default examples
 - When you edit diagram code, the URL updates in real-time for sharing
 - If you specify an unsupported format for a diagram type, it automatically defaults to a supported one
 - When the code editor is emptied, the im parameter is removed from the URL
 - Formats are preserved when switching diagram types if the format is supported
-- **Race condition fixes** ensure proper loading of content and format combinations
 
 Example URL:
 
 ```
-https://localhost:8443/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ4dyAh--P0aAaKv0D06i__ztEH1KuA9EXc_S4KWqKIcTLqxzf4a_WjRinoqZX4-cUk7PbSvMjuopdAzjOJCpudPeEoVb5PA0q4hoKbQ2X_uhSYLDP7xDyzXZjwqKPMz0fYwsRquxLiuxYHH7y-K7-4fV3rbfQbI%3D
+https://localhost:8443/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ4dyAh--P0aAaKv0D06i__ztEH1KuA9EXc_S4KWqKIcTLqxzf0a_WjRinoqZX4-cUk7PbSvMjuopdAzjOJCpudPeEoVb5DA0q4hoKbQ2X_uhSYLDP7xDyzXZjwqKPMz0fYwsRquxLiuxYHH7y-K7-4fV3rbfQbI%3D
 ```
 
 ### Supported Diagram Types
@@ -144,8 +291,7 @@ https://localhost:8443/?fmt=svg&diag=svgbob&im=eJyFjzEOgzAMRXdO4Y0gYbMjhYsAslQlQ
 - D2
 - Excalidraw
 - ERD
-
-And many more...
+- And many more...
 
 ### Supported Output Formats
 
@@ -160,24 +306,24 @@ Format support varies by diagram type, but generally includes:
 
 ### Interactive Tools
 
-- `Code Editor`: Create and edit diagram code with line numbering
-- `Format Selector`: Choose output format based on diagram type
-- `Live Preview`: See your diagram update as you type (with debouncing)
-- `Download Button`: Save generated diagrams in various formats
-- `Image Link Copying`: Easily share direct links to generated images
-- `Decoder Tool`: Convert encoded diagrams back to source code
-- `Zoom and Pan Controls`: Interactive viewing for large diagrams
-  - **Mouse Controls**: Wheel to zoom, click-drag to pan, double-click to reset
-  - **Touch Controls**: Pinch to zoom, single-finger drag to pan
-  - **Keyboard Shortcuts**: 
+- Code Editor: Create and edit diagram code with line numbering
+- Format Selector: Choose output format based on diagram type
+- Live Preview: See your diagram update as you type (with debouncing)
+- Download Button: Save generated diagrams in various formats
+- Image Link Copying: Easily share direct links to generated images
+- Decoder Tool: Convert encoded diagrams back to source code
+- Zoom and Pan Controls: Interactive viewing for large diagrams
+  - Mouse Controls: Wheel to zoom, click-drag to pan, double-click to reset
+  - Touch Controls: Pinch to zoom, single-finger drag to pan
+  - Keyboard Shortcuts: 
     - `Ctrl/Cmd + +`: Zoom in
     - `Ctrl/Cmd + -`: Zoom out  
     - `Ctrl/Cmd + 0`: Reset zoom
-  - **Smart State Management**: Zoom level and position are preserved when updating diagram code
-  - **Visual Feedback**: Real-time zoom percentage display
-  - **Help System**: Built-in help modal with usage instructions
+  - Smart State Management: Zoom level and position are preserved when updating diagram code
+  - Visual Feedback: Real-time zoom percentage display
+  - Help System: Built-in help modal with usage instructions
 
-## Using File Operations
+## File Operations
 
 The demo site includes comprehensive file operations that make it work like a standalone diagram editor:
 
@@ -214,7 +360,7 @@ The editor automatically detects diagram types from file content and extensions:
 - **Modern Browsers** (Chrome 86+, Edge 86+): Full File System Access API support for direct file system integration
 - **Other Browsers** (Firefox, Safari): Automatic fallback to download/upload methods
 
-### Advanced Configuration
+### Configuration
 
 The demo site includes comprehensive configuration options accessible through Settings:
 
@@ -236,32 +382,6 @@ The demo site includes comprehensive configuration options accessible through Se
 - **Accessibility**: High contrast mode and keyboard navigation options
 
 All configuration changes are applied in real-time and persist across browser sessions.
-
-## Recent Improvements (June 2025)
-
-### Auto-reload Configuration Enhancement
-- **Configurable Monitoring Delay**: Auto-reload delay is now user-configurable (500-5000ms range, default 1000ms)
-- **Settings Reorganization**: Auto-reload delay moved from File Operations to Editor Settings section for better organization
-- **Real-time Updates**: Configuration changes immediately restart file monitoring with new delay settings
-- **Performance Optimization**: Smart file monitoring that only activates when files are loaded
-
-### URL Parameter Loading Fixes
-- **Initialization Order Fix**: Resolved race condition where URL parameters were processed before dropdown initialization
-- **Default Content Loading**: URLs with format parameters now properly load default examples when no content is specified
-- **Improved Error Handling**: Better fallback behavior for invalid format/diagram type combinations
-- **Seamless Integration**: URL processing now works reliably with dynamic imports and async operations
-
-### Configuration System Improvements
-- **Centralized Management**: Unified configuration system with proper state synchronization
-- **Persistent Settings**: All user preferences are saved and restored across sessions
-- **Real-time Application**: Configuration changes take effect immediately without requiring page refresh
-- **Modular Architecture**: Clean separation between configuration UI, storage, and application logic
-
-### Technical Enhancements
-- **ES6 Module Structure**: Improved code organization with proper module dependencies
-- **State Management**: Centralized application state with reactive updates
-- **Error Recovery**: Enhanced error handling with user-friendly feedback
-- **Performance**: Optimized file monitoring and diagram update processes
 
 ## AI Assistant Features
 
@@ -457,6 +577,9 @@ The [`setup-kroki-server.sh`](setup-kroki-server.sh) script provides several com
 # Check container status
 ./setup-kroki-server.sh status
 
+# Run health checks on all configured endpoints
+./setup-kroki-server.sh health
+
 # Get help information
 ./setup-kroki-server.sh help
 ```
@@ -477,42 +600,54 @@ You can provide your own SSL certificates:
 ./setup-kroki-server.sh start --cert path/to/cert.crt --key path/to/key.key
 ```
 
-## Demo Site
+### Health Monitoring
 
-The demo site provides a comprehensive interactive interface for creating and previewing diagrams with advanced features. Access it at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/).
+The health monitoring system provides comprehensive testing of all configured server endpoints:
 
-### Core Features
+#### Running Health Checks
 
-- **Full Diagram Support**: All diagram types provided by Kroki are supported
-- **Real-time Preview**: Live diagram updates as you type with configurable debouncing
-- **Multi-format Export**: SVG, PNG, PDF, and other format conversions
-- **Code Examples**: Built-in examples for all supported diagram formats
-- **Download & Sharing**: Export diagrams and share via URL parameters
-- **Professional Editor**: Line numbers, syntax awareness, and code formatting
-- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+```bash
+# Test all configured hostname/port combinations
+./setup-kroki-server.sh health
+```
 
-### Advanced Workflow Features
+#### Health Check Output
 
-- **File System Integration**: Native file operations with auto-save and auto-reload
-- **Smart Configuration**: Comprehensive settings with real-time application
-- **URL Parameter Support**: Seamless sharing and bookmarking with improved initialization
-- **Interactive Zoom/Pan**: Professional image viewing with state preservation
-- **AI-Powered Assistance**: Integrated AI for diagram creation and modification
-- **Configuration Management**: Persistent settings with import/export capabilities
+The health command tests every combination of hostnames and HTTPS ports defined in your `.env` file:
 
-### Supported Diagram Types
+```
+Testing https://localhost:8443... ✓ OK
+Testing https://localhost:9443... ✓ OK  
+Testing https://localhost:10443... ✓ OK
+Testing https://127.0.0.1:8443... ✓ OK
+Testing https://127.0.0.1:9443... ✓ OK
+Testing https://127.0.0.1:10443... ✓ OK
+Testing https://kroki.local:8443... ✗ FAILED
+Testing https://kroki.local:9443... ✗ FAILED
+Testing https://kroki.local:10443... ✗ FAILED
 
-- PlantUML
-- Mermaid
-- GraphViz
-- BPMN
-- BlockDiag
-- C4 (with PlantUML)
-- DBM
-- D2
-- Excalidraw
-- ERD
-- And many more...
+Health Check Summary:
+  Total endpoints tested: 9
+  Successful: 6
+  Failed: 3
+  Status: Some endpoints failed ✗
+```
+
+#### When to Use Health Checks
+
+- **After Configuration Changes**: Verify new ports and hostnames are working
+- **Deployment Verification**: Confirm all endpoints are accessible after deployment
+- **Network Troubleshooting**: Identify which hostname/port combinations have issues
+- **Load Balancer Testing**: Verify all configured endpoints for load balancing setups
+- **Security Auditing**: Ensure only intended endpoints are accessible
+
+#### Health Check Features
+
+- **Fast Execution**: Concurrent testing with configurable timeouts (5s connect, 10s total)
+- **Detailed Reporting**: Individual endpoint status plus summary statistics
+- **Exit Codes**: Returns 0 for all healthy, 1 for any failures (useful in scripts)
+- **SSL Support**: Tests HTTPS endpoints with certificate validation bypass for self-signed certs
+- **Network Resilience**: Handles network timeouts and connection failures gracefully
 
 ## How It Works
 
@@ -537,7 +672,7 @@ The demo site is built with a modular architecture for maintainability and exten
   - `constants.js` - Application constants and defaults
   - `configuration.js` - Configuration system integration
   - `fileOperations.js` - File handling and monitoring with auto-reload
-  - `urlHandler.js` - URL parameter processing with improved initialization
+  - `urlHandler.js` - URL parameter processing
   - `diagramOperations.js` - Diagram rendering and format management
   - `utils.js` - Utility functions and helpers
   - `theme.js` - Theme management and dark/light mode
@@ -553,7 +688,7 @@ The demo site is built with a modular architecture for maintainability and exten
 - **State Management**: Centralized application state with reactive updates  
 - **Configuration System**: Comprehensive settings with real-time application
 - **File Monitoring**: Auto-reload functionality with configurable delays (500-5000ms)
-- **URL Processing**: Fixed initialization order for proper parameter handling
+- **URL Processing**: Initialization order for proper parameter handling
 - **Error Handling**: Robust error management with user-friendly feedback
 - **Performance Optimization**: Debounced updates and efficient rendering
 
@@ -604,30 +739,28 @@ docker network inspect kroki-server_kroki_network
 
 ## Quick Reference
 
-### New Feature Access
-
-#### Auto-reload Configuration
+### Auto-reload Configuration
 1. Open Settings (⚙️ gear icon)
 2. Navigate to Advanced → Editor Settings  
 3. Adjust "Auto-reload Monitoring Delay" slider (500-5000ms)
 4. Enable auto-reload toggle in the toolbar
 5. Changes apply immediately to active file monitoring
 
-#### URL Parameter Usage
+### URL Parameter Usage
 - **Format-only URLs**: `https://localhost:{HTTPS_PORT}/?format=plantuml` (loads PlantUML with default example)
 - **Full URLs**: `https://localhost:{HTTPS_PORT}/?format=svg&diag=mermaid&im=encoded_content`
 - **Smart defaults**: Invalid format combinations automatically use supported alternatives
 
 *Note: Replace {HTTPS_PORT} with your configured port (default: 8443)*
 
-#### File Operations with Auto-reload
+### File Operations with Auto-reload
 1. **Load a file**: File → Open or Ctrl/Cmd + O
 2. **Enable auto-reload**: Toggle auto-reload button in toolbar  
 3. **Configure delay**: Settings → Advanced → Editor Settings → Auto-reload Monitoring Delay
 4. **Edit externally**: Modify the file in any external editor
 5. **Automatic update**: Diagram updates automatically after the configured delay
 
-#### Configuration Access
+### Configuration Access
 - **Settings Panel**: Click gear icon (⚙️) in the main interface
 - **Advanced Settings**: Navigate to Advanced tab for developer options
 - **Editor Settings**: File monitoring, auto-save, and editor preferences
