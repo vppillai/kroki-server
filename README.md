@@ -60,28 +60,27 @@ HOSTNAME=localhost              # Hostname for SSL certificate and CORS
 **Example**:
 - `https://localhost:8443/`
 
-**Note**: After changing ports, the Nginx configuration and Docker Compose override files are automatically regenerated to use the new port settings.
+**Note**: After changing ports, restart the services with `./setup-kroki-server.sh restart` to apply the new configuration.
 
-### Docker Compose Override System
+### Configuration Management
 
-The server uses a dynamic Docker Compose override system for port management:
+The server uses environment variables from the `.env` file to configure ports and hostnames:
 
 #### How It Works
-- **Automatic Generation**: `docker-compose.override.yml` is automatically created based on `.env` configuration
-- **Dynamic Port Mapping**: The configured port is mapped automatically
-- **Git Ignored**: Override files are excluded from version control (added to `.gitignore`)
-- **Template Available**: `docker-compose.override.yml.template` provides a reference example
+- **Environment Variables**: Port configuration is read directly from the `.env` file
+- **Docker Compose**: Uses `${HTTP_PORT:-8000}` and `${HTTPS_PORT:-8443}` syntax for defaults
+- **Automatic Loading**: The `.env` file is automatically loaded by Docker Compose
 
-#### Example Generated Override
+#### Example Configuration
 ```yaml
-# docker-compose.override.yml (auto-generated)
+# docker-compose.yml (simplified port mapping)
 services:
   nginx:
     ports:
-      - "8443:8443"
+      - "${HTTPS_PORT:-8443}:8443"
   core:
     ports:
-      - "8000:8000"
+      - "${HTTP_PORT:-8000}:8000"
 ```
 
 ### Security and CORS
