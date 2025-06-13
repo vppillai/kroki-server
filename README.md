@@ -20,12 +20,11 @@ cd kroki-server
 # Start the server
 ./setup-kroki-server.sh start
 
-# Access the demo site (multiple ports supported)
+# Access the demo site (default port)
 # Default: https://localhost:8443/
-# With multi-port: https://localhost:8443/, https://localhost:9443/, https://localhost:10443/
-# Ports configurable in .env file
+# Port configurable in .env file
 
-# Test all configured endpoints
+# Test the configured endpoint
 ./setup-kroki-server.sh health
 ```
 
@@ -43,54 +42,23 @@ This project provides a complete solution for running a [Kroki](https://kroki.io
 
 ### Port Configuration
 
-The server ports can be configured through the `.env` file with support for both single and multiple ports:
+The server ports can be configured through the `.env` file (single values only):
 
 ```bash
-# Port Configuration - Single Port (Default)
-HTTP_PORT=8000                  # Single Kroki core server port
-HTTPS_PORT=8443                 # Single Nginx HTTPS proxy port
-DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port (always single)
-HOSTNAME=localhost,127.0.0.1,kroki.local  # Multiple hostnames supported
-
-# Port Configuration - Multi-Port (Advanced)
-HTTP_PORT=8000,8001,8002        # Multiple Kroki core server ports
-HTTPS_PORT=8443,9443,10443      # Multiple Nginx HTTPS proxy ports
-DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port (always single)
-HOSTNAME=localhost,127.0.0.1,kroki.local  # Multiple hostnames supported
+HTTP_PORT=8000                  # Kroki core server port
+HTTPS_PORT=8443                 # Nginx HTTPS proxy port
+DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port
+HOSTNAME=localhost              # Hostname for SSL certificate and CORS
 ```
 
-#### Configuration Flexibility
-- **Single Port Mode**: Use single values for simple deployments (default configuration)
-- **Multi-Port Mode**: Use comma-separated values for advanced deployments with multiple endpoints
-- **Mixed Configuration**: You can use single ports for some services and multiple for others
-- **Hostname Support**: Multiple hostnames are always supported regardless of port configuration
-
-#### Port Usage:
-- **`HTTP_PORT`**: The internal Kroki core server port(s) (defaults to 8000)
-  - Used for direct API access to Kroki rendering services
-  - Multiple ports mapped to host for load distribution
-  - All ports serve the same Kroki core functionality
-- **`HTTPS_PORT`**: The external HTTPS access point(s) (defaults to 8443)
-  - These are the ports you use in your browser
-  - Nginx proxy routes requests to appropriate internal services
-  - Multiple ports provide redundancy and load distribution
-- **`DEMOSITE_CONTAINER_PORT`**: The internal demo site server port (defaults to 8006)
-  - Flask server hosting the interactive demo interface
-  - Only accessible internally, routed through Nginx
-- **`HOSTNAME`**: Supported hostnames for SSL certificate and CORS (defaults to localhost)
-  - Multiple hostnames enable access from different network interfaces
-  - Automatically configured in CORS whitelist for security
-
-#### Changing Ports:
+### Changing Ports:
 1. Edit the `.env` file with your desired port numbers:
-   - **Single Port**: `HTTP_PORT=8000` and `HTTPS_PORT=8443`
-   - **Multiple Ports**: `HTTP_PORT=8000,8001,8002` and `HTTPS_PORT=8443,9443,10443`
+   - `HTTP_PORT=8000` and `HTTPS_PORT=8443`
 2. Restart the services: `./setup-kroki-server.sh restart`
-3. Access the site at any configured combination: `https://{hostname}:{HTTPS_PORT}/`
+3. Access the site at: `https://{hostname}:{HTTPS_PORT}/`
 
-**Examples**:
-- Single port: `https://localhost:8443/`
-- Multi-port: `https://localhost:8443/`, `https://localhost:9443/`, `https://localhost:10443/`
+**Example**:
+- `https://localhost:8443/`
 
 **Note**: After changing ports, the Nginx configuration and Docker Compose override files are automatically regenerated to use the new port settings.
 
@@ -100,15 +68,9 @@ The server uses a dynamic Docker Compose override system for port management:
 
 #### How It Works
 - **Automatic Generation**: `docker-compose.override.yml` is automatically created based on `.env` configuration
-- **Dynamic Port Mapping**: All port combinations from comma-separated values are mapped automatically
+- **Dynamic Port Mapping**: The configured port is mapped automatically
 - **Git Ignored**: Override files are excluded from version control (added to `.gitignore`)
 - **Template Available**: `docker-compose.override.yml.template` provides a reference example
-
-#### Benefits
-- **Flexible Configuration**: Easy multi-port setup without manual Docker Compose editing
-- **Clean Repository**: Generated files don't clutter the git repository
-- **Consistent Deployment**: Automatic regeneration ensures configuration consistency
-- **Development Friendly**: Local port customization without affecting shared configuration
 
 #### Example Generated Override
 ```yaml
@@ -117,13 +79,9 @@ services:
   nginx:
     ports:
       - "8443:8443"
-      - "9443:8443" 
-      - "10443:8443"
   core:
     ports:
       - "8000:8000"
-      - "8001:8000"
-      - "8002:8000"
 ```
 
 ### Security and CORS

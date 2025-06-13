@@ -34,41 +34,18 @@ show_help() {
 
 # Load configuration from .env file if it exists
 if [ -f "${SCRIPT_DIR}/.env" ]; then
-    # Source the .env file to get HOSTNAME and port configurations
     set -a
     source "${SCRIPT_DIR}/.env"
     set +a
     echo "Loaded configuration from .env file"
-    
-    # Parse comma-separated values
-    IFS=',' read -ra HTTP_PORTS <<< "$HTTP_PORT"
-    IFS=',' read -ra HTTPS_PORTS <<< "$HTTPS_PORT"
-    IFS=',' read -ra HOSTNAMES <<< "$HOSTNAME"
-
-    # Trim whitespace from each port and hostname
-    for i in "${!HTTP_PORTS[@]}"; do
-        HTTP_PORTS[$i]="$(echo "${HTTP_PORTS[$i]}" | xargs)"
-    done
-    for i in "${!HTTPS_PORTS[@]}"; do
-        HTTPS_PORTS[$i]="$(echo "${HTTPS_PORTS[$i]}" | xargs)"
-    done
-    for i in "${!HOSTNAMES[@]}"; do
-        HOSTNAMES[$i]="$(echo "${HOSTNAMES[$i]}" | xargs)"
-    done
-    
-    # Use first values as defaults for nginx config generation
-    DEFAULT_HTTP_PORT="${HTTP_PORTS[0]}"
-    DEFAULT_HTTPS_PORT="${HTTPS_PORTS[0]}"
-    DEFAULT_HOSTNAME="${HOSTNAMES[0]}"
+    DEFAULT_HTTP_PORT="$HTTP_PORT"
+    DEFAULT_HTTPS_PORT="$HTTPS_PORT"
+    DEFAULT_HOSTNAME="$HOSTNAME"
 else
-    # Fallback if no .env file exists
-    HOSTNAMES=("localhost")
-    HTTP_PORTS=("8000")
-    HTTPS_PORTS=("8443")
-    DEMOSITE_CONTAINER_PORT="8006"
     DEFAULT_HOSTNAME="localhost"
     DEFAULT_HTTP_PORT="8000"
     DEFAULT_HTTPS_PORT="8443"
+    DEMOSITE_CONTAINER_PORT="8006"
     echo "No .env file found, using default configuration"
 fi
 
@@ -170,24 +147,12 @@ generate_compose_override() {
 services:
   nginx:
     ports:
-EOF
-
-    # Add HTTPS port mappings for nginx
-    for https_port in "${HTTPS_PORTS[@]}"; do
-        echo "      - \"${https_port}:8443\"" >> "$override_file"
-    done
-
-    cat >> "$override_file" <<EOF
+      - "${DEFAULT_HTTPS_PORT}:8443"
 
   core:
     ports:
+      - "${DEFAULT_HTTP_PORT}:8000"
 EOF
-
-    # Add HTTP port mappings for core service
-    for http_port in "${HTTP_PORTS[@]}"; do
-        echo "      - \"${http_port}:8000\"" >> "$override_file"
-    done
-
     echo "Docker Compose override file created with port mappings."
 }
 
