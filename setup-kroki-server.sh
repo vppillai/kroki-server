@@ -44,6 +44,17 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
     IFS=',' read -ra HTTP_PORTS <<< "$HTTP_PORT"
     IFS=',' read -ra HTTPS_PORTS <<< "$HTTPS_PORT"
     IFS=',' read -ra HOSTNAMES <<< "$HOSTNAME"
+
+    # Trim whitespace from each port and hostname
+    for i in "${!HTTP_PORTS[@]}"; do
+        HTTP_PORTS[$i]="$(echo "${HTTP_PORTS[$i]}" | xargs)"
+    done
+    for i in "${!HTTPS_PORTS[@]}"; do
+        HTTPS_PORTS[$i]="$(echo "${HTTPS_PORTS[$i]}" | xargs)"
+    done
+    for i in "${!HOSTNAMES[@]}"; do
+        HOSTNAMES[$i]="$(echo "${HOSTNAMES[$i]}" | xargs)"
+    done
     
     # Use first values as defaults for nginx config generation
     DEFAULT_HTTP_PORT="${HTTP_PORTS[0]}"
@@ -109,12 +120,17 @@ generate_certs() {
     # Generate self-signed certificate if needed
     if [ ! -f "$CERTS_DIR/nginx.crt" ]; then
         echo "Generating ECDSA self-signed SSL certificate..."
+        # Use the first hostname as CN, ensure it doesn't exceed 64 chars
+        local cert_cn="${DEFAULT_HOSTNAME}"
+        if [ ${#cert_cn} -gt 64 ]; then
+            cert_cn="${cert_cn:0:64}"
+            echo "Warning: Hostname too long, truncating CN to 64 characters."
+        fi
         # Generate the private key using ECDSA
         openssl ecparam -name prime256v1 -genkey -noout -out "$CERTS_DIR/nginx.key"
-        # Set proper permissions for private key
         chmod 600 "$CERTS_DIR/nginx.key"
-        # Generate the self-signed certificate
-        openssl req -new -key "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.csr" -subj "/CN=${HOSTNAME}"
+        # Generate the self-signed certificate with CN that doesn't exceed 64 chars
+        openssl req -new -key "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.csr" -subj "/CN=${cert_cn}"
         openssl x509 -req -days 365 -in "$CERTS_DIR/nginx.csr" -signkey "$CERTS_DIR/nginx.key" -out "$CERTS_DIR/nginx.crt"
         rm "$CERTS_DIR/nginx.csr"  # Clean up CSR file
         echo "SSL certificate generated successfully."
