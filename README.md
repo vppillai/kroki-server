@@ -614,6 +614,152 @@ Health Check Summary:
 4. The appropriate renderer container processes the diagram
 5. The result is returned to the browser and displayed
 
+## API Usage
+
+The Kroki server supports both GET and POST requests for diagram generation, making it suitable for both web applications and programmatic access.
+
+### GET Requests (Standard Kroki API)
+
+GET requests follow the standard Kroki URL format with encoded diagram content:
+
+```bash
+# Basic format
+GET /diagram-type/output-format/encoded-content
+
+# Example: PlantUML diagram as SVG
+GET /plantuml/svg/SyfFKj2rKt3CoKnELR1Io4ZDoSa70000
+```
+
+### POST Requests (Raw Content)
+
+POST requests allow sending raw diagram code directly without encoding, making them ideal for:
+- Large diagrams (up to 10MB supported)
+- Programmatic integration
+- Development and testing
+- Content that doesn't encode well in URLs
+
+#### POST Request Format
+
+```bash
+POST /diagram-type/output-format
+Content-Type: text/plain
+
+[Raw diagram code here]
+```
+
+#### Examples
+
+**PlantUML Sequence Diagram:**
+```bash
+curl -X POST "https://localhost:8443/plantuml/svg" \
+  -H "Content-Type: text/plain" \
+  -d "@startuml
+Alice -> Bob: Hello
+Bob -> Alice: Hi!
+@enduml" \
+  --insecure
+```
+
+**Mermaid Flowchart:**
+```bash
+curl -X POST "https://localhost:8443/mermaid/png" \
+  -H "Content-Type: text/plain" \
+  -d "graph TD
+A[Start] --> B[Process]
+B --> C[End]" \
+  --insecure
+```
+
+**GraphViz Diagram:**
+```bash
+curl -X POST "https://localhost:8443/graphviz/pdf" \
+  -H "Content-Type: text/plain" \
+  -d "digraph G {
+  A -> B -> C;
+  A -> C;
+}" \
+  --insecure
+```
+
+#### POST from File
+
+```bash
+# Send diagram code from a file
+curl -X POST "https://localhost:8443/plantuml/svg" \
+  -H "Content-Type: text/plain" \
+  -d @my-diagram.puml \
+  --insecure
+
+# Save result to file
+curl -X POST "https://localhost:8443/mermaid/png" \
+  -H "Content-Type: text/plain" \
+  -d @flowchart.mmd \
+  --insecure \
+  -o result.png
+```
+
+### Supported Diagram Types
+
+All standard Kroki diagram types are supported for both GET and POST requests:
+
+- `plantuml` - PlantUML diagrams
+- `mermaid` - Mermaid diagrams  
+- `graphviz` - GraphViz/DOT diagrams
+- `bpmn` - BPMN diagrams
+- `bytefield` - Bytefield diagrams
+- `c4plantuml` - C4 diagrams with PlantUML
+- `d2` - D2 diagrams
+- `dbml` - Database markup language
+- `diagramsnet` - Draw.io diagrams
+- `ditaa` - ASCII art diagrams
+- `erd` - Entity relationship diagrams
+- `excalidraw` - Hand-drawn style diagrams
+- `nomnoml` - UML diagrams
+- `pikchr` - Pikchr diagrams
+- `svgbob` - ASCII to SVG conversion
+- `tikz` - TikZ diagrams
+- `vega` - Vega visualizations
+- `vegalite` - Vega-Lite visualizations
+- `wavedrom` - Digital timing diagrams
+- `wireviz` - Cable and wiring diagrams
+
+### Supported Output Formats
+
+Format availability depends on the diagram type:
+
+- `svg` - Scalable Vector Graphics (most widely supported)
+- `png` - Portable Network Graphics
+- `pdf` - Portable Document Format
+- `jpeg` - JPEG images (selected types)
+- `txt` - Text output (selected types)
+- `base64` - Base64 encoded output
+
+### Request Size Limits
+
+- **POST requests**: Up to 10MB of diagram content supported
+- **GET requests**: Limited by URL length (typically ~2KB)
+
+### Error Handling
+
+The API returns appropriate HTTP status codes:
+
+- `200 OK` - Diagram generated successfully
+- `400 Bad Request` - Invalid diagram syntax or unsupported format
+- `404 Not Found` - Invalid diagram type or endpoint
+- `413 Payload Too Large` - Request exceeds 10MB limit
+- `500 Internal Server Error` - Server processing error
+
+Error responses include descriptive messages when possible.
+
+### Content Type Headers
+
+- **Request**: `Content-Type: text/plain` for raw diagram code
+- **Response**: Varies by output format (e.g., `image/svg+xml`, `image/png`, `application/pdf`)
+
+### HTTPS and Self-Signed Certificates
+
+When using the default self-signed certificates, add `--insecure` to curl commands or configure your HTTP client to accept self-signed certificates.
+
 ## Development
 
 ### Demo Site Structure
