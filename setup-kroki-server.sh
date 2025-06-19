@@ -208,8 +208,32 @@ http {
             add_header Cache-Control "public";
         }
 
-        # Match Kroki API pattern (diagram-type/format/encoded-diagram)
-        location ~* ^/[^/]+/[^/]+/[^/]+$ {
+        # Demo site API endpoints (must come before Kroki patterns)
+        location /api/ {
+            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT};
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+        }
+
+        # Kroki API POST requests (diagram-type/format) - exclude /api/ paths
+        location ~* ^/(?!api/)([^/]+)/([^/]+)$ {
+            limit_except GET POST {
+                deny all;
+            }
+            proxy_pass http://core:${DEFAULT_HTTP_PORT};
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_connect_timeout 300;
+            proxy_send_timeout 300;
+            proxy_read_timeout 300;
+        }
+
+        # Match Kroki API pattern (diagram-type/format/encoded-diagram) - exclude /api/ paths
+        location ~* ^/(?!api/)[^/]+/[^/]+/[^/]+$ {
             proxy_pass http://core:${DEFAULT_HTTP_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;

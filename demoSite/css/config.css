@@ -372,31 +372,6 @@
     display: none;
 }
 
-.config-status {
-    display: none;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--border-radius-sm);
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.config-status.success {
-    background: #dcfce7;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-}
-
-.config-status.error {
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-}
-
-.config-status.show {
-    display: block;
-    animation: slideDown 0.3s ease;
-}
-
 /* Password input container styling */
 .password-input-container {
     position: relative;

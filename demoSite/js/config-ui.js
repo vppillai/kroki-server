@@ -505,6 +505,38 @@ class ConfigUI {
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Kroki API</h4>
+                                <div class="config-group">
+                                    <div class="config-field config-field-horizontal">
+                                        <label class="config-label config-checkbox">
+                                            <input type="checkbox" data-config="kroki.alwaysUsePost">
+                                            <span class="config-checkbox-mark"></span>
+                                            <span class="config-checkbox-label">Always Use POST Requests</span>
+                                        </label>
+                                        <div class="config-description">Always use POST requests to Kroki API instead of GET (prevents URL length issues)</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">URL Length Threshold</label>
+                                        <div class="config-range">
+                                            <input type="range" min="1000" max="8192" step="256" class="config-input" data-config="kroki.urlLengthThreshold">
+                                            <span class="config-range-value">2048</span>
+                                        </div>
+                                        <div class="config-description">URL length threshold to automatically switch from GET to POST requests</div>
+                                    </div>
+                                    
+                                    <div class="config-field">
+                                        <label class="config-label">POST Request Timeout</label>
+                                        <div class="config-range">
+                                            <input type="range" min="5000" max="60000" step="5000" class="config-input" data-config="kroki.postRequestTimeout">
+                                            <span class="config-range-value">30000ms</span>
+                                        </div>
+                                        <div class="config-description">Timeout for POST requests in milliseconds</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="config-modal-footer">
@@ -521,7 +553,6 @@ class ConfigUI {
                             <button id="config-save" class="config-btn primary">Save Changes</button>
                         </div>
                     </div>
-                    <div id="config-status" class="config-status"></div>
                 </div>
             </div>
         `;
@@ -885,22 +916,23 @@ class ConfigUI {
                 this.configManager.set(path, value);
             }
 
-            this.showStatus('Settings saved successfully!', 'success');
             this.unsavedChanges = false;
             this.tempConfig = {};
 
-            // Update save button state
+            // Update save button state with tick mark
             const saveBtn = document.getElementById('config-save');
             saveBtn.textContent = 'Saved ✓';
             saveBtn.classList.remove('primary');
 
             setTimeout(() => {
                 saveBtn.textContent = 'Save Changes';
+                saveBtn.classList.add('primary');
             }, 2000);
 
         } catch (error) {
             console.error('Failed to save configuration:', error);
-            this.showStatus('Failed to save settings!', 'error');
+            // For errors, could still show an alert or console error
+            alert('Failed to save settings!');
         }
     }
 
@@ -923,7 +955,8 @@ class ConfigUI {
                 }
             }, 100);
 
-            this.showStatus('Settings reset to defaults', 'success');
+            // Could show a brief confirmation in console or update button text
+            console.log('Settings reset to defaults');
         }
     }
 
@@ -951,10 +984,10 @@ class ConfigUI {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            this.showStatus('Settings exported successfully!', 'success');
+            console.log('Settings exported successfully to kroki-settings.json');
         } catch (error) {
             console.error('Failed to export configuration:', error);
-            this.showStatus('Failed to export settings!', 'error');
+            alert('Failed to export settings!');
         }
     }
 
@@ -985,13 +1018,13 @@ class ConfigUI {
                 const success = this.configManager.import(e.target.result);
                 if (success) {
                     this.loadCurrentConfig();
-                    this.showStatus('Settings imported successfully!', 'success');
+                    console.log('Settings imported successfully');
                 } else {
-                    this.showStatus('Failed to import settings - invalid format!', 'error');
+                    alert('Failed to import settings - invalid format!');
                 }
             } catch (error) {
                 console.error('Failed to import configuration:', error);
-                this.showStatus('Failed to import settings!', 'error');
+                alert('Failed to import settings!');
             }
         };
         reader.readAsText(file);
@@ -1004,23 +1037,6 @@ class ConfigUI {
     // UI STATE MANAGEMENT
     // ========================================
 
-    /**
-     * Display status message to user
-     * Shows temporary status messages with appropriate styling
-     * 
-     * @param {string} message - The message to display
-     * @param {string} type - The message type ('success', 'error', etc.)
-     * @private
-     */
-    showStatus(message, type) {
-        const status = document.getElementById('config-status');
-        status.textContent = message;
-        status.className = `config-status ${type} show`;
-
-        setTimeout(() => {
-            status.classList.remove('show');
-        }, 3000);
-    }
 }
 
 // Note: Manual initialization in main.js

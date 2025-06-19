@@ -21,7 +21,7 @@ import {
 } from './state.js';
 import { formatCompatibility, formatDisplayTypes } from './constants.js';
 import { textEncode, uint8ArrayToString, updateLineNumbers } from './utils.js';
-import { updateUrl } from './urlHandler.js';
+import { updateUrl, clearUrlParameters } from './urlHandler.js';
 import { showImageErrorBanner, hideImageErrorBanner } from './fileOperations.js';
 
 /**
@@ -184,7 +184,21 @@ export function updateImageLink() {
     const imageLinkRow = document.getElementById('image-link-row');
 
     if (formatDisplayTypes[state.currentOutputFormat] === 'image') {
-        imageLinkText.value = state.currentDiagramUrl;
+        // Check if this is a POST request (URL sharing not available)
+        if (state.currentDiagramUrl.includes('[POST request - URL sharing not available]')) {
+            imageLinkText.value = '[POST request - URL sharing not available]';
+            imageLinkText.style.fontStyle = 'italic';
+            imageLinkText.style.color = '#666';
+        } else if (state.currentDiagramUrl.includes('[diagram-too-large-for-url]')) {
+            // Legacy check for backward compatibility
+            imageLinkText.value = '[Diagram too large for URL - using POST request]';
+            imageLinkText.style.fontStyle = 'italic';
+            imageLinkText.style.color = '#666';
+        } else {
+            imageLinkText.value = state.currentDiagramUrl;
+            imageLinkText.style.fontStyle = 'normal';
+            imageLinkText.style.color = '';
+        }
         imageLinkRow.style.display = 'flex';
     } else {
         imageLinkRow.style.display = 'none';
@@ -206,6 +220,176 @@ function preserveZoomState() {
         translateX: state.zoomState.translateX,
         translateY: state.zoomState.translateY
     };
+}
+
+/**
+ * Make a POST request to Kroki API for diagram generation
+ * Uses POST request with diagram content in request body instead of URL encoding
+ * Returns a blob URL for the generated diagram image
+ * 
+ * @param {string} diagramType - Type of diagram (plantuml, mermaid, etc.)
+ * @param {string} outputFormat - Output format (svg, png, etc.)
+ * @param {string} diagramCode - Diagram source code
+ * @returns {Promise<string>} Promise resolving to blob URL for the diagram
+ * @async
+ * @public
+ */
+export async function generateDiagramWithPost(diagramType, outputFormat, diagramCode) {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+
+    const postUrl = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}`;
+
+    // Get timeout from configuration or use default
+    const timeout = window.configManager ?
+        window.configManager.get('kroki.postRequestTimeout') :
+        30000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(postUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain'
+            },
+            body: diagramCode,
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            // Handle non-200 responses
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const errorText = await response.text();
+                if (errorText && errorText.trim()) {
+                    errorMessage += `: ${errorText}`;
+                } else {
+                    errorMessage += `: ${response.statusText || 'Unknown error'}`;
+                }
+            } catch {
+                errorMessage += `: ${response.statusText || 'Unknown error'}`;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - diagram generation took too long');
+        }
+        throw error;
+    }
+}
+
+/**
+ * Make a JSON POST request to Kroki API for diagram generation
+ * Uses POST request with JSON body containing diagram_source, diagram_type, and output_format
+ * This follows the Kroki API specification for JSON POST requests
+ * 
+ * @param {string} diagramType - Type of diagram (plantuml, mermaid, etc.)
+ * @param {string} outputFormat - Output format (svg, png, etc.)
+ * @param {string} diagramCode - Diagram source code
+ * @returns {Promise<string>} Promise resolving to blob URL for the diagram
+ * @async
+ * @public
+ */
+export async function generateDiagramWithJsonPost(diagramType, outputFormat, diagramCode) {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+
+    const postUrl = `${protocol}//${hostname}${port}/`;
+
+    // Get timeout from configuration or use default
+    const timeout = window.configManager ?
+        window.configManager.get('kroki.postRequestTimeout') :
+        30000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const requestBody = {
+        diagram_source: diagramCode,
+        diagram_type: diagramType,
+        output_format: outputFormat
+    };
+
+    try {
+        const response = await fetch(postUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            // Handle non-200 responses
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const errorText = await response.text();
+                if (errorText && errorText.trim()) {
+                    errorMessage += `: ${errorText}`;
+                } else {
+                    errorMessage += `: ${response.statusText || 'Unknown error'}`;
+                }
+            } catch {
+                errorMessage += `: ${response.statusText || 'Unknown error'}`;
+            }
+            throw new Error(errorMessage);
+        }
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - diagram generation took too long');
+        }
+        throw error;
+    }
+}
+
+/**
+ * Determine if POST should be used for the current diagram settings
+ * Checks configuration preferences and URL length to decide between POST and GET
+ * 
+ * @returns {boolean} True if POST should be used, false for GET
+ * @public
+ */
+export function shouldUsePostForCurrentDiagram() {
+    const code = document.getElementById('code').value;
+    const diagramType = document.getElementById('diagramType').value;
+    const outputFormat = document.getElementById('outputFormat').value;
+
+    // Check configuration for POST preference and URL length threshold
+    const alwaysUsePost = window.configManager ? window.configManager.get('kroki.alwaysUsePost') : false;
+    const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 2048;
+
+    // Generate encoded diagram for URL length calculation
+    const encodedDiagram = encodeKrokiDiagram(code);
+
+    // Use the same protocol as the current page
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+
+    const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}`;
+
+    // Determine whether to use POST based on configuration or URL length
+    return alwaysUsePost || url.length > urlLengthThreshold;
 }
 
 /**
@@ -240,6 +424,11 @@ export async function updateDiagram() {
     const savedZoomState = shouldPreserveZoom ? preserveZoomState() : null;
 
     try {
+        // Check configuration for POST preference and URL length threshold
+        const alwaysUsePost = window.configManager ? window.configManager.get('kroki.alwaysUsePost') : false;
+        const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 2048;
+
+        // Generate encoded diagram for URL length calculation
         const encodedDiagram = encodeKrokiDiagram(code);
 
         // Use the same protocol as the current page
@@ -248,7 +437,19 @@ export async function updateDiagram() {
         const port = window.location.port ? `:${window.location.port}` : '';
 
         const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}`;
-        updateCurrentDiagramUrl(url);
+
+        // Determine whether to use POST based on configuration or URL length
+        const shouldUsePost = alwaysUsePost || url.length > urlLengthThreshold;
+
+        // Update current diagram URL for sharing purposes only if using GET requests
+        // For POST requests, don't set a URL since it would be invalid for sharing
+        if (shouldUsePost) {
+            // For POST requests, indicate that URL sharing is not available
+            updateCurrentDiagramUrl('[POST request - URL sharing not available]');
+        } else {
+            // For GET requests, use the full URL for sharing
+            updateCurrentDiagramUrl(url);
+        }
 
         const displayType = formatDisplayTypes[outputFormat] || 'download';
         const diagramImg = document.getElementById('diagram');
@@ -273,52 +474,65 @@ export async function updateDiagram() {
             hideImageErrorBanner();
 
             try {
-                // First, fetch the URL to check for HTTP errors
-                const response = await fetch(url);
+                let imageUrl;
 
-                if (!response.ok) {
-                    // Handle non-200 responses
-                    let errorMessage = `HTTP ${response.status}`;
+                if (shouldUsePost) {
+                    // Use POST request to generate diagram
+                    const postFormat = window.configManager ? window.configManager.get('kroki.postFormat') : 'plain';
 
-                    try {
-                        // Try to get error message from response body
-                        const errorText = await response.text();
-                        if (errorText && errorText.trim()) {
-                            errorMessage += `: ${errorText}`;
-                        } else {
+                    if (postFormat === 'json') {
+                        imageUrl = await generateDiagramWithJsonPost(diagramType, outputFormat, code);
+                    } else {
+                        imageUrl = await generateDiagramWithPost(diagramType, outputFormat, code);
+                    }
+                } else {
+                    // Use GET request (traditional URL-based approach)
+                    const response = await fetch(url);
+
+                    if (!response.ok) {
+                        // Handle non-200 responses
+                        let errorMessage = `HTTP ${response.status}`;
+
+                        try {
+                            // Try to get error message from response body
+                            const errorText = await response.text();
+                            if (errorText && errorText.trim()) {
+                                errorMessage += `: ${errorText}`;
+                            } else {
+                                errorMessage += `: ${response.statusText || 'Unknown error'}`;
+                            }
+                        } catch {
                             errorMessage += `: ${response.statusText || 'Unknown error'}`;
                         }
-                    } catch {
-                        errorMessage += `: ${response.statusText || 'Unknown error'}`;
+
+                        // Show error banner with server message
+                        showImageErrorBanner(errorMessage);
+
+                        // Remove loading state since we're keeping the previous image
+                        diagramImg.classList.remove('loading');
+
+                        // If there's a previous image, keep it; otherwise show placeholder
+                        if (!diagramImg.src || diagramImg.src === '') {
+                            // Show a minimal placeholder image for zoom/pan testing
+                            const placeholderSvg = `<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
+                                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial" font-size="14">
+                                    Previous diagram (error occurred)
+                                </text>
+                            </svg>`;
+                            const placeholderDataUrl = 'data:image/svg+xml;base64,' + btoa(placeholderSvg);
+                            diagramImg.style.display = 'block';
+                            diagramImg.src = placeholderDataUrl;
+                        }
+
+                        updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
+                        return; // Exit early, don't proceed with normal image loading
                     }
 
-                    // Show error banner with server message
-                    showImageErrorBanner(errorMessage);
-
-                    // Remove loading state since we're keeping the previous image
-                    diagramImg.classList.remove('loading');
-
-                    // If there's a previous image, keep it; otherwise show placeholder
-                    if (!diagramImg.src || diagramImg.src === '') {
-                        // Show a minimal placeholder image for zoom/pan testing
-                        const placeholderSvg = `<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-                            <rect width="100%" height="100%" fill="#f8f9fa" stroke="#dee2e6" stroke-width="1"/>
-                            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9ca3af" font-family="Arial" font-size="14">
-                                Previous diagram (error occurred)
-                            </text>
-                        </svg>`;
-                        const placeholderDataUrl = 'data:image/svg+xml;base64,' + btoa(placeholderSvg);
-                        diagramImg.style.display = 'block';
-                        diagramImg.src = placeholderDataUrl;
-                    }
-
-                    updateCurrentDiagramData(url);
-                    return; // Exit early, don't proceed with normal image loading
+                    // Response is OK, proceed with normal image loading
+                    const blob = await response.blob();
+                    imageUrl = URL.createObjectURL(blob);
                 }
-
-                // Response is OK, proceed with normal image loading
-                const blob = await response.blob();
-                const imageUrl = URL.createObjectURL(blob);
 
                 // Create a new image to preload and get dimensions
                 const tempImg = new Image();
@@ -397,7 +611,7 @@ export async function updateDiagram() {
                 };
 
                 tempImg.src = imageUrl;
-                updateCurrentDiagramData(url);
+                updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
 
             } catch (networkError) {
                 // Handle network errors (no connection, timeout, etc.)
@@ -405,31 +619,155 @@ export async function updateDiagram() {
                 showImageErrorBanner(`Network error: ${networkError.message}`);
 
                 // Keep previous image if available
-                updateCurrentDiagramData(url);
+                updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
             }
         } else if (displayType === 'text') {
             // Hide image viewport for text display
             diagramViewport.style.display = 'none';
             zoomControls.style.display = 'none';
 
-            const response = await fetch(url);
-            const text = await response.text();
-            textPreview.textContent = text;
+            let textContent;
+
+            if (shouldUsePost) {
+                // Use POST request for text format
+                const postFormat = window.configManager ? window.configManager.get('kroki.postFormat') : 'plain';
+
+                if (postFormat === 'json') {
+                    // Use JSON POST format
+                    const jsonPostUrl = `${protocol}//${hostname}${port}/`;
+                    const response = await fetch(jsonPostUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            diagram_source: code,
+                            diagram_type: diagramType,
+                            output_format: outputFormat
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    textContent = await response.text();
+                } else {
+                    // Use plain text POST format
+                    const postUrl = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}`;
+                    const response = await fetch(postUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        body: code
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    textContent = await response.text();
+                }
+            } else {
+                // Use GET request
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                textContent = await response.text();
+            }
+
+            textPreview.textContent = textContent;
             textPreview.style.display = 'block';
-            updateCurrentDiagramData(text);
+            updateCurrentDiagramData(textContent);
         } else {
             // Hide image viewport for placeholder display
             diagramViewport.style.display = 'none';
             zoomControls.style.display = 'none';
 
             placeholderContainer.style.display = 'flex';
-            placeholderDownload.href = url;
+
+            if (shouldUsePost) {
+                // For POST requests with download formats, we need to handle this differently
+                // We'll create a blob URL that can be used for download
+                const postFormat = window.configManager ? window.configManager.get('kroki.postFormat') : 'plain';
+
+                // Create a function to handle the download when the link is clicked
+                placeholderDownload.onclick = async (e) => {
+                    e.preventDefault();
+                    try {
+                        let response;
+
+                        if (postFormat === 'json') {
+                            // Use JSON POST format
+                            const jsonPostUrl = `${protocol}//${hostname}${port}/`;
+                            response = await fetch(jsonPostUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    diagram_source: code,
+                                    diagram_type: diagramType,
+                                    output_format: outputFormat
+                                })
+                            });
+                        } else {
+                            // Use plain text POST format
+                            const postUrl = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}`;
+                            response = await fetch(postUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'text/plain'
+                                },
+                                body: code
+                            });
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const blob = await response.blob();
+                        const downloadUrl = URL.createObjectURL(blob);
+
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = `diagram.${outputFormat}`;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+
+                        // Clean up the blob URL
+                        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+                    } catch (error) {
+                        console.error('Download failed:', error);
+                        alert(`Download failed: ${error.message}`);
+                    }
+                };
+                placeholderDownload.href = '#'; // Placeholder href
+            } else {
+                // Traditional GET request download
+                placeholderDownload.href = url;
+                placeholderDownload.onclick = null; // Remove any previous POST handler
+            }
+
             placeholderDownload.download = `diagram.${outputFormat}`;
-            updateCurrentDiagramData(url);
+            updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
         }
 
         updateImageLink();
-        updateUrl();
+        
+        // Handle browser URL updates based on request method
+        if (!shouldUsePost) {
+            // For GET requests, update URL with current diagram parameters
+            updateUrl();
+        } else {
+            // For POST requests, clear URL parameters to avoid confusion
+            clearUrlParameters();
+        }
 
         loadingMessage.style.display = 'none';
         loadingMessage.classList.remove('loading-pulse');
@@ -462,6 +800,70 @@ export function downloadDiagram() {
     if (displayType === 'text') {
         const blob = new Blob([state.currentDiagramData], { type: 'text/plain' });
         a.href = URL.createObjectURL(blob);
+    } else if (state.currentDiagramData.startsWith('POST:')) {
+        // Handle POST-generated diagrams
+        // For POST requests, we need to re-generate the diagram for download
+        const [, diagramPath] = state.currentDiagramData.split('POST:');
+        const [diagramType, outputFormat] = diagramPath.split('/');
+        const code = document.getElementById('code').value;
+        const postFormat = window.configManager ? window.configManager.get('kroki.postFormat') : 'plain';
+
+        // Trigger POST download
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        const port = window.location.port ? `:${window.location.port}` : '';
+
+        let fetchPromise;
+
+        if (postFormat === 'json') {
+            // Use JSON POST format
+            const jsonPostUrl = `${protocol}//${hostname}${port}/`;
+            fetchPromise = fetch(jsonPostUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    diagram_source: code,
+                    diagram_type: diagramType,
+                    output_format: outputFormat
+                })
+            });
+        } else {
+            // Use plain text POST format
+            const postUrl = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}`;
+            fetchPromise = fetch(postUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                body: code
+            });
+        }
+
+        fetchPromise
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const downloadUrl = URL.createObjectURL(blob);
+                a.href = downloadUrl;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                // Clean up the blob URL
+                setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+            })
+            .catch(error => {
+                console.error('Download failed:', error);
+                alert(`Download failed: ${error.message}`);
+            });
+        return;
     } else {
         a.href = state.currentDiagramData;
     }
@@ -541,4 +943,4 @@ export function initializeDiagramTypeDropdown() {
     } else {
         diagramTypeDropdown.value = diagramTypes[0];
     }
-} 
+}

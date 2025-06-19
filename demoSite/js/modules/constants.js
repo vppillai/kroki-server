@@ -132,4 +132,28 @@ export const DEFAULT_AUTO_RELOAD_DELAY = 1000;
 // Legacy exports for backward compatibility
 export const DEBOUNCE_DELAY = DEFAULT_DEBOUNCE_DELAY;
 export const AUTO_SAVE_DELAY = DEFAULT_AUTO_SAVE_DELAY;
-export const AUTO_RELOAD_DELAY = DEFAULT_AUTO_RELOAD_DELAY; 
+export const AUTO_RELOAD_DELAY = DEFAULT_AUTO_RELOAD_DELAY;
+
+// ========================================
+// API CONSTANTS
+// ========================================
+
+/**
+ * Default URL length threshold for switching to POST requests
+ * When diagram URLs exceed this length, POST requests are used automatically
+ * 
+ * @constant {number} - Character count
+ * @default 2048
+ */
+export const DEFAULT_URL_LENGTH_THRESHOLD = 2048;
+
+/**
+ * Default timeout for POST requests to Kroki API
+ * Maximum time to wait for POST request completion
+ * 
+ * @constant {number} - Milliseconds
+ * @default 30000
+ */
+export const DEFAULT_POST_REQUEST_TIMEOUT = 30000;
+
+// ========================================

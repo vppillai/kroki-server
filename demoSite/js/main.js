@@ -84,7 +84,8 @@ import {
     getUrlParameters,
     processUrlParameters,
     loadDefaultExample,
-    updateUrl
+    updateUrl,
+    clearUrlParameters
 } from './modules/urlHandler.js';
 
 // Diagram operations
@@ -98,6 +99,7 @@ import {
     updateDiagram,
     downloadDiagram,
     handleDecode,
+    shouldUsePostForCurrentDiagram,
     initializeDiagramTypeDropdown
 } from './modules/diagramOperations.js';
 
@@ -426,7 +428,14 @@ codeTextarea.addEventListener('input', function () {
 
     updateLineNumbers();
     debounceUpdateDiagram();
-    updateUrl();
+    
+    // Handle URL updates based on request method
+    const shouldUpdateUrl = !shouldUsePostForCurrentDiagram();
+    if (shouldUpdateUrl) {
+        updateUrl();
+    } else {
+        clearUrlParameters();
+    }
 });
 
 /**
@@ -438,7 +447,14 @@ document.getElementById('diagramType').addEventListener('change', async function
     const currentCode = codeTextarea.value;
 
     updateFormatDropdown();
-    updateUrl();
+    
+    // Handle URL updates based on request method
+    const shouldUpdateUrl = !shouldUsePostForCurrentDiagram();
+    if (shouldUpdateUrl) {
+        updateUrl();
+    } else {
+        clearUrlParameters();
+    }
 
     const isCodeEmpty = currentCode.trim() === '';
     const exampleCache = getExampleCache();

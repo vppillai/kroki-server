@@ -321,6 +321,22 @@ export function setupConfigurationListeners() {
     config.addListener('layout.showZoomControls', () => applyUIVisibilityConfig());
     config.addListener('layout.showFileStatus', () => applyUIVisibilityConfig());
 
+    // Listen for Kroki API configuration changes
+    config.addListener('kroki.alwaysUsePost', () => {
+        // Configuration change will be applied on next diagram update
+        // No immediate action needed since this affects diagram generation behavior
+    });
+
+    config.addListener('kroki.urlLengthThreshold', () => {
+        // Configuration change will be applied on next diagram update
+        // No immediate action needed since this affects diagram generation behavior
+    });
+
+    config.addListener('kroki.postRequestTimeout', () => {
+        // Configuration change will be applied on next diagram update
+        // No immediate action needed since this affects POST request timeout
+    });
+
     // Listen for AI Assistant configuration changes
     const aiConfigPaths = [
         'ai.enabled', 'ai.endpoint', 'ai.apiKey', 'ai.model', 'ai.customModel',
@@ -334,4 +350,4 @@ export function setupConfigurationListeners() {
             }
         });
     });
-} 
+}

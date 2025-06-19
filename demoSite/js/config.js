@@ -86,6 +86,14 @@ const DEFAULT_CONFIG = {
         imagePreloadTimeout: 10000 // milliseconds
     },
 
+    // Kroki API settings
+    kroki: {
+        alwaysUsePost: false, // Always use POST requests instead of GET
+        urlLengthThreshold: 2048, // URL length threshold to switch to POST automatically
+        postRequestTimeout: 30000, // Timeout for POST requests in milliseconds
+        postFormat: 'plain' // POST format: 'plain' (text/plain body) or 'json' (JSON body)
+    },
+
     // AI Assistant settings
     ai: {
         enabled: true, // Enable AI Assistant
@@ -598,6 +606,36 @@ class ConfigManager {
                 max: 10000,
                 step: 500,
                 description: 'How long to show notifications'
+            },
+            'kroki.alwaysUsePost': {
+                type: 'boolean',
+                label: 'Always Use POST Requests',
+                description: 'Always use POST requests to Kroki API instead of GET (prevents URL length issues)'
+            },
+            'kroki.urlLengthThreshold': {
+                type: 'number',
+                label: 'URL Length Threshold',
+                min: 1000,
+                max: 8192,
+                step: 256,
+                description: 'Automatically switch to POST when URL exceeds this length'
+            },
+            'kroki.postRequestTimeout': {
+                type: 'number',
+                label: 'POST Request Timeout',
+                min: 5000,
+                max: 60000,
+                step: 5000,
+                description: 'Timeout for POST requests in milliseconds'
+            },
+            'kroki.postFormat': {
+                type: 'select',
+                label: 'POST Request Format',
+                options: [
+                    { value: 'plain', label: 'Plain Text (diagram-type/format endpoint)' },
+                    { value: 'json', label: 'JSON (root endpoint with JSON body)' }
+                ],
+                description: 'Format to use for POST requests to Kroki API'
             },
             'ai.endpoint': {
                 type: 'text',

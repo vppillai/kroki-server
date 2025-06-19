@@ -176,3 +176,22 @@ export function updateUrl() {
         });
     }
 } 
+
+/**
+ * Clear URL parameters to remove diagram-related query strings
+ * Used when switching to POST requests where URL sharing is not applicable
+ * 
+ * @function clearUrlParameters
+ * @public
+ */
+export function clearUrlParameters() {
+    const url = new URL(window.location.href);
+    
+    // Remove all diagram-related parameters
+    url.searchParams.delete('diag');
+    url.searchParams.delete('fmt');
+    url.searchParams.delete('im');
+    
+    // Update the browser URL without the parameters
+    window.history.replaceState({}, '', url);
+} 
