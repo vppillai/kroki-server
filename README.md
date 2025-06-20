@@ -1,6 +1,6 @@
-# Kroki Diagram Server
+# DocCode - The Kroki Frontend
 
-A complete setup for running a local Kroki diagram rendering server with a custom interactive demo site.
+A complete setup for running DocCode (doc-code), an advanced web frontend for Kroki diagram servers with AI assistance and comprehensive diagram editing capabilities.
 
 <blockquote style="background:#f9f9f9; border-left: 6px solid #ccc; padding: 1em; font-size: 0.95em;">
   <strong>Note:</strong><br>
@@ -17,10 +17,10 @@ A complete setup for running a local Kroki diagram rendering server with a custo
 git clone https://github.com/vppillai/kroki-server.git
 cd kroki-server
 
-# Start the server
+# Start DocCode with Kroki backend
 ./setup-kroki-server.sh start
 
-# Access the demo site (default port)
+# Access DocCode (default port)
 # Default: https://localhost:8443/
 # Port configurable in .env file
 
@@ -30,13 +30,14 @@ cd kroki-server
 
 ## Overview
 
-This project provides a complete solution for running a [Kroki](https://kroki.io/) diagram rendering server locally. It includes:
+DocCode is a feature-rich web frontend for [Kroki](https://kroki.io/) diagram rendering servers. This project provides a complete solution including:
 
-- A Docker Compose setup for running the Kroki server and its dependencies
-- An interactive demo site for creating and previewing diagrams
-- HTTPS support via self-signed certificates
-- Configurable ports via environment variables (.env file)
-- Comprehensive deployment scripts and utilities
+- **DocCode Frontend**: Advanced web interface with real-time diagram editing and preview
+- **AI-Powered Assistance**: Integrated AI assistant for diagram generation and code suggestions
+- **Kroki Backend**: Docker Compose setup for running the Kroki server and its dependencies
+- **HTTPS Support**: Secure access via self-signed certificates
+- **Flexible Configuration**: Configurable ports and settings via environment variables
+- **Professional Features**: File operations, auto-save, syntax highlighting, and comprehensive settings
 
 ## Configuration
 
@@ -47,7 +48,7 @@ The server ports can be configured through the `.env` file (single values only):
 ```bash
 HTTP_PORT=8000                  # Kroki core server port
 HTTPS_PORT=8443                 # Nginx HTTPS proxy port
-DEMOSITE_CONTAINER_PORT=8006    # Demo site internal port
+DEMOSITE_CONTAINER_PORT=8006    # DocCode frontend internal port
 HOSTNAME=localhost              # Hostname for SSL certificate and CORS
 ```
 
@@ -135,7 +136,7 @@ Comprehensive health monitoring for all configured endpoints:
 
 ### AI Assistant Configuration
 
-The demo site includes an integrated AI assistant for diagram creation and modification:
+DocCode includes an integrated AI assistant for diagram creation and modification:
 
 #### AI Configuration in .env
 
@@ -166,7 +167,7 @@ AI_RETRY_PROMPT="..."                              # Error recovery template
 1. **Get OpenAI API Key**: Sign up at [OpenAI](https://platform.openai.com/) and generate an API key
 2. **Configure .env**: Add your API key to `AI_API_KEY=your_key_here`
 3. **Restart Services**: Run `./setup-kroki-server.sh restart` to apply changes
-4. **Test AI Assistant**: Use the AI chat interface in the demo site
+4. **Test AI Assistant**: Use the AI chat interface in DocCode
 
 #### AI Assistant Usage
 
@@ -177,19 +178,24 @@ AI_RETRY_PROMPT="..."                              # Error recovery template
 
 **Note**: AI features require a valid OpenAI API key. Set `AI_ENABLED=false` to disable AI features if not needed.
 
-## Demo Site
+## DocCode Frontend
 
-The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/), and provides an interactive interface for creating and previewing diagrams.
+DocCode is accessible at `https://localhost:{HTTPS_PORT}/` (default: https://localhost:8443/), and provides an interactive interface for creating and previewing diagrams.
 
-### Features
+### DocCode Features
 
+DocCode provides a comprehensive diagram editing experience with professional-grade features:
+
+#### Core Functionality
 - Supports all diagram types provided by Kroki
-- Real-time diagram preview
+- Real-time diagram preview with automatic updates
 - Format conversion (SVG, PNG, PDF, etc.)
-- Diagram code examples for all supported formats
-- Download rendered diagrams
-- Line numbers in the editor
-- Responsive design for different screen sizes
+- Comprehensive diagram code examples for all supported formats
+- Download rendered diagrams in multiple formats
+- Syntax highlighting and line numbers in the editor
+- Responsive design optimized for all screen sizes
+
+#### Advanced Editing
 - Interactive zoom and pan for diagram images
   - Mouse wheel zoom with precise cursor positioning
   - Click and drag to pan around large diagrams
@@ -199,23 +205,24 @@ The demo site is accessible at `https://localhost:{HTTPS_PORT}/` (default: https
   - Zoom state preservation - maintains zoom level and position when updating diagram code
   - Double-click to reset zoom to fit
   - Help modal with detailed usage instructions
-- File Operations and Local File Support
-  - Create new diagrams with automatic type detection
-  - Open local diagram files directly from your file system
-  - Save diagrams to local files with proper extensions
-  - Save As functionality for creating new files
-  - Keyboard shortcuts for all file operations (Ctrl/Cmd + N/O/S)
-  - Automatic file type detection from content and extensions
-  - File modification tracking with unsaved changes warnings
-  - Support for multiple diagram file formats (.puml, .mmd, .dot, .d2, etc.)
-  - Modern File System Access API with fallback for older browsers
-  - Auto-reload file monitoring with configurable delay (500-5000ms, default 1 second)
-  - Real-time file change detection and automatic diagram updates
-  - Smart file monitoring that activates only when needed
+
+#### Professional File Operations
+- Create new diagrams with automatic type detection
+- Open local diagram files directly from your file system
+- Save diagrams to local files with proper extensions
+- Save As functionality for creating new files
+- Keyboard shortcuts for all file operations (Ctrl/Cmd + N/O/S)
+- Automatic file type detection from content and extensions
+- File modification tracking with unsaved changes warnings
+- Support for multiple diagram file formats (.puml, .mmd, .dot, .d2, etc.)
+- Modern File System Access API with fallback for older browsers
+- Auto-reload file monitoring with configurable delay (500-5000ms, default 1 second)
+- Real-time file change detection and automatic diagram updates
+- Smart file monitoring that activates only when needed
 
 ### URL Parameter Functionality
 
-The demo site supports URL parameters for sharing and bookmarking diagrams:
+DocCode supports URL parameters for sharing and bookmarking diagrams:
 
 - `diag` - Sets the diagram type (e.g., plantuml, mermaid, graphviz)
 - `fmt`  - Sets the output format (e.g., svg, png, pdf)
@@ -282,7 +289,7 @@ Format support varies by diagram type, but generally includes:
 
 ## File Operations
 
-The demo site includes comprehensive file operations that make it work like a standalone diagram editor:
+DocCode includes comprehensive file operations that make it work like a standalone diagram editor:
 
 ### Creating and Managing Files
 
@@ -319,7 +326,7 @@ The editor automatically detects diagram types from file content and extensions:
 
 ### Configuration
 
-The demo site includes comprehensive configuration options accessible through Settings:
+DocCode includes comprehensive configuration options accessible through Settings:
 
 #### Editor Settings
 - **Auto-reload Monitoring Delay**: Configurable file monitoring interval (500-5000ms, default 1000ms)
@@ -342,7 +349,7 @@ All configuration changes are applied in real-time and persist across browser se
 
 ## AI Assistant Features
 
-The demo site includes an integrated AI assistant that can help you create, modify, and understand diagrams. The AI assistant supports multiple models and can be configured to use either the server's backend or your own API credentials.
+DocCode includes an integrated AI assistant that can help you create, modify, and understand diagrams. The AI assistant supports multiple models and can be configured to use either the server's backend or your own API credentials.
 
 ### AI Model Support
 
@@ -493,7 +500,7 @@ The system consists of several containerized services:
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Demo Site  │     │ Excalidraw  │     │ DiagramsNet │
+│   DocCode   │     │ Excalidraw  │     │ DiagramsNet │
 │  Container  │     │  Renderer   │     │  Renderer   │
 └─────────────┘     └─────────────┘     └─────────────┘
 ```
@@ -501,7 +508,7 @@ The system consists of several containerized services:
 - **Nginx**: Routes requests and serves HTTPS
 - **Core Kroki**: Main service that coordinates diagram rendering
 - **Renderers**: Specialized containers for different diagram types
-- **Demo Site**: Custom UI for creating and previewing diagrams
+- **DocCode**: Advanced web frontend for creating and previewing diagrams
 
 ## Deployment
 
@@ -762,9 +769,9 @@ When using the default self-signed certificates, add `--insecure` to curl comman
 
 ## Development
 
-### Demo Site Structure
+### DocCode Frontend Structure
 
-The demo site is built with a modular architecture for maintainability and extensibility:
+DocCode is built with a modular architecture for maintainability and extensibility:
 
 - [`demoSite/index.html`](demoSite/index.html) - Main HTML structure with responsive layout
 - [`demoSite/js/main.js`](demoSite/js/main.js) - Core application initialization and coordination
@@ -800,7 +807,7 @@ The demo site is built with a modular architecture for maintainability and exten
 The Nginx proxy handles routing and SSL:
 
 - Routes diagram requests to the core Kroki server
-- Serves the demo site static files
+- Serves the DocCode frontend static files
 - Manages SSL certificates
 
 ### Docker Compose Configuration
