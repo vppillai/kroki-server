@@ -869,6 +869,36 @@ docker network inspect kroki-server_kroki_network
 - **Editor Settings**: File monitoring, auto-save, and editor preferences
 - **File Operations**: Auto-save toggle and file handling options
 - **UI Preferences**: Theme, layout, and visual settings
+- **About Information**: View version details, features, and system information
+
+### Version Management
+
+The application version and build information can be easily updated through the `.env` file:
+
+#### Manual Version Update
+```bash
+# Edit .env file and update version variables
+VERSION=1.2.0
+BUILD_DATE=2025-07-01
+AUTHOR_NAME="Your Name"
+```
+
+#### Environment Variables
+- **VERSION**: Application version following semantic versioning (e.g., 1.2.3)
+- **BUILD_DATE**: Build date in YYYY-MM-DD format
+- **AUTHOR_NAME**: Author name (use quotes if name contains spaces)
+
+#### Applying Changes
+After editing the `.env` file:
+```bash
+# Restart the server to apply changes
+./setup-kroki-server.sh restart
+```
+
+#### Viewing Version Information
+- **API Endpoint**: `GET /api/version` - Returns comprehensive version and system information
+- **UI Interface**: Settings → About tab - View version details in a user-friendly format
+- **Version Display**: Shows version, build date, author, features, and server configuration
 
 ## License
 

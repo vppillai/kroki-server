@@ -94,6 +94,7 @@ class ConfigUI {
                             <button class="config-tab" data-tab="layout">Layout</button>
                             <button class="config-tab" data-tab="ai">AI Assistant</button>
                             <button class="config-tab" data-tab="advanced">Advanced</button>
+                            <button class="config-tab" data-tab="about">About</button>
                         </div>
                         
                         <div id="config-tab-general" class="config-tab-content active">
@@ -538,6 +539,72 @@ class ConfigUI {
                                 </div>
                             </div>
                         </div>
+                        
+                        <div id="config-tab-about" class="config-tab-content">
+                            <div class="config-section">
+                                <div class="config-group">
+                                    <div class="about-header">
+                                        <div class="about-logo">
+                                            <img src="/favicon.ico" alt="DocCode" class="about-favicon">
+                                        </div>
+                                        <div class="about-title">
+                                            <h5 id="about-app-name">DocCode - The Kroki Server Frontend</h5>
+                                            <div class="about-version">
+                                                Version <span id="about-version">Loading...</span>
+                                            </div>
+                                            <div class="about-author">
+                                                by <span id="about-author">Loading...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="about-description" id="about-description">
+                                        Loading application information...
+                                    </div>
+                                    
+                                    <div class="about-info-grid">
+                                        <div class="about-info-item">
+                                            <div class="about-info-label">Build Date</div>
+                                            <div class="about-info-value" id="about-build-date">-</div>
+                                        </div>
+                                        <div class="about-info-item">
+                                            <div class="about-info-label">Server</div>
+                                            <div class="about-info-value" id="about-server-info">-</div>
+                                        </div>
+                                        <div class="about-info-item">
+                                            <div class="about-info-label">AI Assistant</div>
+                                            <div class="about-info-value" id="about-ai-info">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Features</h4>
+                                <div class="config-group">
+                                    <div class="about-features" id="about-features">
+                                        <div class="about-loading">Loading features...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h4 class="config-section-title">Resources</h4>
+                                <div class="config-group">
+                                    <div class="about-links">
+                                        <a href="https://kroki.io/" target="_blank" class="about-link">
+                                            🌐 Kroki Documentation
+                                        </a>
+                                        <a href="https://github.com/vppillai/kroki-server" target="_blank" class="about-link">
+                                            📚 DocCode GitHub Repository
+                                        </a>
+                                        <a href="/api/health" target="_blank" class="about-link">
+                                            ❤️ Server Health Check
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="config-modal-footer">
                         <div class="left-actions">
@@ -802,6 +869,11 @@ class ConfigUI {
         });
 
         this.activeTab = tabName;
+
+        // Load version information when About tab is activated
+        if (tabName === 'about') {
+            this.loadAboutInfo();
+        }
     }
 
     // ========================================
@@ -1036,6 +1108,66 @@ class ConfigUI {
     // ========================================
     // UI STATE MANAGEMENT
     // ========================================
+
+    /**
+     * Load version and application information for the About tab
+     * Fetches version data from the server API and populates the About tab content
+     * 
+     * @private
+     */
+    async loadAboutInfo() {
+        try {
+            const response = await fetch('/api/version');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const versionInfo = await response.json();
+
+            // Update basic info
+            document.getElementById('about-app-name').textContent = versionInfo.name || 'DocCode - The Kroki Server Frontend';
+            document.getElementById('about-version').textContent = versionInfo.version || '1.0.0';
+            document.getElementById('about-author').textContent = versionInfo.author || 'Unknown';
+            document.getElementById('about-description').textContent = versionInfo.description || 'Interactive diagram editor and server';
+            document.getElementById('about-build-date').textContent = versionInfo.build_date || 'Unknown';
+
+            // Update server info
+            const serverInfo = versionInfo.server_info || {};
+            document.getElementById('about-server-info').textContent =
+                `${serverInfo.hostname || 'localhost'}:${serverInfo.https_port || '8443'}`;
+
+            // Update AI info
+            const aiInfo = serverInfo.ai_enabled ?
+                `Enabled (${serverInfo.ai_model || 'Unknown model'})` :
+                'Disabled';
+            document.getElementById('about-ai-info').textContent = aiInfo;
+
+            // Update features list
+            const featuresContainer = document.getElementById('about-features');
+            if (versionInfo.features && versionInfo.features.length > 0) {
+                featuresContainer.innerHTML = versionInfo.features
+                    .map(feature => `<div class="about-feature-item">✓ ${feature}</div>`)
+                    .join('');
+            } else {
+                featuresContainer.innerHTML = '<div class="about-loading">No features information available</div>';
+            }
+
+        } catch (error) {
+            console.error('Failed to load version information:', error);
+
+            // Show fallback information
+            document.getElementById('about-app-name').textContent = 'DocCode - The Kroki Server Frontend';
+            document.getElementById('about-version').textContent = 'Unknown';
+            document.getElementById('about-author').textContent = 'Unknown';
+            document.getElementById('about-description').textContent = 'A comprehensive interactive frontend for Kroki diagram rendering server';
+            document.getElementById('about-build-date').textContent = 'Unknown';
+            document.getElementById('about-server-info').textContent = 'Connection failed';
+            document.getElementById('about-ai-info').textContent = 'Unknown';
+
+            document.getElementById('about-features').innerHTML =
+                '<div class="about-error">Unable to load feature information</div>';
+        }
+    }
 
 }
 

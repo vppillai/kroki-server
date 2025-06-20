@@ -241,6 +241,40 @@ def health_check():
         'ai_enabled': DEFAULT_AI_CONFIG['enabled']
     })
 
+@app.route('/api/version', methods=['GET'])
+def get_version():
+    """Get version and system information"""
+    try:
+        if not validate_origin(request):
+            return jsonify({'error': 'Unauthorized origin'}), 403
+        
+        return jsonify({
+            'version': os.environ.get('VERSION', '1.0.0'),
+            'name': 'DocCode - The Kroki Server Frontend',
+            'description': 'A comprehensive interactive frontend for Kroki diagram rendering server with AI assistance',
+            'build_date': os.environ.get('BUILD_DATE', '2025-06-19'),
+            'author': os.environ.get('AUTHOR_NAME', 'Vysakh Pillai'),
+            'features': [
+                'Interactive diagram editor',
+                'AI-powered diagram assistance',
+                'Multiple output formats (SVG, PNG, PDF)',
+                'Real-time preview',
+                'File operations with auto-reload',
+                'POST API support for large diagrams',
+                'Comprehensive settings management'
+            ],
+            'server_info': {
+                'hostname': HOSTNAME,
+                'port': PORT,
+                'https_port': HTTPS_PORT,
+                'ai_enabled': DEFAULT_AI_CONFIG['enabled'],
+                'ai_model': DEFAULT_AI_CONFIG['model'] if DEFAULT_AI_CONFIG['enabled'] else None
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting version info: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 # Static file routes
 @app.route('/')
 def index():
