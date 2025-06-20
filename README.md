@@ -8,6 +8,13 @@ A complete setup for running DocCode (doc-code), an advanced web frontend for Kr
   That said, I have been actively <em>dogfooding</em> the tool, and it is functional and working as intended in real-world usage.
 </blockquote>
 
+
+<p align="center">
+  <img src="./images/ai-assistant.gif" alt="AI Assistant Demo" />
+</p>
+
+
+
 ![](./images/demoSite.png)
 
 ## Quick Start
