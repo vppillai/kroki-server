@@ -8,7 +8,7 @@ A complete setup for running DocCode (doc-code), an advanced web frontend for Kr
   That said, I have been actively <em>dogfooding</em> the tool, and it is functional and working as intended in real-world usage.
 </blockquote>
 
-![](./images/demoSite.png)
+![](./images/demoSite.svg)
 
 ## Quick Start
 

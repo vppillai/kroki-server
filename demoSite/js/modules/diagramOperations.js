@@ -376,7 +376,7 @@ export function shouldUsePostForCurrentDiagram() {
 
     // Check configuration for POST preference and URL length threshold
     const alwaysUsePost = window.configManager ? window.configManager.get('kroki.alwaysUsePost') : false;
-    const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 2048;
+    const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 4096;
 
     // Generate encoded diagram for URL length calculation
     const encodedDiagram = encodeKrokiDiagram(code);
@@ -426,7 +426,7 @@ export async function updateDiagram() {
     try {
         // Check configuration for POST preference and URL length threshold
         const alwaysUsePost = window.configManager ? window.configManager.get('kroki.alwaysUsePost') : false;
-        const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 2048;
+        const urlLengthThreshold = window.configManager ? window.configManager.get('kroki.urlLengthThreshold') : 4096;
 
         // Generate encoded diagram for URL length calculation
         const encodedDiagram = encodeKrokiDiagram(code);
@@ -759,7 +759,7 @@ export async function updateDiagram() {
         }
 
         updateImageLink();
-        
+
         // Handle browser URL updates based on request method
         if (!shouldUsePost) {
             // For GET requests, update URL with current diagram parameters

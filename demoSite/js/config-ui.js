@@ -523,7 +523,7 @@ class ConfigUI {
                                         <label class="config-label">URL Length Threshold</label>
                                         <div class="config-range">
                                             <input type="range" min="1000" max="8192" step="256" class="config-input" data-config="kroki.urlLengthThreshold">
-                                            <span class="config-range-value">2048</span>
+                                            <span class="config-range-value">4096</span>
                                         </div>
                                         <div class="config-description">URL length threshold to automatically switch from GET to POST requests</div>
                                     </div>
@@ -1221,7 +1221,7 @@ class ConfigUI {
             'layout.showZoomControls',
             'layout.showFileStatus'
         ];
-        
+
         return immediateSettings.includes(configPath);
     }
 

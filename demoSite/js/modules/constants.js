@@ -143,9 +143,9 @@ export const AUTO_RELOAD_DELAY = DEFAULT_AUTO_RELOAD_DELAY;
  * When diagram URLs exceed this length, POST requests are used automatically
  * 
  * @constant {number} - Character count
- * @default 2048
+ * @default 4096
  */
-export const DEFAULT_URL_LENGTH_THRESHOLD = 2048;
+export const DEFAULT_URL_LENGTH_THRESHOLD = 4096;
 
 /**
  * Default timeout for POST requests to Kroki API

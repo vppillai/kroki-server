@@ -89,7 +89,7 @@ const DEFAULT_CONFIG = {
     // Kroki API settings
     kroki: {
         alwaysUsePost: false, // Always use POST requests instead of GET
-        urlLengthThreshold: 2048, // URL length threshold to switch to POST automatically
+        urlLengthThreshold: 4096, // URL length threshold to switch to POST automatically
         postRequestTimeout: 30000, // Timeout for POST requests in milliseconds
         postFormat: 'plain' // POST format: 'plain' (text/plain body) or 'json' (JSON body)
     },
