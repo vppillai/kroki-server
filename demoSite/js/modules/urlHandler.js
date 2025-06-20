@@ -136,7 +136,7 @@ export function loadDefaultExample(diagramType) {
             setUserHasEditedContent(false);
             import('./state.js').then(stateModule => {
                 if (stateModule.state.autoRefreshEnabled) {
-                    module.updateDiagram();
+                    module.debounceUpdateDiagram();
                 }
             });
         });

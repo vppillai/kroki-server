@@ -242,10 +242,7 @@ class CodeHistory {
             const inputEvent = new Event('input', { bubbles: true });
             codeTextarea.dispatchEvent(inputEvent);
 
-            // Trigger diagram update if function exists
-            if (typeof updateDiagram === 'function') {
-                updateDiagram();
-            }
+            // Input event will trigger auto-refresh if enabled
         }
 
         this.updateUI();

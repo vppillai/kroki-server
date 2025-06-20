@@ -72,11 +72,7 @@ export function applyConfiguration() {
     const autoRefreshConfig = config.get('autoRefresh');
     if (autoRefreshConfig !== state.autoRefreshEnabled) {
         updateAutoRefreshEnabled(autoRefreshConfig);
-        const checkbox = document.getElementById('auto-refresh-checkbox');
-        if (checkbox) {
-            checkbox.checked = autoRefreshConfig;
-            handleAutoRefreshToggle();
-        }
+        updateAutoRefreshUI(autoRefreshConfig);
     }
 
     // Apply editor configuration
@@ -127,87 +123,30 @@ export function applyUIVisibilityConfig() {
 }
 
 /**
- * Handle auto-refresh checkbox toggle
- * Updates auto-refresh state, saves preference, and adjusts UI visibility
- * Controls whether diagrams update automatically or require manual refresh
+ * Update all auto-refresh UI elements
+ * Centralizes synchronization of all auto-refresh controls
  * 
- * @public
+ * @param {boolean} enabled - Whether auto-refresh is enabled
+ * @private
  */
-export function handleAutoRefreshToggle() {
-    const checkbox = document.getElementById('auto-refresh-checkbox');
-    const refreshBtn = document.getElementById('manual-refresh-btn');
-
-    if (!checkbox || !refreshBtn) return;
-
-    const enabled = checkbox.checked;
-    updateAutoRefreshEnabled(enabled);
-    localStorage.setItem('kroki-auto-refresh', enabled.toString());
-
-    // Show/hide manual refresh button based on auto-refresh state
-    refreshBtn.style.display = enabled ? 'none' : 'inline-flex';
-}
-
-/**
- * Handle manual refresh button click
- * Triggers diagram update with visual feedback animation
- * Provides manual control when auto-refresh is disabled
- * 
- * @public
- */
-export function handleManualRefresh() {
-    const refreshBtn = document.getElementById('manual-refresh-btn');
-    if (refreshBtn) {
-        // Add spinning animation
-        refreshBtn.classList.add('spinning');
-
-        // Remove animation after a short delay
-        setTimeout(() => {
-            refreshBtn.classList.remove('spinning');
-        }, 1000);
+function updateAutoRefreshUI(enabled) {
+    // Update toolbar button state
+    const autoRefreshBtn = document.getElementById('auto-refresh-btn');
+    if (autoRefreshBtn) {
+        autoRefreshBtn.classList.toggle('active', enabled);
+        autoRefreshBtn.title = enabled ? 'Auto-refresh enabled' : 'Auto-refresh disabled';
     }
-
-    // Trigger diagram update
-    import('./diagramOperations.js').then(module => {
-        module.updateDiagram();
-    });
-}
-
-/**
- * Initialize auto-refresh functionality and preferences
- * Sets up auto-refresh toggle, manual refresh button, and keyboard shortcuts
- * Loads saved user preferences and configures initial UI state
- * 
- * @public
- */
-export function initializeAutoRefresh() {
-    const checkbox = document.getElementById('auto-refresh-checkbox');
-    const refreshBtn = document.getElementById('manual-refresh-btn');
-
-    if (!checkbox || !refreshBtn) {
-        console.warn('Auto-refresh elements not found');
-        return;
+    
+    // Update main page checkbox
+    const autoRefreshCheckbox = document.getElementById('auto-refresh-checkbox');
+    if (autoRefreshCheckbox) {
+        autoRefreshCheckbox.checked = enabled;
     }
-
-    // Load saved preference or default to true
-    const savedPreference = localStorage.getItem('kroki-auto-refresh');
-    const enabled = savedPreference !== null ? savedPreference === 'true' : true;
-    updateAutoRefreshEnabled(enabled);
-    checkbox.checked = enabled;
-
-    // Set initial button state
-    handleAutoRefreshToggle();
-
-    // Add event listeners
-    checkbox.addEventListener('change', handleAutoRefreshToggle);
-    refreshBtn.addEventListener('click', handleManualRefresh);
-
-    // Add keyboard shortcut for manual refresh (Alt/Cmd + Enter)
-    document.addEventListener('keydown', function (e) {
-        if ((e.altKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            handleManualRefresh();
-        }
-    });
+    
+    // Update settings modal if it's open
+    if (window.configUI) {
+        window.configUI.updateConfigField('autoRefresh', enabled);
+    }
 }
 
 /**
@@ -228,11 +167,7 @@ export function setupConfigurationListeners() {
     // Listen for auto-refresh changes
     config.addListener('autoRefresh', (newValue) => {
         updateAutoRefreshEnabled(newValue);
-        const checkbox = document.getElementById('auto-refresh-checkbox');
-        if (checkbox) {
-            checkbox.checked = newValue;
-            handleAutoRefreshToggle();
-        }
+        updateAutoRefreshUI(newValue);
     });
 
     // Listen for debounce delay changes

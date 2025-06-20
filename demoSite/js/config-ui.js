@@ -940,6 +940,11 @@ class ConfigUI {
         this.tempConfig[configPath] = value;
         this.unsavedChanges = true;
 
+        // Apply certain settings immediately for better UX
+        if (this.shouldApplyImmediately(configPath)) {
+            this.configManager.set(configPath, value);
+        }
+
         // Update save button state
         const saveBtn = document.getElementById('config-save');
         saveBtn.textContent = 'Save Changes';
@@ -1167,6 +1172,57 @@ class ConfigUI {
             document.getElementById('about-features').innerHTML =
                 '<div class="about-error">Unable to load feature information</div>';
         }
+    }
+
+    /**
+     * Update a specific configuration field in the modal
+     * Updates the form field value to match the current configuration
+     * Only updates if the modal is currently visible
+     * 
+     * @param {string} configPath - The configuration path (e.g., 'autoRefresh')
+     * @param {*} value - The new value to set
+     * @public
+     */
+    updateConfigField(configPath, value) {
+        // Only update if modal is open
+        if (this.modal.style.display !== 'block') {
+            return;
+        }
+
+        const element = document.querySelector(`[data-config="${configPath}"]`);
+        if (!element) {
+            return;
+        }
+
+        if (element.type === 'checkbox') {
+            element.checked = value;
+        } else if (element.type === 'range') {
+            element.value = value;
+            this.updateRangeDisplay(element, value);
+        } else {
+            element.value = value;
+        }
+    }
+
+    /**
+     * Determine if a configuration setting should be applied immediately
+     * Returns true for settings that provide better UX when applied instantly
+     * 
+     * @param {string} configPath - The configuration path to check
+     * @returns {boolean} Whether to apply the setting immediately
+     * @private
+     */
+    shouldApplyImmediately(configPath) {
+        // Settings that should apply immediately for better user experience
+        const immediateSettings = [
+            'autoRefresh',      // Auto-refresh should toggle immediately
+            'theme',            // Theme changes should be instant
+            'layout.showToolbar', // UI visibility changes should be immediate
+            'layout.showZoomControls',
+            'layout.showFileStatus'
+        ];
+        
+        return immediateSettings.includes(configPath);
     }
 
 }

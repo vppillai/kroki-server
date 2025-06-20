@@ -1859,10 +1859,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
             const inputEvent = new Event('input', { bubbles: true });
             codeTextarea.dispatchEvent(inputEvent);
 
-            // Optionally trigger the updateDiagram function if it exists
-            if (typeof updateDiagram === 'function') {
-                updateDiagram();
-            }
+            // Input event will trigger auto-refresh if enabled
         } else {
             console.warn('AI Assistant: Could not find code textarea element');
         }

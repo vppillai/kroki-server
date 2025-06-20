@@ -141,6 +141,11 @@ function handleAutoRefreshToggle() {
     const autoRefreshEnabled = state.autoRefreshEnabled;
 
     updateAutoRefreshEnabled(!autoRefreshEnabled);
+    
+    // Update configuration to keep settings in sync
+    if (window.configManager) {
+        window.configManager.set('autoRefresh', !autoRefreshEnabled);
+    }
 
     if (autoRefreshBtn) {
         autoRefreshBtn.classList.toggle('active', state.autoRefreshEnabled);
@@ -178,6 +183,7 @@ function handleManualRefresh() {
  */
 function initializeAutoRefresh() {
     const autoRefreshBtn = document.getElementById('auto-refresh-btn');
+    const autoRefreshCheckbox = document.getElementById('auto-refresh-checkbox');
     const manualRefreshBtn = document.getElementById('manual-refresh-btn');
 
     if (autoRefreshBtn) {
@@ -187,6 +193,22 @@ function initializeAutoRefresh() {
 
         // Add click handler
         autoRefreshBtn.addEventListener('click', handleAutoRefreshToggle);
+    }
+
+    if (autoRefreshCheckbox) {
+        // Set initial state
+        autoRefreshCheckbox.checked = state.autoRefreshEnabled;
+
+        // Add change handler
+        autoRefreshCheckbox.addEventListener('change', function() {
+            const newValue = this.checked;
+            updateAutoRefreshEnabled(newValue);
+            
+            // Update configuration
+            if (window.configManager) {
+                window.configManager.set('autoRefresh', newValue);
+            }
+        });
     }
 
     if (manualRefreshBtn) {
@@ -302,7 +324,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Finally, update the diagram after all initialization is complete
     setTimeout(() => {
-        updateDiagram();
+        // Only auto-update if auto-refresh is enabled
+        if (state.autoRefreshEnabled) {
+            updateDiagram();
+        }
     }, 200);
 });
 
@@ -464,9 +489,7 @@ document.getElementById('diagramType').addEventListener('change', async function
         const example = await loadExampleForDiagramType(diagramType);
         codeTextarea.value = example;
         updateLineNumbers();
-        if (state.autoRefreshEnabled) {
-            updateDiagram();
-        }
+        debounceUpdateDiagram();
     } else {
         debounceUpdateDiagram();
     }
@@ -477,9 +500,7 @@ document.getElementById('diagramType').addEventListener('change', async function
  * @private
  */
 document.getElementById('outputFormat').addEventListener('change', function () {
-    if (state.autoRefreshEnabled) {
-        updateDiagram();
-    }
+    debounceUpdateDiagram();
 });
 
 /**

@@ -10,7 +10,7 @@
 
 import { state, updateCurrentFile, updateAutoSaveTimer, updateFileMonitoring } from './state.js';
 import { updateLineNumbers } from './utils.js';
-import { updateDiagram } from './diagramOperations.js';
+import { updateDiagram, debounceUpdateDiagram } from './diagramOperations.js';
 
 /**
  * Update file status display in UI
@@ -224,7 +224,7 @@ export async function openFile() {
             const codeTextarea = document.getElementById('code');
             codeTextarea.value = content;
             updateLineNumbers();
-            updateDiagram();
+            debounceUpdateDiagram();
             updateFileStatus();
 
             // Detect diagram type from content or filename
@@ -276,7 +276,7 @@ export function handleFileInputChange(event) {
         const codeTextarea = document.getElementById('code');
         codeTextarea.value = content;
         updateLineNumbers();
-        updateDiagram();
+        debounceUpdateDiagram();
         updateFileStatus();
 
         // Detect diagram type from content or filename
@@ -590,7 +590,7 @@ export async function newFile() {
     });
 
     updateLineNumbers();
-    updateDiagram();
+    debounceUpdateDiagram();
     updateFileStatus(); // This will handle auto-save UI properly
 }
 
@@ -809,7 +809,7 @@ async function reloadFileContent(newContent) {
 
     // Update UI
     updateLineNumbers();
-    updateDiagram();
+    debounceUpdateDiagram();
     updateFileStatus();
 
     // Show subtle notification
