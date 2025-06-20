@@ -2,6 +2,10 @@
 
 A complete setup for running DocCode (doc-code), an advanced web frontend for Kroki diagram servers with AI assistance and comprehensive diagram editing capabilities.
 
+![](./images/demoSite.png)
+
+
+
 <blockquote style="background:#f9f9f9; border-left: 6px solid #ccc; padding: 1em; font-size: 0.95em;">
   <strong>Note:</strong><br>
   While the initial framework and specifications were manually crafted, over <strong>90%</strong> of the code in this repository was generated using AI tools. As such, the code quality and structure may not fully reflect best practices and have not undergone extensive manual review.<br><br>
@@ -13,9 +17,6 @@ A complete setup for running DocCode (doc-code), an advanced web frontend for Kr
   <img src="./images/ai-assistant.gif" alt="AI Assistant Demo" />
 </p>
 
-
-
-![](./images/demoSite.png)
 
 ## Quick Start
 
