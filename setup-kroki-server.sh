@@ -17,13 +17,13 @@ CUSTOM_CERT_CRT=""
 # Load configuration from .env file if it exists
 if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a
-    # shellcheck source=.env
+    # shellcheck source=/dev/null
     source "${SCRIPT_DIR}/.env"
     set +a
     echo "Loaded configuration from .env file"
-    DEFAULT_HTTP_PORT="$HTTP_PORT"
-    DEFAULT_HTTPS_PORT="$HTTPS_PORT"
-    DEFAULT_HOSTNAME="$HOSTNAME"
+    DEFAULT_HTTP_PORT="${HTTP_PORT:-8000}"
+    DEFAULT_HTTPS_PORT="${HTTPS_PORT:-8443}"
+    DEFAULT_HOSTNAME="${HOSTNAME:-localhost}"
 else
     DEFAULT_HOSTNAME="localhost"
     DEFAULT_HTTP_PORT="8000"
