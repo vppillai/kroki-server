@@ -98,8 +98,8 @@ The visual editor can be configured through environment variables in the `.env` 
 
 ```bash
 # Visual Editor Settings
-DRAWIO_SERVER_URL="https://embed.diagrams.net/embed/"        # Public Draw.io service (default)
-# DRAWIO_SERVER_URL="https://your-server:port/drawio/embed/" # For self-hosted servers (see diagram-tools-hub)
+DRAWIO_SERVER_URL="https://embed.diagrams.net/embed"        # Public Draw.io service (default)
+# DRAWIO_SERVER_URL="https://your-server:port/drawio/embed" # For self-hosted servers (see diagram-tools-hub)
 ```
 
 #### Technical Implementation

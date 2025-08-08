@@ -11,8 +11,8 @@ class DrawioIntegration {
         this.isDrawioReady = false;
         this.iframe = null;
         this.modal = null;
-        this.drawioServerUrl = 'https://embed.diagrams.net/embed/'; // Default, will be overridden
-        
+        this.drawioServerUrl = 'https://embed.diagrams.net/embed'; // Default, will be overridden
+
         // Setup event handlers immediately
         this.setupEventHandlers();
         // Load config in parallel
@@ -61,7 +61,7 @@ class DrawioIntegration {
         // PostMessage listener for Draw.io communication
         window.addEventListener('message', (event) => {
             // PostMessage communication active
-            
+
             // Very permissive for now - like the reference implementation
             this.handleDrawioMessage(event.data);
         }, false);
@@ -122,7 +122,7 @@ class DrawioIntegration {
                     break;
 
                 default:
-                    // Unhandled visual editor event: ignoring
+                // Unhandled visual editor event: ignoring
             }
         } else if (data === 'ready') {
             // Handle simple ready message
@@ -142,7 +142,7 @@ class DrawioIntegration {
 
         this.modal = document.getElementById('drawio-modal');
         this.iframe = document.getElementById('drawio-iframe');
-        
+
         if (!this.modal || !this.iframe) {
             console.error('Visual editor modal elements not found');
             return;
@@ -154,7 +154,7 @@ class DrawioIntegration {
         this.isDrawioReady = false;
         this.updateStatus('Loading visual editor...', '');
         this.updateServerInfo();
-        
+
         // Show modal
         this.modal.style.display = 'flex';
         this.isOpen = true;
@@ -170,7 +170,7 @@ class DrawioIntegration {
 
         // Focus the modal container to ensure it can capture key events
         this.modal.focus();
-        
+
         // Add modal-specific keydown handler for better Escape key handling
         this.modalKeyHandler = (event) => {
             if (event.key === 'Escape') {
@@ -195,7 +195,7 @@ class DrawioIntegration {
 
         if (this.modal) {
             this.modal.style.display = 'none';
-            
+
             // Remove modal-specific keydown handler
             if (this.modalKeyHandler) {
                 this.modal.removeEventListener('keydown', this.modalKeyHandler);
@@ -226,16 +226,19 @@ class DrawioIntegration {
      * Setup the Draw.io iframe with proper URL and event handlers
      */
     setupIframe() {
+        // Ensure URL has trailing slash for proper parameter injection
+        const baseUrl = this.drawioServerUrl.endsWith('/') ? this.drawioServerUrl : `${this.drawioServerUrl}/`;
+
         // Add required parameters to the embed URL
-        const embedUrl = `${this.drawioServerUrl}?embed=1&ui=atlas&libraries=1&spin=1&noExitBtn=1&returnbounds`;
-        
+        const embedUrl = `${baseUrl}?embed=1&ui=atlas&libraries=1&spin=1&noExitBtn=1&returnbounds`;
+
         // Loading visual editor iframe
         this.iframe.src = embedUrl;
-        
+
         this.iframe.onload = () => {
             this.updateStatus('Visual editor loaded, initializing...', '');
             // Visual editor iframe loaded successfully
-            
+
             // Show iframe after load
             setTimeout(() => {
                 const loading = document.getElementById('drawio-loading');
@@ -249,7 +252,7 @@ class DrawioIntegration {
         this.iframe.onerror = () => {
             this.updateStatus('Failed to load visual editor', 'error');
             console.error('Failed to load visual editor iframe');
-            
+
             const loading = document.getElementById('drawio-loading');
             if (loading) {
                 loading.innerHTML = `
@@ -279,7 +282,7 @@ class DrawioIntegration {
         }
 
         let xml = codeTextarea.value.trim();
-        
+
         // If empty or invalid, use default Draw.io XML
         if (!xml || (!xml.includes('<mxfile') && !xml.includes('<mxGraphModel'))) {
             xml = this.getDefaultXml();
@@ -305,7 +308,7 @@ class DrawioIntegration {
         if (codeTextarea && xml) {
             // Updating code editor from visual editor
             codeTextarea.value = xml;
-            
+
             // Trigger change event to update diagram preview
             const event = new Event('input', { bubbles: true });
             codeTextarea.dispatchEvent(event);
