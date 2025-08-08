@@ -269,6 +269,13 @@ Bob --> Alice: Hi there
                         </svg>
                         Download
                     </button>
+                    <button id="drawio-edit-btn" class="toolbar-btn" title="Open Visual Editor" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Visual Editor
+                    </button>
                 </div>
             </div>
             <div id="diagram-container">
@@ -396,6 +403,29 @@ Bob --> Alice: Hi there
             <label for="image-link-text">Image Link:</label>
             <input type="text" id="image-link-text" readonly />
             <button id="copy-link-btn">Copy</button>
+        </div>
+    </div>
+
+    <!-- Draw.io Modal -->
+    <div id="drawio-modal" class="drawio-modal" style="display: none;" tabindex="-1">
+        <div class="drawio-modal-content">
+            <div class="drawio-modal-header">
+                <div class="drawio-modal-title">
+                    <h3>Visual Diagram Editor</h3>
+                    <span id="drawio-server-info" class="drawio-server-info"></span>
+                </div>
+                <div class="drawio-modal-controls">
+                    <span id="drawio-status" class="drawio-status">Loading...</span>
+                    <button id="drawio-close-btn" class="close-btn">×</button>
+                </div>
+            </div>
+            <div class="drawio-modal-body">
+                <div id="drawio-loading" class="drawio-loading">
+                    <div class="spinner"></div>
+                    <div>Loading Visual Editor...</div>
+                </div>
+                <iframe id="drawio-iframe" class="drawio-iframe" style="display: none;"></iframe>
+            </div>
         </div>
     </div>
 </body>

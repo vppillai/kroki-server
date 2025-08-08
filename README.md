@@ -71,6 +71,52 @@ HOSTNAME=localhost              # Hostname for SSL certificate and CORS
 
 **Note**: After changing ports, restart the services with `./setup-kroki-server.sh restart` to apply the new configuration.
 
+### Visual Editor Integration
+
+DocCode includes an integrated visual editor for diagramsnet (Draw.io) diagrams that provides a seamless WYSIWYG editing experience:
+
+#### Visual Editor Features
+
+- **Embedded Draw.io Editor**: Full Draw.io editor embedded in a modal dialog
+- **Bidirectional Sync**: Changes made in the visual editor automatically sync back to the code editor
+- **Near-Fullscreen Experience**: Modal uses 98% of viewport for maximum editing space
+- **Keyboard Support**: Press Escape key to close the visual editor
+- **Real-time Updates**: Diagram preview updates automatically when visual editor changes are applied
+- **Smart Integration**: Only appears when "diagramsnet" diagram type is selected
+
+#### Using the Visual Editor
+
+1. **Select Diagram Type**: Choose "diagramsnet" from the diagram type dropdown
+2. **Open Visual Editor**: Click the "Visual Editor" button in the preview toolbar
+3. **Edit Visually**: Use the full Draw.io interface for diagram creation and editing
+4. **Sync Changes**: Changes are automatically synchronized to the code editor
+5. **Close Editor**: Press Escape key or click the X button to close
+
+#### Visual Editor Configuration
+
+The visual editor can be configured through environment variables in the `.env` file:
+
+```bash
+# Visual Editor Settings
+DRAWIO_SERVER_URL=https://localhost:8080/drawio   # Local Draw.io server URL
+```
+
+#### Technical Implementation
+
+- **Local Server**: Uses a locally hosted Draw.io server for privacy and performance
+- **PostMessage API**: Secure communication between the main application and embedded editor
+- **Modal Interface**: Professional modal design with status indicators and controls
+- **State Management**: Preserves editor state and handles connection status
+- **Error Handling**: Graceful fallback and user-friendly error messages
+
+#### Benefits
+
+- **Visual Editing**: Create complex diagrams using intuitive drag-and-drop interface
+- **Code Learning**: See how visual changes translate to diagram markup
+- **Productivity**: Faster diagram creation for users who prefer visual tools
+- **Accessibility**: Alternative input method for users who find code-based editing challenging
+- **Privacy**: All editing happens locally without external service dependencies
+
 ### Configuration Management
 
 The server uses environment variables from the `.env` file to configure ports and hostnames:
@@ -204,6 +250,12 @@ DocCode provides a comprehensive diagram editing experience with professional-gr
 - Responsive design optimized for all screen sizes
 
 #### Advanced Editing
+- **Visual Editor Integration**: WYSIWYG editing for diagramsnet diagrams
+  - Embedded Draw.io editor in near-fullscreen modal
+  - Bidirectional synchronization between visual editor and code editor
+  - Intuitive drag-and-drop interface for complex diagram creation
+  - Real-time preview updates when changes are applied
+  - Keyboard shortcuts (Escape to close modal)
 - Interactive zoom and pan for diagram images
   - Mouse wheel zoom with precise cursor positioning
   - Click and drag to pan around large diagrams
@@ -284,6 +336,7 @@ Format support varies by diagram type, but generally includes:
 - Download Button: Save generated diagrams in various formats
 - Image Link Copying: Easily share direct links to generated images
 - Decoder Tool: Convert encoded diagrams back to source code
+- **Visual Editor**: WYSIWYG editing for diagramsnet diagrams with bidirectional sync
 - Zoom and Pan Controls: Interactive viewing for large diagrams
   - Mouse Controls: Wheel to zoom, click-drag to pan, double-click to reset
   - Touch Controls: Pinch to zoom, single-finger drag to pan
@@ -797,6 +850,7 @@ DocCode is built with a modular architecture for maintainability and extensibili
   - `zoomPan.js` - Interactive image viewing controls
   - `fullscreen.js` - Fullscreen mode functionality
   - `search.js` - Code search and navigation
+  - `drawioIntegration.js` - Visual editor integration for diagramsnet diagrams
 - [`demoSite/css/`](demoSite/css/) - Modular CSS with theme support
 - [`demoSite/examples/`](demoSite/examples/) - Example diagram code for each format
 

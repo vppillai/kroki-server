@@ -105,6 +105,7 @@ import {
 
 // UI features
 import { initializeZoomPan } from './modules/zoomPan.js';
+import DrawioIntegration from './modules/drawioIntegration.js';
 import {
     showSearchBar,
     hideSearchBar,
@@ -178,6 +179,21 @@ function handleManualRefresh() {
 }
 
 /**
+ * Update Draw.io button visibility based on current diagram type
+ * @private
+ */
+function updateDrawioButtonVisibility() {
+    const drawioEditBtn = document.getElementById('drawio-edit-btn');
+    if (drawioEditBtn) {
+        if (DrawioIntegration.shouldShowDrawioButton()) {
+            drawioEditBtn.style.display = 'inline-flex';
+        } else {
+            drawioEditBtn.style.display = 'none';
+        }
+    }
+}
+
+/**
  * Initialize auto-refresh functionality
  * @private
  */
@@ -242,6 +258,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Then process URL parameters to set up initial state
     processUrlParameters();
 
+    // Update Draw.io button visibility after URL processing
+    updateDrawioButtonVisibility();
+
     // Initialize UI components
     initializeLineNumbers();
     initializeResizeHandle();
@@ -265,6 +284,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize auto-refresh functionality
     initializeAutoRefresh();
 
+    // Initialize Draw.io integration
+    window.drawioIntegration = new DrawioIntegration();
+
     // Initialize settings button
     const settingsBtn = document.getElementById('settings-btn');
     if (settingsBtn) {
@@ -278,6 +300,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } else {
         console.error('Settings button not found in DOM');
+    }
+
+    // Setup Draw.io edit button
+    const drawioEditBtn = document.getElementById('drawio-edit-btn');
+    if (drawioEditBtn) {
+        drawioEditBtn.addEventListener('click', () => {
+            window.drawioIntegration.openModal();
+        });
+    } else {
+        console.error('Draw.io edit button not found in DOM');
     }
 
     // Initialize configuration system
@@ -472,6 +504,9 @@ document.getElementById('diagramType').addEventListener('change', async function
     const currentCode = codeTextarea.value;
 
     updateFormatDropdown();
+    
+    // Update Draw.io button visibility
+    updateDrawioButtonVisibility();
     
     // Handle URL updates based on request method
     const shouldUpdateUrl = !shouldUsePostForCurrentDiagram();

@@ -221,13 +221,16 @@ def ai_assist():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    """Get server AI configuration (without sensitive data)"""
+    """Get server AI and Draw.io configuration (without sensitive data)"""
     config = {
         'ai': {
             'enabled': DEFAULT_AI_CONFIG['enabled'],
             'has_api_key': bool(DEFAULT_AI_CONFIG['api_key']),
             'model': DEFAULT_AI_CONFIG['model'],
             'timeout': DEFAULT_AI_CONFIG['timeout']
+        },
+        'drawio': {
+            'server_url': os.environ.get('DRAWIO_SERVER_URL', 'https://embed.diagrams.net/')
         }
     }
     return jsonify(config)
