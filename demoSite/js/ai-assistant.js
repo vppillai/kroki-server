@@ -16,6 +16,9 @@
  * - CONFIGURATION METHODS: Settings and configuration
  */
 
+// Configuration constants
+const AI_MAX_TOKENS = 16000; // Token limit for AI responses
+
 class AIAssistant {
     /**
      * Create new AI Assistant instance
@@ -995,10 +998,10 @@ class AIAssistant {
 
             if (aiConfig.useCustomAPI && aiConfig.endpoint && aiConfig.apiKey) {
                 // Use custom API endpoint
-                rawResponseContent = await this.callCustomAPI(prompt, aiConfig);
+                rawResponseContent = await this.callCustomAPI(prompt, aiConfig, diagramType);
             } else {
                 // Use proxy backend
-                rawResponseContent = await this.callProxyAPI(prompt, aiConfig);
+                rawResponseContent = await this.callProxyAPI(prompt, aiConfig, diagramType);
             }
 
             if (rawResponseContent.error) {
@@ -1386,9 +1389,10 @@ class AIAssistant {
      * Call custom API endpoint
      * @param {string|Object} prompt - Prompt to send
      * @param {Object} config - API configuration
+     * @param {string} diagramType - Type of diagram for token sizing
      * @returns {Object} API response
      */
-    async callCustomAPI(prompt, config) {
+    async callCustomAPI(prompt, config, diagramType = 'plantuml') {
         const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
@@ -1408,7 +1412,7 @@ class AIAssistant {
             const body = {
                 model: config.model === 'custom' ? config.customModel : config.model,
                 messages: messages,
-                max_tokens: 2000,
+                max_tokens: AI_MAX_TOKENS,
                 temperature: 0.7
             };
 
@@ -1461,9 +1465,10 @@ class AIAssistant {
      * Call proxy API backend
      * @param {string|Object} prompt - Prompt to send
      * @param {Object} config - API configuration
+     * @param {string} diagramType - Type of diagram for token sizing
      * @returns {Object} API response
      */
-    async callProxyAPI(prompt, config) {
+    async callProxyAPI(prompt, config, diagramType = 'plantuml') {
         const controller = this.currentAbortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
@@ -1490,7 +1495,8 @@ class AIAssistant {
                 body: JSON.stringify({
                     messages: messages,
                     model: config.model === 'custom' ? config.customModel : config.model,
-                    maxRetryAttempts: config.maxRetryAttempts
+                    maxRetryAttempts: config.maxRetryAttempts,
+                    max_tokens: AI_MAX_TOKENS
                 }),
                 signal: controller.signal
             });

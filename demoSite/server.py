@@ -49,6 +49,7 @@ HTTPS_PORT = int(os.environ.get('HTTPS_PORT', 8443))
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost')
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 AI_TIMEOUT = 30  # Default timeout for AI API requests
+AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 
 # Default AI configuration - can be overridden by environment variables
@@ -169,7 +170,7 @@ def ai_assist():
         ai_payload = {
             'model': model,
             'messages': data['messages'],
-            'max_tokens': data.get('max_tokens', 2000),
+            'max_tokens': data.get('max_tokens', AI_MAX_TOKENS),
             'temperature': data.get('temperature', 0.7)
         }
         
