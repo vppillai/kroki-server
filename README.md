@@ -98,7 +98,8 @@ The visual editor can be configured through environment variables in the `.env` 
 
 ```bash
 # Visual Editor Settings
-DRAWIO_SERVER_URL=https://localhost:8080/drawio   # Local Draw.io server URL
+DRAWIO_SERVER_URL="https://embed.diagrams.net/embed/"        # Public Draw.io service (default)
+# DRAWIO_SERVER_URL="https://your-server:port/drawio/embed/" # For self-hosted servers (see diagram-tools-hub)
 ```
 
 #### Technical Implementation
@@ -108,6 +109,21 @@ DRAWIO_SERVER_URL=https://localhost:8080/drawio   # Local Draw.io server URL
 - **Modal Interface**: Professional modal design with status indicators and controls
 - **State Management**: Preserves editor state and handles connection status
 - **Error Handling**: Graceful fallback and user-friendly error messages
+
+#### Local Draw.io Server Setup
+
+For users who prefer hosting their own Draw.io server instead of using the public service, consider using [diagram-tools-hub](https://github.com/vppillai/diagram-tools-hub) - a comprehensive Docker-based platform that provides:
+
+- **Multiple Diagram Tools**: Draw.io, Excalidraw, and TLDraw in one unified platform
+- **Collaborative Features**: Real-time multi-user editing with live cursors and automatic synchronization
+- **Easy Deployment**: Single Docker setup with automatic HTTPS and reverse proxy configuration
+- **Privacy & Security**: Completely local hosting with no external dependencies
+- **Simple Management**: Easy configuration and management through provided scripts
+
+To use with DocCode:
+1. Deploy diagram-tools-hub following their setup instructions
+2. Update your `.env` file: `DRAWIO_SERVER_URL="https://your-server:port/drawio/embed/"`
+3. Restart DocCode services: `./setup-kroki-server.sh restart`
 
 #### Benefits
 

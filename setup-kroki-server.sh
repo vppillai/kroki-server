@@ -12,29 +12,12 @@ CUSTOM_CERT_KEY=""
 CUSTOM_CERT_CRT=""
 
 # Load environment variables
-# Function to display help message
-show_help() {
-    echo "Usage: $0 [options] {start|stop|restart|status|logs|clean|health}"
-    echo ""
-    echo "Options:"
-    echo "  --hostname <n>  Set the hostname for SSL certificate and Nginx config"
-    echo "  --cert <path>      Path to SSL certificate file"
-    echo "  --key <path>       Path to SSL private key file"
-    echo "  --help             Show this help message"
-    echo ""
-    echo "Commands:"
-    echo "  start    - Start the Kroki server"
-    echo "  stop     - Stop all services"
-    echo "  restart  - Restart all services"
-    echo "  status   - Show status of services"
-    echo "  logs     - Show logs from all services"
-    echo "  clean    - Remove all containers, images, and generated files"
-    echo "  health   - Run health checks on all configured hostname/port combinations"
-}
+# Function to display help message (removed duplicate - using detailed version below)
 
 # Load configuration from .env file if it exists
 if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a
+    # shellcheck source=.env
     source "${SCRIPT_DIR}/.env"
     set +a
     echo "Loaded configuration from .env file"
@@ -266,7 +249,7 @@ check_services() {
     
     echo "Checking if services are up and running..."
     while [ $attempt -le $max_attempts ]; do
-        if curl -k -s -o /dev/null -w "%{http_code}" https://${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT} | grep -q "200"; then
+        if curl -k -s -o /dev/null -w "%{http_code}" "https://${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT}" | grep -q "200"; then
             echo "Services are up and running!"
             return 0
         fi
@@ -284,6 +267,10 @@ health_check_all() {
     echo "Performing comprehensive health check on all configured endpoints..."
     local total_tests=0
     local successful_tests=0
+    
+    # Define arrays for hostnames and ports
+    local HOSTNAMES=("${DEFAULT_HOSTNAME:-localhost}")
+    local HTTPS_PORTS=("${DEFAULT_HTTPS_PORT:-8443}")
     
     for hostname in "${HOSTNAMES[@]}"; do
         for https_port in "${HTTPS_PORTS[@]}"; do
