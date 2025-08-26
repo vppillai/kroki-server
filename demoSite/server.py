@@ -52,14 +52,41 @@ AI_TIMEOUT = 30  # Default timeout for AI API requests
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 
+# AI Configuration (Always uses proxy - LiteLLM, OpenRouter, etc.)
+AI_PROXY_URL = os.environ.get("AI_PROXY_URL", "https://openrouter.ai/api/v1")
+AI_PROXY_API_KEY = os.environ.get('AI_PROXY_API_KEY', '')
+AI_PROXY_NAME = os.environ.get('AI_PROXY_NAME', 'AI Proxy')
+
 # Default AI configuration - can be overridden by environment variables
 DEFAULT_AI_CONFIG = {
-    'endpoint': os.environ.get('AI_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
-    'api_key': os.environ.get('AI_API_KEY', ''),
-    'model': os.environ.get('AI_MODEL', 'gpt-4o'),
+    'proxy_url': AI_PROXY_URL,
+    'api_key': AI_PROXY_API_KEY,
+    'model': os.environ.get('AI_MODEL', 'openai/gpt-4o'),
     'timeout': int(os.environ.get('AI_TIMEOUT', AI_TIMEOUT)),
     'enabled': os.environ.get('AI_ENABLED', 'true').lower() == 'true'
 }
+
+# Load available models from JSON configuration file
+def load_available_models():
+    """Load AI models from external JSON configuration file"""
+    models_file = os.path.join(os.path.dirname(__file__), 'ai-models.json')
+    try:
+        with open(models_file, 'r') as f:
+            models = json.load(f)
+            logger.info(f"Successfully loaded {len(models)} provider categories from ai-models.json")
+            return models
+    except Exception as e:
+        logger.warning(f"Could not load ai-models.json: {e}. Using fallback models.")
+        # Fallback models in case file is missing
+        return {
+            'openai': {
+                'gpt-4o': {'name': 'GPT-4o', 'provider': 'OpenAI', 'context': '128k', 'cost': 'high'},
+                'gpt-4o-mini': {'name': 'GPT-4o Mini', 'provider': 'OpenAI', 'context': '128k', 'cost': 'low'},
+                'gpt-3.5-turbo': {'name': 'GPT-3.5 Turbo', 'provider': 'OpenAI', 'context': '16k', 'cost': 'low'}
+            }
+        }
+
+AVAILABLE_MODELS = load_available_models()
 
 # Default prompt templates - configurable via environment
 DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are an expert diagram assistant for the Kroki diagram server. You help users create, modify, and troubleshoot diagrams.
@@ -105,6 +132,67 @@ def get_ai_prompts():
         logger.error(f"Error getting AI prompts: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/api/available-models', methods=['GET'])
+def get_available_models():
+    """Get list of available AI models with metadata"""
+    try:
+        if not validate_origin(request):
+            return jsonify({'error': 'Unauthorized origin'}), 403
+        
+        # Return all models from JSON file (no filtering)
+        return jsonify({
+            'models': AVAILABLE_MODELS,
+            'proxy_url': AI_PROXY_URL,
+            'proxy_name': AI_PROXY_NAME,
+            'default_model': DEFAULT_AI_CONFIG['model']
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting available models: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/validate-model', methods=['POST'])
+def validate_model():
+    """Validate if a specific model is available"""
+    try:
+        if not validate_origin(request):
+            return jsonify({'error': 'Unauthorized origin'}), 403
+        
+        data = request.get_json()
+        model_name = data.get('model')
+        
+        if not model_name:
+            return jsonify({'error': 'Model name is required'}), 400
+        
+        # Build a flat list of all allowed models from the JSON configuration
+        allowed_models = {}
+        for provider_models in AVAILABLE_MODELS.values():
+            allowed_models.update(provider_models)
+        
+        # Check if the requested model is in our allowed list
+        if model_name not in allowed_models:
+            logger.warning(f"Model validation failed for '{model_name}' - not in allowed models list. Request from: {request.remote_addr}")
+            return jsonify({
+                'valid': False,
+                'error': f'Model "{model_name}" is not supported. Please select from available models.'
+            }), 400
+        
+        model_info = allowed_models[model_name]
+        logger.info(f"Model validation successful for '{model_name}'")
+        
+        # Return model as valid since it's in the JSON (no proxy validation)
+        return jsonify({
+            'valid': True,
+            'model_info': model_info,
+            'note': 'Model found in configuration - validation at deployment time'
+        })
+    
+    except Exception as e:
+        logger.error(f"Error validating model: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Removed proxy validation functions - models are curated at deployment time via JSON
+
 # Removed complex validation endpoint - frontend will handle validation via diagram rendering
 
 def validate_origin(request):
@@ -149,18 +237,46 @@ def ai_assist():
         
         # Extract configuration from request or use defaults
         config = data.get('config', {})
-        endpoint = config.get('endpoint', DEFAULT_AI_CONFIG['endpoint'])
-        api_key = config.get('api_key', DEFAULT_AI_CONFIG['api_key'])
-        model = config.get('model', DEFAULT_AI_CONFIG['model'])
+        model = data.get('model', DEFAULT_AI_CONFIG['model'])  # Get model from top-level, not from config
         timeout = config.get('timeout', DEFAULT_AI_CONFIG['timeout'])
         
-        if not api_key:
-            return jsonify({'error': 'API key not configured'}), 400
+        # Validate model against allowed models from JSON to prevent model injection
+        if model:
+            # Build a flat list of all allowed models from the JSON configuration
+            allowed_models = []
+            for provider_models in AVAILABLE_MODELS.values():
+                allowed_models.extend(provider_models.keys())
+            
+            # Check if the requested model is in our allowed list
+            if model not in allowed_models:
+                logger.warning(f"Model injection attempt detected: '{model}' not in allowed models list. Request from: {request.remote_addr}")
+                return jsonify({'error': f'Model "{model}" is not supported. Please select from available models.'}), 400
+            
+            logger.info(f"Validated model '{model}' against allowed models list")
+        else:
+            # If no model provided, use default (which should also be validated)
+            if DEFAULT_AI_CONFIG['model'] not in [model_id for provider_models in AVAILABLE_MODELS.values() for model_id in provider_models.keys()]:
+                logger.error(f"Default model '{DEFAULT_AI_CONFIG['model']}' is not in allowed models list")
+                return jsonify({'error': 'Server configuration error: default model not supported'}), 500
         
-        if not endpoint:
-            return jsonify({'error': 'AI endpoint not configured'}), 400
+        # Use backend proxy by default, allow user config override
+        use_custom_api = config.get('use_custom_api', False)
         
-        # Prepare headers for AI API request
+        if use_custom_api and config.get('endpoint') and config.get('api_key'):
+            # Use user-provided direct API configuration
+            endpoint = config.get('endpoint')
+            api_key = config.get('api_key')
+            logger.info(f"Using user-configured direct API: {endpoint}")
+        else:
+            # Use backend proxy (default, recommended)
+            endpoint = f"{AI_PROXY_URL}/chat/completions"
+            api_key = AI_PROXY_API_KEY
+            
+            if not api_key:
+                return jsonify({'error': 'Backend proxy API key not configured'}), 400
+            
+            logger.info(f"Using backend proxy: {endpoint}")
+        
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {api_key}'

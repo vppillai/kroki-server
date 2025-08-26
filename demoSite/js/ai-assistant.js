@@ -130,7 +130,7 @@ class AIAssistant {
                     </svg>
                     <div class="ai-title-content">
                         <span>AI Assistant <span class="ai-beta-badge">BETA</span></span>
-                        <span class="ai-backend-indicator" id="ai-backend-indicator"></span>
+                        <button class="ai-model-indicator" id="ai-model-indicator" title="Click to change AI model"></button>
                     </div>
                 </div>
                 <div class="ai-chat-controls">
@@ -189,7 +189,7 @@ class AIAssistant {
         this.chatStatus = this.chatWindow.querySelector('#ai-chat-status');
         this.chatResizeHandle = this.chatWindow.querySelector('#ai-chat-resize-handle');
         this.chatInputContainer = this.chatWindow.querySelector('.ai-chat-input-container');
-        this.backendIndicator = this.chatWindow.querySelector('#ai-backend-indicator');
+        this.modelIndicator = this.chatWindow.querySelector('#ai-model-indicator');
 
         // Validate that all elements were found
         if (!this.chatMessages || !this.chatInput || !this.chatSend || !this.chatStatus || !this.chatResizeHandle) {
@@ -224,6 +224,9 @@ class AIAssistant {
         this.chatWindow.querySelector('.ai-chat-close').addEventListener('click', () => this.closeChat());
         this.chatWindow.querySelector('.ai-chat-minimize').addEventListener('click', () => this.minimizeChat());
         this.chatWindow.querySelector('.ai-chat-settings').addEventListener('click', () => this.openSettings());
+        
+        // Model indicator click to open AI settings
+        this.chatWindow.querySelector('.ai-model-indicator').addEventListener('click', () => this.openAISettings());
 
         // Send message
         this.chatSend.addEventListener('click', () => {
@@ -454,8 +457,8 @@ class AIAssistant {
         // Position chat window near the button initially
         this.positionChatWindow();
 
-        // Update backend indicator
-        this.updateBackendIndicator();
+        // Update model indicator
+        this.updateModelIndicator();
 
         this.chatInput.focus();
 
@@ -920,12 +923,32 @@ class AIAssistant {
             return;
         }
 
-        // Check configuration based on mode
+        // Validate selected model
+        const selectedModel = aiConfig.model === 'custom' ? aiConfig.customModel : aiConfig.model;
+        if (!selectedModel) {
+            this.addMessage('system', '⚠️ No AI model selected. Please choose a model in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
+            return;
+        }
+
+        // Validate configuration based on mode
         if (aiConfig.useCustomAPI) {
             if (!aiConfig.endpoint || !aiConfig.apiKey) {
-                this.addMessage('system', '⚠️ Custom API configuration is incomplete. Please set up your API endpoint and key in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
+                this.addMessage('system', '⚠️ Direct API configuration is incomplete. Please set up your API endpoint and key in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
                 return;
             }
+        }
+        // Backend proxy mode requires no user configuration - it uses server config
+
+        // Validate model availability (always try to validate)
+        try {
+            const isValidModel = await this.validateModel(selectedModel);
+            if (!isValidModel) {
+                this.addMessage('system', `⚠️ Model "${selectedModel}" is not available. Please select a different model in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.`, true);
+                return;
+            }
+        } catch (error) {
+            console.warn('Model validation failed:', error);
+            // Continue anyway - validation failure shouldn't block the request
         }
 
         try {
@@ -997,10 +1020,10 @@ class AIAssistant {
             }
 
             if (aiConfig.useCustomAPI && aiConfig.endpoint && aiConfig.apiKey) {
-                // Use custom API endpoint
+                // Use direct API endpoint
                 rawResponseContent = await this.callCustomAPI(prompt, aiConfig, diagramType);
             } else {
-                // Use proxy backend
+                // Use backend proxy (default)
                 rawResponseContent = await this.callProxyAPI(prompt, aiConfig, diagramType);
             }
 
@@ -1496,7 +1519,13 @@ class AIAssistant {
                     messages: messages,
                     model: config.model === 'custom' ? config.customModel : config.model,
                     maxRetryAttempts: config.maxRetryAttempts,
-                    max_tokens: AI_MAX_TOKENS
+                    max_tokens: AI_MAX_TOKENS,
+                    config: {
+                        use_custom_api: config.useCustomAPI,
+                        endpoint: config.endpoint,
+                        api_key: config.apiKey,
+                        timeout: config.timeout
+                    }
                 }),
                 signal: controller.signal
             });
@@ -1594,7 +1623,7 @@ class AIAssistant {
         let systemPrompt = promptTemplates.system || this.getDefaultSystemPrompt();
         let userPromptText;
 
-        if (useCustomAPI && userPromptTemplate) {
+        if (useCustomAPI && userPromptTemplate && userPromptTemplate.trim()) {
             userPromptText = userPromptTemplate;
         } else {
             userPromptText = promptTemplates.user || this.getDefaultUserPrompt();
@@ -1610,9 +1639,11 @@ class AIAssistant {
             .replace(/\{\{userPrompt\}\}/g, userPrompt);
 
         if (!useCustomAPI) {
+            // Backend proxy expects simple string format
             return `${systemPrompt}\n\n${userPromptText}`;
         }
 
+        // Direct API expects structured format
         return {
             system: systemPrompt,
             user: userPromptText
@@ -1696,6 +1727,64 @@ Please provide the updated or new diagram code in a code block, along with a bri
     }
 
     // ========================================
+    // VALIDATION METHODS
+    // ========================================
+
+    /**
+     * Validate if a model is available/supported
+     * @param {string} modelName - Name of the model to validate
+     * @returns {Promise<boolean>} True if model is valid
+     */
+    async validateModel(modelName) {
+        if (!modelName) return false;
+        
+        try {
+            const response = await fetch('/api/validate-model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Origin': window.location.origin
+                },
+                body: JSON.stringify({ model: modelName })
+            });
+
+            if (!response.ok) {
+                return false;
+            }
+
+            const result = await response.json();
+            return result.valid === true;
+        } catch (error) {
+            console.error('Model validation error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Get list of available models from backend
+     * @returns {Promise<Object>} Available models data
+     */
+    async getAvailableModels() {
+        try {
+            const response = await fetch('/api/available-models', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Origin': window.location.origin
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Failed to get available models:', error);
+            throw error;
+        }
+    }
+
+    // ========================================
     // CONFIGURATION METHODS
     // ========================================
 
@@ -1720,7 +1809,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
                     useCustomAPI: aiConfig.useCustomAPI !== undefined ? aiConfig.useCustomAPI : false,
                     endpoint: aiConfig.endpoint || '',
                     apiKey: aiConfig.apiKey || '',
-                    model: aiConfig.model || 'gpt-4o',
+                    model: aiConfig.model || 'openai/gpt-4o',
                     customModel: aiConfig.customModel || '',
                     maxRetryAttempts: aiConfig.maxRetryAttempts !== undefined ? aiConfig.maxRetryAttempts : 3,
                     userPromptTemplate: aiConfig.userPromptTemplate || '',
@@ -1736,7 +1825,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
             useCustomAPI: false,
             endpoint: '',
             apiKey: '',
-            model: 'gpt-4o',
+            model: 'openai/gpt-4o',
             customModel: '',
             maxRetryAttempts: 3,
             userPromptTemplate: '',
@@ -1751,17 +1840,51 @@ Please provide the updated or new diagram code in a code block, along with a bri
     loadConfiguration() {
         if (window.configManager) {
             this.applyConfiguration();
+            this.setupConfigurationListeners();
         } else {
             document.addEventListener('configSystemReady', () => {
                 this.applyConfiguration();
+                this.setupConfigurationListeners();
             });
         }
+    }
+
+    /**
+     * Set up listeners for configuration changes
+     */
+    setupConfigurationListeners() {
+        // Listen for AI configuration changes
+        if (this.configManager && typeof this.configManager.on === 'function') {
+            this.configManager.on('change', (key) => {
+                if (key.startsWith('ai.')) {
+                    this.updateModelIndicator();
+                }
+            });
+        }
+
+        // Also listen for custom events from the config UI
+        document.addEventListener('aiConfigChanged', () => {
+            this.updateModelIndicator();
+        });
     }
 
     /**
      * Open settings dialog
      */
     openSettings() {
+        if (window.configUI) {
+            window.configUI.open();
+            window.configUI.switchTab('ai');
+        } else {
+            console.warn('Configuration UI not available yet');
+            this.addMessage('system', '⚠️ Settings are loading. Please try again in a moment.');
+        }
+    }
+
+    /**
+     * Open AI settings dialog directly
+     */
+    openAISettings() {
         if (window.configUI) {
             window.configUI.open();
             window.configUI.switchTab('ai');
@@ -1789,7 +1912,7 @@ Please provide the updated or new diagram code in a code block, along with a bri
             const aiConfig = this.getAIConfig();
             this.maxRetryAttempts = aiConfig.maxRetryAttempts;
 
-            this.updateBackendIndicator();
+            this.updateModelIndicator();
 
         } catch (error) {
             console.warn('AI Assistant: Error applying configuration:', error);
@@ -1797,39 +1920,88 @@ Please provide the updated or new diagram code in a code block, along with a bri
     }
 
     /**
-     * Update backend indicator based on current configuration
+     * Update model indicator to show current AI model
      */
-    updateBackendIndicator() {
-        if (!this.backendIndicator) return;
+    updateModelIndicator() {
+        if (!this.modelIndicator) return;
 
         // Ensure configManager is available before calling getAIConfig
         const manager = this.getConfigManager();
         if (!manager) {
-            console.warn("AI Assistant: Config manager not available for updateBackendIndicator.");
-            this.backendIndicator.textContent = 'Config Loading...';
-            this.backendIndicator.className = 'ai-backend-indicator loading';
+            console.warn("AI Assistant: Config manager not available for updateModelIndicator.");
+            this.modelIndicator.textContent = '...';
+            this.modelIndicator.className = 'ai-model-indicator loading';
             return;
         }
 
         try {
             const config = this.getAIConfig();
-            if (config.useCustomAPI && config.endpoint && config.apiKey) {
-                // Show model name and user settings indicator when using custom API
-                let modelName = config.model || 'Unknown';
-                if (config.model === 'custom' && config.customModel) {
-                    modelName = config.customModel;
-                }
-                this.backendIndicator.textContent = `${modelName} (Custom)`;
-                this.backendIndicator.className = 'ai-backend-indicator custom';
+            let modelName = config.model || 'openai/gpt-4o';
+            let displayName = modelName;
+            let sourceIcon = '';
+            
+            // Handle custom model names
+            if (config.model === 'custom' && config.customModel) {
+                modelName = config.customModel;
+                displayName = this.getShortModelName(modelName);
             } else {
-                this.backendIndicator.textContent = 'Server Backend';
-                this.backendIndicator.className = 'ai-backend-indicator default';
+                displayName = this.getShortModelName(modelName);
             }
+            
+            // Add source indicator
+            if (config.useCustomAPI && config.endpoint && config.apiKey) {
+                sourceIcon = '🔑'; // Direct API
+            } else {
+                sourceIcon = '🌐'; // Backend proxy (default)
+            }
+            
+            this.modelIndicator.innerHTML = `${sourceIcon} ${displayName}`;
+            this.modelIndicator.className = `ai-model-indicator ${config.useCustomAPI ? 'custom' : 'proxy'}`;
+            this.modelIndicator.title = `Current model: ${modelName}${config.useCustomAPI ? ' (Direct API)' : ' (Backend Proxy)'}`;
+            
         } catch (error) {
-            console.warn("AI Assistant: Error updating backend indicator:", error);
-            this.backendIndicator.textContent = 'Config Error';
-            this.backendIndicator.className = 'ai-backend-indicator error';
+            console.warn("AI Assistant: Error updating model indicator:", error);
+            this.modelIndicator.textContent = '⚠️';
+            this.modelIndicator.className = 'ai-model-indicator error';
+            this.modelIndicator.title = 'Error loading model information';
         }
+    }
+
+    /**
+     * Get a shortened display name for a model
+     * @param {string} modelName - Full model name
+     * @returns {string} Shortened model name
+     */
+    getShortModelName(modelName) {
+        const shortNames = {
+            'gpt-4o': 'GPT-4o',
+            'gpt-4o-mini': 'GPT-4o Mini',
+            'gpt-4-turbo': 'GPT-4 Turbo',
+            'gpt-4': 'GPT-4',
+            'gpt-3.5-turbo': 'GPT-3.5',
+            'o1-preview': 'O1 Preview',
+            'o1-mini': 'O1 Mini',
+            'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
+            'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
+            'claude-3-opus-20240229': 'Claude 3 Opus',
+            'claude-3-sonnet-20240229': 'Claude 3 Sonnet',
+            'claude-3-haiku-20240307': 'Claude 3 Haiku',
+            'gemini-1.5-pro': 'Gemini 1.5 Pro',
+            'gemini-1.5-flash': 'Gemini 1.5 Flash',
+            'gemini-1.0-pro': 'Gemini 1.0 Pro',
+            'llama-3.1-405b': 'Llama 3.1 405B',
+            'llama-3.1-70b': 'Llama 3.1 70B',
+            'llama-3.1-8b': 'Llama 3.1 8B',
+            'mistral-large': 'Mistral Large',
+            'mistral-medium': 'Mistral Medium',
+            'mistral-small': 'Mistral Small',
+            'openrouter/auto': 'OpenRouter Auto',
+            'anthropic/claude-3.5-sonnet': 'Claude 3.5 Sonnet',
+            'openai/gpt-4o': 'GPT-4o',
+            'meta-llama/llama-3.1-8b-instruct:free': 'Llama 3.1 8B (Free)'
+        };
+        
+        return shortNames[modelName] || modelName.split('/').pop() || modelName;
     }
 
     /**

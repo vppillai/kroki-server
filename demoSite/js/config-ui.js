@@ -312,21 +312,56 @@ class ConfigUI {
                             </div>
                             
                             <div class="config-section">
+                                <h4 class="config-section-title">Model Selection</h4>
+                                <div class="config-group">
+                                    <div class="config-field">
+                                        <label class="config-label">AI Model</label>
+                                        <div class="model-selection-container">
+                                            <select class="config-select" data-config="ai.model" id="ai-model-select">
+                                                <option value="">Loading models...</option>
+                                            </select>
+                                            <button type="button" class="refresh-models-btn" id="refresh-models-btn" title="Refresh available models">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M23 4v6h-6"/>
+                                                    <path d="M1 20v-6h6"/>
+                                                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10"/>
+                                                    <path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="config-description" id="model-description">Choose the AI model to use for diagram assistance</div>
+                                        <div class="backend-service-info" id="backend-service-info">
+                                            <div class="backend-service-indicator">
+                                                <span class="backend-service-icon">🌐</span>
+                                                <span class="backend-service-text">Backend Service: <span id="backend-service-url">Loading...</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="config-field" id="custom-model-field" style="display: none;">
+                                        <label class="config-label">Custom Model Name</label>
+                                        <input type="text" class="config-input" data-config="ai.customModel" placeholder="Enter custom model name">
+                                        <div class="config-description">Specify the exact model name for custom models</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
                                 <h4 class="config-section-title">API Configuration</h4>
                                 <div class="config-group">
                                     <div class="config-field config-field-horizontal">
                                         <label class="config-label config-checkbox">
                                             <input type="checkbox" data-config="ai.useCustomAPI" id="ai-use-custom-api">
                                             <span class="config-checkbox-mark"></span>
-                                            <span class="config-checkbox-label">Use Custom API Configuration</span>
+                                            <span class="config-checkbox-label">Use Direct API (Override Backend Proxy)</span>
                                         </label>
-                                        <div class="config-description">Enable to configure your own AI API endpoint and key. Otherwise, the default backend proxy will be used.</div>
+                                        <div class="config-description">Enable to use direct API calls from frontend. By default, the backend proxy is used (recommended).</div>
                                     </div>
                                     
                                     <div class="config-field" data-depends="ai.useCustomAPI">
-                                        <label class="config-label">AI Endpoint URL</label>
+                                        <label class="config-label">AI API URL</label>
                                         <input type="text" class="config-input" data-config="ai.endpoint" placeholder="https://api.openai.com/v1/chat/completions">
-                                        <div class="config-description">API endpoint for AI chat completions</div>
+                                        <div class="config-description">Direct API endpoint for AI chat completions</div>
                                     </div>
                                     
                                     <div class="config-field" data-depends="ai.useCustomAPI">
@@ -342,30 +377,7 @@ class ConfigUI {
                                                 </svg>
                                             </button>
                                         </div>
-                                        <div class="config-description">Your API key for the AI service</div>
-                                    </div>
-                                    
-                                    <div class="config-field" data-depends="ai.useCustomAPI">
-                                        <label class="config-label">AI Model</label>
-                                        <select class="config-select" data-config="ai.model">
-                                            <option value="gpt-4.1">GPT-4.1</option>
-                                            <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                                            <option value="gpt-4.1-nano">GPT-4.1 Nano</option>
-                                            <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
-                                            <option value="gpt-4o">GPT-4o</option>
-                                            <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                            <option value="o4-mini">O4 Mini</option>
-                                            <option value="o3">O3</option>
-                                            <option value="o3-mini">O3 Mini</option>
-                                            <option value="custom">Custom</option>
-                                        </select>
-                                        <div class="config-description">Choose the AI model to use for diagram assistance</div>
-                                    </div>
-                                    
-                                    <div class="config-field" data-depends="ai.useCustomAPI" id="custom-model-field" style="display: none;">
-                                        <label class="config-label">Custom Model Name</label>
-                                        <input type="text" class="config-input" data-config="ai.customModel" placeholder="Enter custom model name">
-                                        <div class="config-description">Specify the exact model name for custom models</div>
+                                        <div class="config-description">Your direct API key</div>
                                     </div>
                                 </div>
                             </div>
@@ -399,7 +411,7 @@ class ConfigUI {
                                             rows="6"
                                             placeholder="Use {{diagramType}}, {{currentCode}}, and {{userPrompt}} as placeholders"
                                         ></textarea>
-                                        <div class="config-description">Template for AI prompts. Only available when using custom API configuration.</div>
+                                        <div class="config-description">Template for AI prompts. Only available when using direct API calls.</div>
                                     </div>
                                 </div>
                             </div>
@@ -703,6 +715,7 @@ class ConfigUI {
         const customApiCheckbox = document.getElementById('ai-use-custom-api');
         const modelSelect = document.querySelector('[data-config="ai.model"]');
         const customModelField = document.getElementById('custom-model-field');
+        const refreshModelsBtn = document.getElementById('refresh-models-btn');
 
         // Handle custom API checkbox change
         if (customApiCheckbox) {
@@ -720,8 +733,217 @@ class ConfigUI {
             });
         }
 
+        // Handle refresh models button
+        if (refreshModelsBtn) {
+            refreshModelsBtn.addEventListener('click', () => {
+                this.loadAvailableModels(true);
+            });
+        }
+
+        // Load available models on initialization
+        this.loadAvailableModels();
+
         // Initial setup
         this.toggleDependentFields();
+    }
+
+    async loadAvailableModels(forceRefresh = false) {
+        const modelSelect = document.getElementById('ai-model-select');
+        const refreshBtn = document.getElementById('refresh-models-btn');
+        const modelDescription = document.getElementById('model-description');
+
+        if (!modelSelect) return;
+
+        // Show loading state
+        if (refreshBtn) {
+            refreshBtn.style.opacity = '0.5';
+            refreshBtn.disabled = true;
+        }
+
+        try {
+            const response = await fetch('/api/available-models', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Origin': window.location.origin
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            this.populateModelSelect(modelSelect, data);
+
+            // Update description  
+            if (modelDescription) {
+                modelDescription.textContent = 'Choose the AI model to use for diagram assistance';
+            }
+            
+            // Update backend service info
+            this.updateBackendServiceInfo(data);
+
+        } catch (error) {
+            console.error('Failed to load available models:', error);
+            this.populateModelSelectFallback(modelSelect);
+            
+            if (modelDescription) {
+                modelDescription.textContent = 'Choose the AI model to use for diagram assistance (using fallback list)';
+            }
+            
+            // Update backend service info with fallback message
+            this.updateBackendServiceInfo(null);
+        } finally {
+            // Restore button state
+            if (refreshBtn) {
+                refreshBtn.style.opacity = '1';
+                refreshBtn.disabled = false;
+            }
+        }
+    }
+
+    populateModelSelect(selectElement, data) {
+        // Clear existing options
+        selectElement.innerHTML = '';
+
+        // Get current config value
+        const currentModel = this.configManager.get('ai.model') || data.default_model || 'openai/gpt-4o';
+        
+        // Add models by provider - show everything from JSON
+        const models = data.models;
+        for (const [provider, providerModels] of Object.entries(models)) {
+            if (Object.keys(providerModels).length === 0) continue;
+
+            // Create optgroup for provider
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider.charAt(0).toUpperCase() + provider.slice(1);
+            
+            // Add all models for this provider (no filtering)
+            for (const [modelId, modelInfo] of Object.entries(providerModels)) {
+                const option = document.createElement('option');
+                option.value = modelId;
+                option.textContent = modelInfo.name;
+
+                // Select current model
+                if (modelId === currentModel) {
+                    option.selected = true;
+                }
+
+                optgroup.appendChild(option);
+            }
+
+            selectElement.appendChild(optgroup);
+        }
+
+        // Add custom option
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = 'Custom Model';
+        selectElement.appendChild(customOption);
+    }
+
+    populateModelSelectFallback(selectElement) {
+        // Enhanced fallback model list organized by provider
+        const fallbackModels = {
+            'OpenAI': [
+                { value: 'gpt-4o', text: 'GPT-4o' },
+                { value: 'gpt-4o-mini', text: 'GPT-4o Mini' },
+                { value: 'gpt-4-turbo', text: 'GPT-4 Turbo' },
+                { value: 'gpt-4', text: 'GPT-4' },
+                { value: 'gpt-3.5-turbo', text: 'GPT-3.5 Turbo' },
+                { value: 'o1-preview', text: 'O1 Preview' },
+                { value: 'o1-mini', text: 'O1 Mini' }
+            ],
+            'Anthropic': [
+                { value: 'claude-3-5-sonnet-20241022', text: 'Claude 3.5 Sonnet' },
+                { value: 'claude-3-5-haiku-20241022', text: 'Claude 3.5 Haiku' },
+                { value: 'claude-3-opus-20240229', text: 'Claude 3 Opus' },
+                { value: 'claude-3-sonnet-20240229', text: 'Claude 3 Sonnet' },
+                { value: 'claude-3-haiku-20240307', text: 'Claude 3 Haiku' }
+            ],
+            'Google': [
+                { value: 'gemini-1.5-pro', text: 'Gemini 1.5 Pro' },
+                { value: 'gemini-1.5-flash', text: 'Gemini 1.5 Flash' },
+                { value: 'gemini-1.0-pro', text: 'Gemini 1.0 Pro' }
+            ],
+            'Meta': [
+                { value: 'llama-3.1-405b', text: 'Llama 3.1 405B' },
+                { value: 'llama-3.1-70b', text: 'Llama 3.1 70B' },
+                { value: 'llama-3.1-8b', text: 'Llama 3.1 8B' }
+            ],
+            'Mistral': [
+                { value: 'mistral-large', text: 'Mistral Large' },
+                { value: 'mistral-medium', text: 'Mistral Medium' },
+                { value: 'mistral-small', text: 'Mistral Small' }
+            ],
+            'OpenRouter': [
+                { value: 'openrouter/auto', text: 'OpenRouter Auto' },
+                { value: 'anthropic/claude-3.5-sonnet', text: 'Claude 3.5 Sonnet (OR)' },
+                { value: 'openai/gpt-4o', text: 'GPT-4o (OR)' },
+                { value: 'meta-llama/llama-3.1-8b-instruct:free', text: 'Llama 3.1 8B (Free)' }
+            ]
+        };
+
+        selectElement.innerHTML = '';
+        
+        const currentModel = this.configManager.get('ai.model') || 'openai/gpt-4o';
+
+        // Add models by provider
+        for (const [provider, models] of Object.entries(fallbackModels)) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider;
+            
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.value;
+                option.textContent = model.text;
+                if (model.value === currentModel) {
+                    option.selected = true;
+                }
+                optgroup.appendChild(option);
+            });
+            
+            selectElement.appendChild(optgroup);
+        }
+        
+        // Add custom option
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = 'Custom Model';
+        if (currentModel === 'custom') {
+            customOption.selected = true;
+        }
+        selectElement.appendChild(customOption);
+    }
+
+    /**
+     * Update backend service information display
+     * @param {Object} data - Response data from available-models API
+     * @private
+     */
+    updateBackendServiceInfo(data) {
+        const backendServiceUrl = document.getElementById('backend-service-url');
+        if (!backendServiceUrl) return;
+
+        if (data && data.proxy_url) {
+            // Use configured proxy name from backend
+            let serviceName = data.proxy_name || 'AI Proxy';
+            let serviceUrl = data.proxy_url;
+            
+            try {
+                const url = new URL(serviceUrl);
+                backendServiceUrl.textContent = `${serviceName} (${url.hostname})`;
+                backendServiceUrl.title = serviceUrl;
+                
+            } catch (error) {
+                // If URL parsing fails, show the service name and raw URL
+                backendServiceUrl.textContent = `${serviceName} (${serviceUrl})`;
+                backendServiceUrl.title = serviceUrl;
+            }
+        } else {
+            backendServiceUrl.textContent = 'Unavailable';
+            backendServiceUrl.title = 'Backend service information not available';
+        }
     }
 
     /**
@@ -791,7 +1013,7 @@ class ConfigUI {
     }
 
     /**
-     * Toggle visibility of fields that depend on custom AI API configuration
+     * Toggle visibility of fields that depend on custom API configuration
      * Enables/disables fields based on the custom API checkbox state
      * 
      * @private
@@ -1019,9 +1241,25 @@ class ConfigUI {
      * 
      * @public
      */
-    reset() {
+    async reset() {
         if (confirm('Are you sure you want to reset all settings to their default values? This cannot be undone.')) {
-            this.configManager.reset();
+            // Fetch server defaults to get the configured AI model
+            let serverDefaults = {};
+            try {
+                const response = await fetch('/api/available-models');
+                if (response.ok) {
+                    const data = await response.json();
+                    serverDefaults = {
+                        ai: {
+                            model: data.default_model
+                        }
+                    };
+                }
+            } catch (error) {
+                console.warn('Could not fetch server defaults, using hardcoded defaults:', error);
+            }
+
+            this.configManager.reset(serverDefaults);
             this.loadCurrentConfig();
 
             // Reset zoom state to fit the current diagram

@@ -100,7 +100,7 @@ const DEFAULT_CONFIG = {
         useCustomAPI: false, // Use custom API instead of proxy
         endpoint: '', // Custom API endpoint (optional)
         apiKey: '', // Custom API key (optional)
-        model: 'gpt-4o', // AI model to use
+        model: 'openai/gpt-4o', // AI model to use (provider/model format for compatibility)
         customModel: '', // Custom model name when model = 'custom'
         maxRetryAttempts: 3, // Maximum retry attempts for failed requests
         autoValidate: true, // Auto-validate generated code
@@ -380,10 +380,17 @@ class ConfigManager {
      * Restores all settings to their default values and clears legacy storage
      * Notifies all listeners of the reset operation
      * 
+     * @param {Object} serverDefaults - Optional server-provided defaults to override hardcoded ones
      * @public
      */
-    reset() {
-        this.config = { ...DEFAULT_CONFIG };
+    reset(serverDefaults = {}) {
+        // Merge server defaults with hardcoded defaults
+        const effectiveDefaults = { ...DEFAULT_CONFIG };
+        if (serverDefaults.ai && serverDefaults.ai.model) {
+            effectiveDefaults.ai.model = serverDefaults.ai.model;
+        }
+        
+        this.config = { ...effectiveDefaults };
         this.save();
 
         // Clear old localStorage entries

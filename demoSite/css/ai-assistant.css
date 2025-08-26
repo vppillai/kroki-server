@@ -104,23 +104,57 @@
     gap: 2px;
 }
 
-.ai-backend-indicator {
+.ai-model-indicator {
     font-size: 10px;
     font-weight: 500;
-    padding: 2px 6px;
-    border-radius: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    position: relative;
 }
 
-.ai-backend-indicator.default {
-    background: rgba(34, 197, 94, 0.1);
-    color: rgb(34, 197, 94);
+.ai-model-indicator::before {
+    content: "⚙️";
+    font-size: 8px;
+    opacity: 0.7;
 }
 
-.ai-backend-indicator.custom {
+.ai-model-indicator.proxy {
+    background: var(--background-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.ai-model-indicator.custom {
     background: rgba(59, 130, 246, 0.1);
     color: rgb(59, 130, 246);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.ai-model-indicator:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.ai-model-indicator.custom:hover {
+    background: rgb(59, 130, 246);
+    color: white;
+    border-color: rgb(59, 130, 246);
+}
+
+.ai-model-indicator:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .ai-chat-title svg {
@@ -566,13 +600,37 @@
     background: rgba(59, 130, 246, 0.1) !important;
 }
 
-/* Loading States */
-.ai-backend-indicator.loading {
+/* Model Indicator States */
+.ai-model-indicator.loading {
     background: rgba(245, 158, 11, 0.1);
-    color: rgb(245, 158, 11);
+    color: rgb(180, 83, 9);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    animation: pulse 1.5s ease-in-out infinite;
 }
 
-.ai-backend-indicator.error {
+.ai-model-indicator.loading:hover {
+    background: rgb(245, 158, 11);
+    color: white;
+    border-color: rgb(245, 158, 11);
+}
+
+.ai-model-indicator.error {
     background: rgba(239, 68, 68, 0.1);
-    color: rgb(239, 68, 68);
+    color: rgb(185, 28, 28);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.ai-model-indicator.error:hover {
+    background: rgb(239, 68, 68);
+    color: white;
+    border-color: rgb(239, 68, 68);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }

@@ -1,5 +1,95 @@
 /* Configuration Settings Modal Styles */
 
+/* Model Selection Styles */
+.model-selection-container {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.model-selection-container select {
+    flex: 1;
+}
+
+.refresh-models-btn {
+    background: var(--button-secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xs);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.refresh-models-btn:hover {
+    background: var(--button-secondary-bg-hover);
+    color: var(--text-primary);
+    transform: rotate(90deg);
+}
+
+.refresh-models-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.refresh-models-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Backend service info styling */
+.backend-service-info {
+    margin-top: var(--spacing-xs);
+}
+
+.backend-service-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--background-tertiary);
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--accent-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.backend-service-icon {
+    font-size: 14px;
+}
+
+.backend-service-text {
+    font-weight: 500;
+}
+
+#backend-service-url {
+    color: var(--accent-color);
+    font-family: var(--font-family-mono);
+    font-weight: 600;
+}
+
+/* Optgroup styling */
+select optgroup {
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--background-secondary);
+}
+
+select option {
+    padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+select option:disabled {
+    color: var(--text-disabled);
+    font-style: italic;
+}
+
 .config-modal {
     display: none;
     position: fixed;

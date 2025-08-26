@@ -22,6 +22,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy application files
 COPY --chown=appuser:appgroup server.py .
+COPY --chown=appuser:appgroup ai-models.json .
 COPY --chown=appuser:appgroup index.html .
 COPY --chown=appuser:appgroup favicon.ico .
 COPY --chown=appuser:appgroup examples/ examples/
