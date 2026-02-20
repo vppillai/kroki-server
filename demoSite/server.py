@@ -54,6 +54,7 @@ STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 AI_TIMEOUT = 30  # Default timeout for AI API requests
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
+KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE', 1048576))  # Kroki backend body limit
 
 # AI Configuration (Always uses proxy - LiteLLM, OpenRouter, etc.)
 AI_PROXY_URL = os.environ.get("AI_PROXY_URL", "https://openrouter.ai/api/v1")
@@ -469,6 +470,9 @@ def get_config():
         },
         'drawio': {
             'server_url': os.environ.get('DRAWIO_SERVER_URL', 'https://embed.diagrams.net/')
+        },
+        'kroki': {
+            'maxBodySize': KROKI_MAX_BODY_SIZE
         }
     }
     return jsonify(config)

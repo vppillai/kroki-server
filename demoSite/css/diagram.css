@@ -185,3 +185,25 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
+
+.error-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+    transition: background 0.15s ease;
+}
+
+.error-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+}

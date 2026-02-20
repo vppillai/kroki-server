@@ -75,11 +75,10 @@ export function applyConfiguration() {
         updateAutoRefreshUI(autoRefreshConfig);
     }
 
-    // Apply editor configuration
-    const codeTextarea = document.getElementById('code');
-    if (codeTextarea) {
-        const fontSize = config.get('editor.fontSize');
-        codeTextarea.style.fontSize = `${fontSize}px`;
+    // Apply editor font size via CodeMirror bridge
+    const fontSize = config.get('editor.fontSize');
+    if (window.editor) {
+        window.editor.setFontSize(fontSize);
     }
 
     // Apply layout configuration
@@ -234,9 +233,8 @@ export function setupConfigurationListeners() {
 
     // Listen for editor font size changes
     config.addListener('editor.fontSize', (newValue) => {
-        const codeTextarea = document.getElementById('code');
-        if (codeTextarea) {
-            codeTextarea.style.fontSize = `${newValue}px`;
+        if (window.editor) {
+            window.editor.setFontSize(newValue);
         }
     });
 

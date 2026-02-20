@@ -162,10 +162,15 @@ export function initializeZoomPan() {
     // MOUSE EVENT HANDLERS
     // ========================================
 
-    // Mouse wheel zoom
+    // Mouse wheel zoom — scale proportionally to deltaY for smooth increments
     viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
-        const delta = e.deltaY > 0 ? -state.zoomState.scaleStep : state.zoomState.scaleStep;
+        // Normalize deltaY: line mode (~100 per notch) vs pixel mode (trackpad, varies)
+        const normalizedDelta = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+        // Use a fraction of scaleStep proportional to the scroll amount
+        // A typical notch (~100px) maps to the full scaleStep; smaller deltas scale down
+        const factor = Math.min(Math.abs(normalizedDelta) / 100, 1);
+        const delta = (normalizedDelta > 0 ? -1 : 1) * state.zoomState.scaleStep * factor;
         zoomAt(e.clientX, e.clientY, delta);
     });
 

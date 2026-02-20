@@ -41,7 +41,8 @@ const DEFAULT_CONFIG = {
         debounceDelay: 1000, // milliseconds for diagram updates
         showLineNumbers: true,
         wordWrap: false,
-        fontSize: 14
+        fontSize: 14,
+        maxTextSize: 1048576 // max editor text size in bytes (synced from server's KROKI_MAX_BODY_SIZE)
     },
 
     // Zoom and pan settings

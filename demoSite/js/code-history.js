@@ -114,8 +114,10 @@ class CodeHistory {
             this.forwardButton.addEventListener('click', () => this.goForward());
         }
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts — skip when CM6 editor is focused (let CM6 handle undo/redo)
         document.addEventListener('keydown', (e) => {
+            if (document.activeElement?.closest('.cm-editor')) return;
+
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
                 e.preventDefault();
                 this.goBack();

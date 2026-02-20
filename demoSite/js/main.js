@@ -70,14 +70,15 @@ import {
 
 // Utility functions
 import {
-    updateLineNumbers,
-    initializeLineNumbers,
     textEncode,
     uint8ArrayToString,
     initializeResizeHandle,
     adjustControlsLayout,
     escapeHtml
 } from './modules/utils.js';
+
+// CodeMirror 6 editor bridge
+import { initializeEditor } from './modules/editorBridge.js';
 
 // URL handling and parameters
 import {
@@ -108,15 +109,7 @@ import { initializeZoomPan } from './modules/zoomPan.js';
 import DrawioIntegration from './modules/drawioIntegration.js';
 import {
     showSearchBar,
-    hideSearchBar,
-    performSearch,
-    clearSearchHighlights,
-    highlightSearchResults,
-    scrollToCurrentMatch,
-    goToNextMatch,
-    goToPreviousMatch,
-    toggleCaseSensitive,
-    initializeSearchFunctionality
+    hideSearchBar
 } from './modules/search.js';
 import { initializeFullscreenMode } from './modules/fullscreen.js';
 import { ThemeManager } from './modules/theme.js';
@@ -261,8 +254,16 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update Draw.io button visibility after URL processing
     updateDrawioButtonVisibility();
 
+    // Initialize CodeMirror 6 editor
+    initializeEditor();
+
+    // Set initial syntax highlighting based on selected diagram type
+    const initialDiagramType = document.getElementById('diagramType').value;
+    if (window.editor && initialDiagramType) {
+        window.editor.setLanguage(initialDiagramType);
+    }
+
     // Initialize UI components
-    initializeLineNumbers();
     initializeResizeHandle();
     adjustControlsLayout();
 
@@ -274,9 +275,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize file operations
     initializeFileOperations();
-
-    // Initialize search functionality
-    initializeSearchFunctionality();
 
     // Initialize theme system
     ThemeManager.init();
@@ -360,6 +358,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         initializeConfigurationSystem();
+
+        // Fetch server config to sync editor max text size with Kroki backend limit
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(config => {
+                if (config.kroki && config.kroki.maxBodySize && window.configManager) {
+                    window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
+                }
+            })
+            .catch(() => { /* server config unavailable, use default */ });
     }, 150); // Slightly longer delay to ensure all scripts are loaded
 
     // Finally, update the diagram after all initialization is complete
@@ -394,89 +402,8 @@ window.addEventListener('beforeunload', function (e) {
 const codeTextarea = document.getElementById('code');
 
 /**
- * Code textarea tab key handler - provides proper indentation support
- * @private
- */
-codeTextarea.addEventListener('keydown', function (e) {
-    if (e.key === 'Tab') {
-        e.preventDefault();
-
-        const start = this.selectionStart;
-        const end = this.selectionEnd;
-        const value = this.value;
-
-        if (e.shiftKey) {
-            // Shift + Tab: Remove indentation
-            const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-            const lineEnd = value.indexOf('\n', end);
-            const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
-
-            if (start !== end) {
-                // Multiple lines selected
-                const selectedLines = value.substring(lineStart, actualLineEnd);
-                const lines = selectedLines.split('\n');
-
-                const dedentedLines = lines.map(line => {
-                    if (line.startsWith('    ')) {
-                        return line.substring(4); // Remove 4 spaces
-                    } else if (line.startsWith('\t')) {
-                        return line.substring(1); // Remove 1 tab
-                    }
-                    return line;
-                });
-
-                const newValue = value.substring(0, lineStart) + dedentedLines.join('\n') + value.substring(actualLineEnd);
-                const removedChars = selectedLines.length - dedentedLines.join('\n').length;
-
-                this.value = newValue;
-                this.selectionStart = Math.max(lineStart, start - Math.min(4, removedChars));
-                this.selectionEnd = Math.max(this.selectionStart, end - removedChars);
-            } else {
-                // Single line
-                const currentLine = value.substring(lineStart, actualLineEnd);
-                if (currentLine.startsWith('    ')) {
-                    const newValue = value.substring(0, lineStart) + currentLine.substring(4) + value.substring(actualLineEnd);
-                    this.value = newValue;
-                    this.selectionStart = this.selectionEnd = Math.max(lineStart, start - 4);
-                } else if (currentLine.startsWith('\t')) {
-                    const newValue = value.substring(0, lineStart) + currentLine.substring(1) + value.substring(actualLineEnd);
-                    this.value = newValue;
-                    this.selectionStart = this.selectionEnd = Math.max(lineStart, start - 1);
-                }
-            }
-        } else {
-            // Tab: Add indentation
-            if (start !== end) {
-                // Multiple lines selected - indent each line
-                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-                const lineEnd = value.indexOf('\n', end);
-                const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
-
-                const selectedLines = value.substring(lineStart, actualLineEnd);
-                const lines = selectedLines.split('\n');
-                const indentedLines = lines.map(line => '    ' + line); // Add 4 spaces to each line
-
-                const newValue = value.substring(0, lineStart) + indentedLines.join('\n') + value.substring(actualLineEnd);
-
-                this.value = newValue;
-                this.selectionStart = start + 4; // Move cursor past the added indentation
-                this.selectionEnd = end + (lines.length * 4); // Adjust end selection
-            } else {
-                // Single cursor position - insert tab (4 spaces)
-                const newValue = value.substring(0, start) + '    ' + value.substring(end);
-                this.value = newValue;
-                this.selectionStart = this.selectionEnd = start + 4;
-            }
-        }
-
-        // Trigger input event to update line numbers and diagram
-        const inputEvent = new Event('input', { bubbles: true });
-        this.dispatchEvent(inputEvent);
-    }
-});
-
-/**
  * Code textarea input event handler - handles content changes and updates
+ * (CM6's update listener dispatches synthetic input events on the hidden textarea)
  * @private
  */
 codeTextarea.addEventListener('input', function () {
@@ -491,7 +418,6 @@ codeTextarea.addEventListener('input', function () {
         markFileAsModified();
     }
 
-    updateLineNumbers();
     debounceUpdateDiagram();
     
     // Handle URL updates based on request method
@@ -524,6 +450,10 @@ document.getElementById('diagramType').addEventListener('change', async function
         clearUrlParameters();
     }
 
+    if (window.editor) {
+        window.editor.setLanguage(diagramType);
+    }
+
     const isCodeEmpty = currentCode.trim() === '';
     const exampleCache = getExampleCache();
     const isCurrentCodeAnExample = Object.values(exampleCache).includes(currentCode);
@@ -531,7 +461,6 @@ document.getElementById('diagramType').addEventListener('change', async function
     if (!state.userHasEditedContent || isCurrentCodeAnExample || isCodeEmpty) {
         const example = await loadExampleForDiagramType(diagramType);
         codeTextarea.value = example;
-        updateLineNumbers();
         debounceUpdateDiagram();
     } else {
         debounceUpdateDiagram();
@@ -649,5 +578,9 @@ if (helpBtn && helpModal && closeHelpBtn) {
 }
 
 // Export functions that need to be globally accessible
-window.showSearchBar = showSearchBar;
+window.showSearchBar = function () {
+    if (window.editor) {
+        window.editor.openSearch();
+    }
+};
 

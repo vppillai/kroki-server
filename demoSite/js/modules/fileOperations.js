@@ -515,10 +515,22 @@ export function showErrorMessage(message) {
 export function showImageErrorBanner(message) {
     const banner = document.getElementById('image-error-banner');
     const messageElement = document.getElementById('error-banner-message');
+    const copyBtn = document.getElementById('error-copy-btn');
 
     if (banner && messageElement) {
         messageElement.textContent = message;
         banner.style.display = 'block';
+
+        if (copyBtn) {
+            const handler = () => {
+                navigator.clipboard.writeText(message).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy'; }, 1500);
+                });
+            };
+            copyBtn.replaceWith(copyBtn.cloneNode(true));
+            document.getElementById('error-copy-btn').addEventListener('click', handler);
+        }
     }
 }
 

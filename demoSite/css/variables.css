@@ -38,6 +38,18 @@
     --spacing-lg: 16px;
     --spacing-xl: 24px;
 
+    /* Syntax highlighting */
+    --syntax-keyword: #0000ff;
+    --syntax-string: #a31515;
+    --syntax-number: #098658;
+    --syntax-bool: #0000ff;
+    --syntax-null: #0000ff;
+    --syntax-property: #001080;
+    --syntax-tag: #800000;
+    --syntax-attribute: #e50000;
+    --syntax-comment: #008000;
+    --syntax-punctuation: #383a42;
+
     /* Layout */
     --toolbar-height: 64px;
 }
@@ -60,6 +72,16 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    --syntax-keyword: #569cd6;
+    --syntax-string: #ce9178;
+    --syntax-number: #b5cea8;
+    --syntax-bool: #569cd6;
+    --syntax-null: #569cd6;
+    --syntax-property: #9cdcfe;
+    --syntax-tag: #569cd6;
+    --syntax-attribute: #9cdcfe;
+    --syntax-comment: #6a9955;
+    --syntax-punctuation: #d4d4d4;
 }
 
 .dark-theme #diagram {
@@ -85,6 +107,16 @@
         --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
         --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
         --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        --syntax-keyword: #569cd6;
+        --syntax-string: #ce9178;
+        --syntax-number: #b5cea8;
+        --syntax-bool: #569cd6;
+        --syntax-null: #569cd6;
+        --syntax-property: #9cdcfe;
+        --syntax-tag: #569cd6;
+        --syntax-attribute: #9cdcfe;
+        --syntax-comment: #6a9955;
+        --syntax-punctuation: #d4d4d4;
     }
 
     body:not(.light-theme):not(.dark-theme) #diagram {
