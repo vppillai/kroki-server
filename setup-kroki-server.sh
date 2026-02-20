@@ -106,7 +106,7 @@ build_demo_site() {
         echo "Error: demoSite directory not found. Are you in the correct directory?"
         exit 1
     fi
-    
+
     cd "${SCRIPT_DIR}/demoSite" || exit 1
     if docker build -t kroki-demosite:latest -f Dockerfile .; then
         echo "Demo site container built successfully."
@@ -172,7 +172,7 @@ http {
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
-            
+
             # Add caching headers for static assets
             expires 1d;
             add_header Cache-Control "public";
@@ -185,7 +185,7 @@ http {
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
-            
+
             # Add caching headers for static assets
             expires 1d;
             add_header Cache-Control "public";
@@ -246,7 +246,7 @@ check_services() {
     local max_attempts=30
     local attempt=1
     local sleep_time=2
-    
+
     echo "Checking if services are up and running..."
     while [ $attempt -le $max_attempts ]; do
         if curl -k -s -o /dev/null -w "%{http_code}" "https://${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT}" | grep -q "200"; then
@@ -257,7 +257,7 @@ check_services() {
         sleep $sleep_time
         attempt=$((attempt + 1))
     done
-    
+
     echo "Error: Services did not start properly. Check logs with '$0 logs'"
     return 1
 }
@@ -267,16 +267,16 @@ health_check_all() {
     echo "Performing comprehensive health check on all configured endpoints..."
     local total_tests=0
     local successful_tests=0
-    
+
     # Define arrays for hostnames and ports
     local HOSTNAMES=("${DEFAULT_HOSTNAME:-localhost}")
     local HTTPS_PORTS=("${DEFAULT_HTTPS_PORT:-8443}")
-    
+
     for hostname in "${HOSTNAMES[@]}"; do
         for https_port in "${HTTPS_PORTS[@]}"; do
             total_tests=$((total_tests + 1))
             echo -n "Testing https://${hostname}:${https_port}... "
-            
+
             if curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "https://${hostname}:${https_port}" | grep -q "200"; then
                 echo "✓ OK"
                 successful_tests=$((successful_tests + 1))
@@ -285,19 +285,45 @@ health_check_all() {
             fi
         done
     done
-    
+
     echo ""
     echo "Health Check Summary:"
     echo "  Total endpoints tested: ${total_tests}"
     echo "  Successful: ${successful_tests}"
     echo "  Failed: $((total_tests - successful_tests))"
-    
+
     if [ $successful_tests -eq $total_tests ]; then
         echo "  Status: All endpoints are healthy ✓"
         return 0
     else
         echo "  Status: Some endpoints failed ✗"
         return 1
+    fi
+}
+
+# Function to check AI model loading status from demosite container
+check_ai_models() {
+    local container_name
+    container_name=$($DOCKER_COMPOSE ps -q demosite 2>/dev/null)
+    if [ -z "$container_name" ]; then
+        return
+    fi
+
+    local logs
+    logs=$(docker logs "$container_name" 2>&1)
+
+    if echo "$logs" | grep -q "Failed to fetch models from LLM proxy"; then
+        echo ""
+        echo -e "\033[1;31m╔══════════════════════════════════════════════════════════════════════╗\033[0m"
+        echo -e "\033[1;31m║  WARNING: Failed to fetch AI models from LLM proxy at startup!       ║\033[0m"
+        echo -e "\033[1;31m║  The AI assistant is using the static fallback model list.           ║\033[0m"
+        echo -e "\033[1;31m║  Check AI_PROXY_URL and AI_PROXY_API_KEY in .env                     ║\033[0m"
+        echo -e "\033[1;31m╚══════════════════════════════════════════════════════════════════════╝\033[0m"
+        echo ""
+    elif echo "$logs" | grep -q "Fetched.*chat models from proxy"; then
+        local model_count
+        model_count=$(echo "$logs" | grep -o "Fetched [0-9]* chat models" | tail -1)
+        echo -e "\033[1;32mAI Models: ${model_count:-loaded} from LLM proxy ✓\033[0m"
     fi
 }
 
@@ -375,7 +401,7 @@ case "$COMMAND" in
         create_nginx_config
         build_demo_site
         echo "Starting services with Docker Compose..."
-        
+
         if [ -f "$DOCKER_COMPOSE_FILE" ]; then
             $DOCKER_COMPOSE -f "$DOCKER_COMPOSE_FILE" up -d
             echo "Waiting for services to start..."
@@ -387,6 +413,7 @@ case "$COMMAND" in
             fi
             sleep 5
             show_status
+            check_ai_models
         else
             echo "Error: docker-compose.yml file not found at $DOCKER_COMPOSE_FILE"
             exit 1
@@ -425,6 +452,7 @@ case "$COMMAND" in
         fi
         sleep 5
         show_status
+        check_ai_models
         ;;
     logs)
         echo "Displaying logs for all services..."

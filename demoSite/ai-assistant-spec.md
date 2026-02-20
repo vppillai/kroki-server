@@ -204,10 +204,12 @@ AI_PROXY_API_KEY=sk-or-v1-your-key-here
 ```
 
 #### Dynamic Model Discovery
-- Backend fetches available models from proxy via `/v1/models` endpoint
-- Frontend receives validated model list with availability status
-- Real-time model validation prevents failed requests
-- Graceful fallback to static model list if proxy unavailable
+- At server startup, the backend fetches available models from the LLM proxy via `/v1/models` endpoint
+- Non-chat models (embeddings, TTS, etc.) are automatically filtered out
+- Models are grouped by provider prefix (e.g., `azure/`, `anthropic/`, `gemini/`)
+- If the proxy is unreachable, the static `ai-models.json` is used as fallback
+- The admin script (`setup-kroki-server.sh`) displays model fetch status in color after `start`/`restart`
+- If the user's previously selected model is no longer available from the proxy, the frontend automatically switches to the server's default model or the first available model
 
 ### Default API Usage (No User Configuration)
 
@@ -384,12 +386,15 @@ AI_API_KEY=your_api_key_here
 
 ### Model Configuration
 
-Available AI models are defined in `ai-models.json` for easy maintenance and updates. The backend loads this JSON file at startup to populate the available models list. To add new models or providers:
+At startup, the backend automatically discovers available models by querying the configured LLM proxy's `/v1/models` endpoint. This eliminates the need to manually maintain model lists.
 
-1. Edit `/demoSite/ai-models.json`
-2. Add provider and model definitions with metadata (name, context, cost)
-3. Restart the server to apply changes
-4. The frontend will automatically show new models in the dropdown
+- **With a proxy configured**: Models are fetched dynamically and grouped by provider prefix. The dropdown shows raw model IDs as returned by the proxy.
+- **Without a proxy (or if unreachable)**: The static `ai-models.json` is used as a fallback. To update the fallback list:
+  1. Edit `/demoSite/ai-models.json`
+  2. Add provider and model definitions with metadata (name, context, cost)
+  3. Restart the server to apply changes
+
+The backend uses `max_completion_tokens` for OpenAI/Azure models and `max_tokens` for all other providers, ensuring compatibility across model families.
 
 ### Frontend Configuration
 

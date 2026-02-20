@@ -157,8 +157,19 @@ def fetch_models_from_proxy():
         logger.warning(f"Unexpected error fetching models from proxy: {e}")
         return None
 
+# ANSI escape codes for bold red terminal output
+BOLD_RED = '\033[1;31m'
+RESET = '\033[0m'
+
 # Try proxy first, fall back to static JSON
-AVAILABLE_MODELS = fetch_models_from_proxy() or load_available_models()
+_proxy_models = fetch_models_from_proxy()
+if _proxy_models:
+    AVAILABLE_MODELS = _proxy_models
+    logger.info("Using model list from LLM proxy")
+else:
+    AVAILABLE_MODELS = load_available_models()
+    print(f"{BOLD_RED}WARNING: Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).{RESET}")
+    logger.warning("Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).")
 
 # Default prompt templates - configurable via environment
 DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are an expert diagram assistant for the Kroki diagram server. You help users create, modify, and troubleshoot diagrams.

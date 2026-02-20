@@ -108,14 +108,29 @@ AI_MODEL=openai/gpt-4o
 ./setup-kroki-server.sh restart
 ```
 
+### Dynamic Model Discovery
+
+DocCode automatically fetches the list of available models from the configured LLM proxy at server startup. This means the model dropdown always reflects what the proxy actually supports — no manual model list maintenance required.
+
+- On startup, the server queries the proxy's `/v1/models` endpoint
+- Non-chat models (embeddings, TTS, etc.) are filtered out automatically
+- Models are grouped by provider prefix in the settings dropdown
+- If the proxy is unreachable, a static fallback list (`ai-models.json`) is used
+- The admin script shows the model fetch status in **green** (success) or **red** (fallback) after `start`/`restart`
+- If a previously selected model is no longer available, the frontend auto-switches to the server default
+
 ### Supported AI Providers
 
-- **OpenAI**: GPT-4o, GPT-4o Mini, GPT-4 Turbo, O1 models
-- **Anthropic**: Claude 3.5 Sonnet, Claude 3.5 Haiku, Claude 3 Opus
-- **Google**: Gemini 2.0/2.5 Pro, Gemini Flash, Gemini Experimental
-- **Meta**: Llama 3.3/4 series, Llama 3.2 Vision models
-- **Mistral**: Mistral Medium, Codestral, Mistral Small/Nemo
+The available models depend on your proxy configuration. With **OpenRouter**, you get access to:
+
+- **OpenAI**: GPT-5, GPT-4o, GPT-4o Mini, and more
+- **Anthropic**: Claude Opus, Sonnet, Haiku families
+- **Google**: Gemini 2.5 Pro/Flash, Gemma models
+- **Meta**: Llama 4, Llama 3.3 series
+- **Mistral**: Mistral Medium, Codestral, Small/Nemo
 - **Others**: Qwen, DeepSeek, plus many free-tier options
+
+With **LiteLLM**, you can configure any combination of providers and the model list will be discovered automatically.
 
 ### Alternative AI Setup Options
 
@@ -127,7 +142,7 @@ pip install litellm[proxy]
 litellm --config litellm_config.yaml --port 4000
 
 # Update DocCode configuration
-AI_PROXY_URL=http://localhost:4000
+AI_PROXY_URL=http://localhost:4000/v1
 ```
 
 **Direct API (frontend configuration):**
@@ -268,8 +283,9 @@ Alice -> Bob: Hello
 
 1. **Certificate Warnings**: Accept self-signed certificate or provide trusted certs
 2. **Port Conflicts**: Change `HTTPS_PORT` in `.env` file if 8443 is in use
-3. **AI Not Working**: Check API key configuration and model availability
-4. **Slow Performance**: Adjust debounce delays in Settings
+3. **AI Not Working**: Check API key configuration and model availability. Run `./setup-kroki-server.sh restart` and look for the red/green model status message
+4. **AI Model Errors**: If the admin script shows a red warning about model fetch failure, verify `AI_PROXY_URL` and `AI_PROXY_API_KEY` in `.env`
+5. **Slow Performance**: Adjust debounce delays in Settings
 
 ### Debug Commands
 
