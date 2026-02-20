@@ -139,3 +139,34 @@
     stroke-width: 3;
     transform: scale(1.1);
 }
+
+/* Keyboard shortcuts table */
+.shortcuts-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--spacing-sm) 0 0 0;
+}
+
+.shortcuts-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    vertical-align: middle;
+}
+
+.shortcuts-table td:first-child {
+    white-space: nowrap;
+    width: 1%;
+}
+
+.shortcuts-table kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    font-family: var(--font-mono, monospace);
+    font-size: 12px;
+    color: var(--text-primary);
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 0 1px 0 var(--border-color);
+}

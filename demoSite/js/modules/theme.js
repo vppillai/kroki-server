@@ -72,9 +72,39 @@ export const ThemeManager = {
 
         this.currentTheme = theme;
         this.updateToggleButton();
+        this.updateDiagramInversion(theme);
 
         // Persist theme preference
         localStorage.setItem('kroki-theme', theme);
+    },
+
+    /**
+     * Update diagram inversion based on theme and user preference
+     * @param {string} theme - Current theme
+     */
+    updateDiagramInversion(theme) {
+        const container = document.getElementById('diagram-container');
+        if (!container) return;
+
+        const userPref = localStorage.getItem('kroki-diagram-invert');
+        const isDark = theme === 'dark';
+
+        if (isDark && userPref !== 'off') {
+            container.classList.add('diagram-inverted');
+        } else {
+            container.classList.remove('diagram-inverted');
+        }
+    },
+
+    /**
+     * Toggle diagram inversion and persist preference
+     */
+    toggleDiagramInversion() {
+        const container = document.getElementById('diagram-container');
+        if (!container) return;
+
+        const isInverted = container.classList.toggle('diagram-inverted');
+        localStorage.setItem('kroki-diagram-invert', isInverted ? 'on' : 'off');
     },
 
     /**

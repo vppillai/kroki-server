@@ -281,6 +281,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize theme system
     ThemeManager.init();
 
+    // Initialize diagram invert toggle button
+    const diagramInvertToggle = document.getElementById('diagram-invert-toggle');
+    if (diagramInvertToggle) {
+        diagramInvertToggle.addEventListener('click', () => {
+            ThemeManager.toggleDiagramInversion();
+        });
+    }
+
     // Initialize auto-refresh functionality
     initializeAutoRefresh();
 
@@ -615,6 +623,27 @@ if (helpBtn && helpModal && closeHelpBtn) {
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && helpModal.style.display === 'flex') {
             helpModal.style.display = 'none';
+        }
+    });
+
+    // Open help modal with '?' key (when not typing in an input/textarea)
+    document.addEventListener('keydown', function (e) {
+        if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) {
+                return;
+            }
+            helpModal.style.display = 'flex';
+        }
+    });
+
+    // Toggle AI Assistant with Ctrl/Cmd + K
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            if (window.aiAssistant) {
+                window.aiAssistant.toggleChat();
+            }
         }
     });
 }

@@ -1409,6 +1409,87 @@ class AIAssistant {
     }
 
     /**
+     * Create a streaming message element in the chat
+     * @returns {HTMLElement} The content element to update
+     */
+    addStreamingMessage() {
+        if (!this.chatMessages) return null;
+
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('ai-message', 'assistant');
+
+        const contentElement = document.createElement('div');
+        contentElement.classList.add('ai-message-content');
+        contentElement.textContent = '';
+
+        messageElement.appendChild(contentElement);
+        this.chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
+
+        return contentElement;
+    }
+
+    /**
+     * Update a streaming message element with new text
+     * @param {HTMLElement} element - The content element to update
+     * @param {string} text - The accumulated text so far
+     */
+    updateStreamingMessage(element, text) {
+        if (!element) return;
+        element.textContent = text;
+        this.scrollToBottom();
+    }
+
+    /**
+     * Read an SSE stream and accumulate the full response text
+     * @param {Response} response - The fetch response with SSE body
+     * @param {HTMLElement} streamingElement - Optional element for live updates
+     * @returns {string} The full accumulated response text
+     */
+    async readSSEStream(response, streamingElement = null) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        let buffer = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data:')) continue;
+
+                    const dataStr = trimmed.slice(5).trim();
+                    if (dataStr === '[DONE]') continue;
+
+                    try {
+                        const parsed = JSON.parse(dataStr);
+                        const delta = parsed.choices?.[0]?.delta?.content;
+                        if (delta) {
+                            fullText += delta;
+                            if (streamingElement) {
+                                this.updateStreamingMessage(streamingElement, fullText);
+                            }
+                        }
+                    } catch {
+                        // Skip unparseable chunks
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
+
+        return fullText;
+    }
+
+    /**
      * Call custom API endpoint
      * @param {string|Object} prompt - Prompt to send
      * @param {Object} config - API configuration
@@ -1422,13 +1503,11 @@ class AIAssistant {
         try {
             let messages;
             if (typeof prompt === 'object' && prompt.system && prompt.user) {
-                // Use system/user message structure
                 messages = [
                     { role: 'system', content: prompt.system },
                     { role: 'user', content: prompt.user }
                 ];
             } else {
-                // Fallback to single user message
                 messages = [{ role: 'user', content: prompt }];
             }
 
@@ -1436,7 +1515,8 @@ class AIAssistant {
                 model: config.model === 'custom' ? config.customModel : config.model,
                 messages: messages,
                 max_tokens: AI_MAX_TOKENS,
-                temperature: 0.7
+                temperature: 0.7,
+                stream: true
             };
 
             const response = await fetch(config.endpoint, {
@@ -1450,10 +1530,7 @@ class AIAssistant {
             });
 
             if (!response.ok) {
-                // Get more detailed error information
                 let errorMessage = `API Error: ${response.status} ${response.statusText}`;
-
-                // Handle specific HTTP status codes with user-friendly messages
                 if (response.status === 401) {
                     errorMessage = 'Authentication failed. Please check your API key in settings.';
                 } else if (response.status === 403) {
@@ -1465,18 +1542,27 @@ class AIAssistant {
                 } else if (response.status >= 400 && response.status < 500) {
                     errorMessage = 'Client error. Please check your request configuration.';
                 }
-
                 throw new Error(errorMessage);
             }
 
-            const data = await response.json();
-            return data; // Return the full response object
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                throw error; // Re-throw abort errors to be handled upstream
+            // Handle streaming response
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('text/event-stream') || body.stream) {
+                const streamingEl = this.addStreamingMessage();
+                const fullText = await this.readSSEStream(response, streamingEl);
+                // Remove streaming message — makeAIRequest will display the final result
+                if (streamingEl && streamingEl.parentElement) {
+                    streamingEl.parentElement.remove();
+                }
+                return fullText;
             }
 
-            // Handle specific error types with user-friendly messages
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw error;
+            }
             const errorMessage = this.getErrorMessage(error);
             throw new Error(errorMessage);
         } finally {
@@ -1520,6 +1606,7 @@ class AIAssistant {
                     model: config.model === 'custom' ? config.customModel : config.model,
                     maxRetryAttempts: config.maxRetryAttempts,
                     max_tokens: AI_MAX_TOKENS,
+                    stream: true,
                     config: {
                         use_custom_api: config.useCustomAPI,
                         endpoint: config.endpoint,
@@ -1534,7 +1621,6 @@ class AIAssistant {
                 const errorData = await response.json().catch(() => ({}));
                 let errorMessage = errorData.error || `API Error: ${response.status} ${response.statusText}`;
 
-                // Handle specific HTTP status codes with user-friendly messages
                 if (response.status === 401) {
                     errorMessage = 'Authentication failed. The backend proxy is not properly configured with valid API credentials.';
                 } else if (response.status === 403) {
@@ -1550,13 +1636,23 @@ class AIAssistant {
                 throw new Error(errorMessage);
             }
 
+            // Handle streaming response
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('text/event-stream')) {
+                const streamingEl = this.addStreamingMessage();
+                const fullText = await this.readSSEStream(response, streamingEl);
+                // Remove streaming message — makeAIRequest will display the final result
+                if (streamingEl && streamingEl.parentElement) {
+                    streamingEl.parentElement.remove();
+                }
+                return fullText;
+            }
+
             return await response.json();
         } catch (error) {
             if (error.name === 'AbortError') {
-                throw error; // Re-throw abort errors to be handled upstream
+                throw error;
             }
-
-            // Handle specific error types with user-friendly messages
             const errorMessage = this.getErrorMessage(error);
             throw new Error(errorMessage);
         } finally {

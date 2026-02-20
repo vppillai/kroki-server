@@ -9,8 +9,10 @@ import json
 import logging
 import requests
 import time
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, Response, stream_with_context
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime
 
 # Load environment variables from .env file
@@ -42,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 # Configuration
 PORT = int(os.environ.get('PORT', 8006))
@@ -293,7 +296,12 @@ def validate_origin(request):
         return False
     return True
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({'error': 'Rate limit exceeded. Please wait before sending another request.'}), 429
+
 @app.route('/api/ai-assist', methods=['POST'])
+@limiter.limit("10/minute")
 def ai_assist():
     """AI Assistant API proxy endpoint"""
     try:
@@ -376,13 +384,40 @@ def ai_assist():
             'temperature': data.get('temperature', 0.7)
         }
         
-        # Add any additional parameters
-        if 'stream' in data:
-            ai_payload['stream'] = data['stream']
-        
         logger.info(f"Proxying AI request to {endpoint} with model {model}")
-        
-        # Make request to AI API
+
+        # Handle streaming responses
+        if data.get('stream'):
+            ai_payload['stream'] = True
+            start_time = time.time()
+            resp = requests.post(
+                endpoint,
+                headers=headers,
+                json=ai_payload,
+                stream=True,
+                timeout=timeout
+            )
+
+            if resp.status_code != 200:
+                error_msg = f"AI API error: {resp.status_code}"
+                try:
+                    error_data = resp.json()
+                    if 'error' in error_data:
+                        error_msg = error_data['error'].get('message', error_msg)
+                except:
+                    error_msg = resp.text or error_msg
+                logger.error(f"AI API streaming error: {error_msg}")
+                return jsonify({'error': error_msg}), resp.status_code
+
+            def generate():
+                for line in resp.iter_lines():
+                    if line:
+                        yield line.decode('utf-8') + '\n'
+                logger.info(f"AI API streaming completed in {time.time() - start_time:.2f}s")
+
+            return Response(stream_with_context(generate()), content_type='text/event-stream')
+
+        # Non-streaming response
         start_time = time.time()
         response = requests.post(
             endpoint,
@@ -390,10 +425,10 @@ def ai_assist():
             json=ai_payload,
             timeout=timeout
         )
-        
+
         response_time = time.time() - start_time
         logger.info(f"AI API response received in {response_time:.2f}s, status: {response.status_code}")
-        
+
         # Handle response
         if response.status_code == 200:
             ai_response = response.json()
@@ -406,7 +441,7 @@ def ai_assist():
                     error_msg = error_data['error'].get('message', error_msg)
             except:
                 error_msg = response.text or error_msg
-            
+
             logger.error(f"AI API error: {error_msg}")
             return jsonify({'error': error_msg}), response.status_code
     

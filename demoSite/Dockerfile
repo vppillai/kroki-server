@@ -1,5 +1,5 @@
 # Use a specific Python version for better reproducibility
-FROM python:3.12-alpine
+FROM python:3.12-alpine3.19
 
 # Set environment variables
 ENV PORT=8006 \
@@ -17,7 +17,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create a non-root user to run the application
+# Create a non-root user and set file permissions in a single layer
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy application files
@@ -29,14 +29,14 @@ COPY --chown=appuser:appgroup examples/ examples/
 COPY --chown=appuser:appgroup css/ css/
 COPY --chown=appuser:appgroup js/ js/
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/ || exit 1
-
 # Set proper file permissions
 RUN find /app -type d -exec chmod 755 {} \; && \
     find /app -type f -exec chmod 644 {} \; && \
     chmod +x /app/server.py
+
+# Add healthcheck using the dedicated health endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 -O /dev/null http://localhost:${PORT}/api/health || exit 1
 
 # Expose the port (for documentation)
 EXPOSE ${PORT}

@@ -58,6 +58,11 @@
     border-radius: 0 !important;
 }
 
+/* Diagram color inversion (auto-applied in dark mode, manually togglable in any mode) */
+.diagram-inverted #diagram {
+    filter: invert(1) hue-rotate(180deg);
+}
+
 /* Zoom controls - integrated into preview toolbar with proper sizing */
 .zoom-controls {
     display: flex;

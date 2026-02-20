@@ -251,7 +251,14 @@ Bob --> Alice: Hi there
                                 <line x1="3" y1="21" x2="10" y2="14"></line>
                             </svg>
                         </button>
-                        <button id="zoom-help" class="zoom-btn help-icon-btn" title="Help & Keyboard Shortcuts">
+                        <button id="diagram-invert-toggle" class="zoom-btn" title="Toggle diagram color inversion (dark mode)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 2a10 10 0 0 1 0 20V2z" fill="currentColor"></path>
+                            </svg>
+                        </button>
+                        <button id="zoom-help" class="zoom-btn help-icon-btn" title="Help & Keyboard Shortcuts (?)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2.5">
                                 <circle cx="12" cy="12" r="10"></circle>
@@ -311,82 +318,60 @@ Bob --> Alice: Hi there
             </div>
             <div class="help-modal-body">
                 <div class="help-section">
-                    <h4>🔄 Auto-Refresh Controls</h4>
-                    <ul>
-                        <li><strong>Auto-refresh checkbox:</strong> Toggle automatic diagram updates as you type</li>
-                        <li><strong>Manual refresh button:</strong> Update diagram manually when auto-refresh is
-                            disabled</li>
-                        <li><strong>Alt/Cmd + Enter:</strong> Manual refresh keyboard shortcut</li>
-                        <li><em>Note: Auto-refresh preference is saved and restored on page reload</em></li>
-                    </ul>
+                    <h4>File</h4>
+                    <table class="shortcuts-table">
+                        <tr><td><kbd>Ctrl/Cmd + N</kbd></td><td>New file</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + O</kbd></td><td>Open file</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Save</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + Shift + S</kbd></td><td>Save As</td></tr>
+                    </table>
                 </div>
 
                 <div class="help-section">
-                    <h4>⌨️ Editor Shortcuts</h4>
-                    <ul>
-                        <li><strong>Tab:</strong> Indent line or selection (4 spaces)</li>
-                        <li><strong>Shift + Tab:</strong> Remove indentation</li>
-                        <li><strong>Ctrl/Cmd + N:</strong> New file</li>
-                        <li><strong>Ctrl/Cmd + O:</strong> Open file</li>
-                        <li><strong>Ctrl/Cmd + S:</strong> Save file</li>
-                        <li><strong>Ctrl/Cmd + Shift + S:</strong> Save As</li>
-                        <li><strong>Ctrl/Cmd + F:</strong> Open search bar</li>
-                        <li><strong>Ctrl/Cmd + ,:</strong> Open settings</li>
-                    </ul>
+                    <h4>Editor</h4>
+                    <table class="shortcuts-table">
+                        <tr><td><kbd>Tab</kbd></td><td>Indent</td></tr>
+                        <tr><td><kbd>Shift + Tab</kbd></td><td>Unindent</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + Z</kbd></td><td>Undo</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + Y</kbd></td><td>Redo</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + F</kbd></td><td>Find</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + Enter</kbd></td><td>Manual refresh</td></tr>
+                    </table>
                 </div>
 
                 <div class="help-section">
-                    <h4>📁 File Management</h4>
-                    <ul>
-                        <li><strong>Auto-save toggle:</strong> Automatically save changes to opened files</li>
-                        <li><strong>Auto-reload toggle:</strong> Automatically reload file content when modified
-                            externally</li>
-                        <li><em>Auto-reload only works with files opened using the File System Access API
-                                (Chrome/Edge)</em></li>
-                        <li><em>Auto-reload is enabled by default and monitors files every 2 seconds</em></li>
-                        <li><em>Both toggles appear only when working with actual files (not for new/untitled
-                                files)</em></li>
-                    </ul>
+                    <h4>View</h4>
+                    <table class="shortcuts-table">
+                        <tr><td><kbd>F</kbd></td><td>Toggle fullscreen</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + 0</kbd></td><td>Fit to screen</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + +</kbd></td><td>Zoom in</td></tr>
+                        <tr><td><kbd>Ctrl/Cmd + -</kbd></td><td>Zoom out</td></tr>
+                        <tr><td><kbd>Escape</kbd></td><td>Exit fullscreen / Close modal</td></tr>
+                    </table>
                 </div>
 
                 <div class="help-section">
-                    <h4>🔍 Code Search</h4>
-                    <ul>
-                        <li><strong>Ctrl/Cmd + F:</strong> Open search bar</li>
-                        <li><strong>Enter:</strong> Go to next match</li>
-                        <li><strong>Shift + Enter:</strong> Go to previous match</li>
-                        <li><strong>Escape:</strong> Close search bar</li>
-                        <li><strong>Aa button:</strong> Toggle case-sensitive search (clear visual indicator)</li>
-                        <li><em>Search results are visually highlighted with yellow background</em></li>
-                        <li><em>Current match is highlighted with orange background</em></li>
-                        <li><em>Results counter shows current position (e.g., "2 of 5 matches")</em></li>
-                    </ul>
+                    <h4>AI</h4>
+                    <table class="shortcuts-table">
+                        <tr><td><kbd>Ctrl/Cmd + K</kbd></td><td>Toggle AI Assistant</td></tr>
+                    </table>
                 </div>
 
                 <div class="help-section">
-                    <h4>🔍 Diagram Viewing</h4>
-                    <ul>
-                        <li><strong>Mouse wheel:</strong> Zoom in/out</li>
-                        <li><strong>Click & drag:</strong> Pan around</li>
-                        <li><strong>Double-click:</strong> Reset zoom to fit</li>
-                        <li><strong>F key:</strong> Toggle fullscreen mode</li>
-                        <li><strong>Escape:</strong> Exit fullscreen</li>
-                    </ul>
+                    <h4>Settings &amp; Help</h4>
+                    <table class="shortcuts-table">
+                        <tr><td><kbd>Ctrl/Cmd + ,</kbd></td><td>Open settings</td></tr>
+                        <tr><td><kbd>?</kbd></td><td>Show this panel</td></tr>
+                    </table>
                 </div>
 
                 <div class="help-section">
-                    <h4>📱 Touch Controls</h4>
-                    <ul>
-                        <li><strong>Pinch:</strong> Zoom in/out</li>
-                        <li><strong>Single finger drag:</strong> Pan around</li>
-                        <li><strong>Double-tap:</strong> Reset zoom</li>
-                    </ul>
-                </div>
-
-                <div class="help-section">
-                    <h4>📁 Supported Formats</h4>
-                    <p>PlantUML (.puml), Mermaid (.mmd), Graphviz (.dot), D2 (.d2), BPMN (.bpmn), and many more diagram
-                        types with automatic detection.</p>
+                    <h4>Touch Controls</h4>
+                    <table class="shortcuts-table">
+                        <tr><td>Pinch</td><td>Zoom in/out</td></tr>
+                        <tr><td>Drag</td><td>Pan around</td></tr>
+                        <tr><td>Double-tap</td><td>Reset zoom</td></tr>
+                    </table>
                 </div>
             </div>
         </div>
