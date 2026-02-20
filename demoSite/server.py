@@ -176,31 +176,20 @@ else:
     logger.warning("Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).")
 
 # Default prompt templates - configurable via environment
-DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are an expert diagram assistant for the Kroki diagram server. You help users create, modify, and troubleshoot diagrams.
+DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are a Kroki diagram assistant. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no backticks, no extra text. Response format: {"diagramCode": "<code or empty string>", "explanation": "<your message>"}.
 
-Your role is to:
-1. Generate correct diagram code in the specified format
-2. Modify existing code based on user requests  
-3. Fix syntax errors and improve diagram structure
-4. Provide helpful explanations when needed
+RESPONSE RULES:
+1. Questions about diagrams (what, how, why, explain): set diagramCode to empty string, provide detailed explanation.
+2. New diagram requests (create, make, generate): ignore existing code, create fresh diagram for the selected type.
+3. Modification requests (update, change, add, edit): make minimal targeted changes to existing code, preserve structure and style.
+4. Greetings or off-topic: set diagramCode to empty string, respond helpfully.
+5. Always generate code ONLY for the selected diagram type — never switch types or mix syntaxes.
 
-Always ensure your code follows proper syntax for the diagram type and is compatible with Kroki.''')
+DIAGRAM QUALITY: Use descriptive labels. Ensure readable layout with logical flow. Self-validate syntax before responding. Prefer pastel colors unless asked otherwise.''')
 
-DEFAULT_USER_PROMPT = os.environ.get('AI_USER_PROMPT', '''Please help me with this diagram request: {{userPrompt}}
+DEFAULT_USER_PROMPT = os.environ.get('AI_USER_PROMPT', '''Respond with a raw JSON object only — no markdown, no backticks. Format: {"diagramCode":"...", "explanation":"..."}. Diagram type: {{diagramType}}. User request: {{userPrompt}}. Existing code: {{currentCode}}.''')
 
-Current diagram type: {{diagramType}}
-Current code: {{currentCode}}
-
-Please provide the updated or new diagram code in a code block, along with a brief explanation of the changes.''')
-
-DEFAULT_RETRY_PROMPT = os.environ.get('AI_RETRY_PROMPT', '''The previous diagram code failed validation. 
-Original request: {{userPrompt}}
-Diagram type: {{diagramType}}
-Original code: {{currentCode}}
-Failed code: {{failedCode}}
-Validation error: {{validationError}}
-
-Please fix the code and provide a corrected version. Respond with ONLY a JSON object with 'diagramCode' and 'explanation' fields.''')
+DEFAULT_RETRY_PROMPT = os.environ.get('AI_RETRY_PROMPT', '''The previous response produced invalid diagram code. Fix ONLY the syntax error below with minimal changes. Respond with a raw JSON object only — no markdown, no backticks. Format: {"diagramCode":"...", "explanation":"..."}. Diagram type: {{diagramType}}. Original request: {{userPrompt}}. Code before error: {{currentCode}}. Failed code: {{failedCode}}. Validation error: {{validationError}}.''')
 
 @app.route('/api/ai-prompts', methods=['GET'])
 def get_ai_prompts():
