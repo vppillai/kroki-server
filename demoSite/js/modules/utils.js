@@ -8,15 +8,7 @@
  * @author Vysakh Pillai
  */
 
-// ========================================
-// LINE NUMBER MANAGEMENT (handled by CodeMirror 6)
-// ========================================
-
-/** @deprecated Handled by CodeMirror 6 */
-export function updateLineNumbers() { /* handled by CodeMirror */ }
-
-/** @deprecated Handled by CodeMirror 6 */
-export function initializeLineNumbers() { /* handled by CodeMirror */ }
+import { CONTROLS_STACK_THRESHOLD_PX } from './constants.js';
 
 // ========================================
 // TEXT ENCODING UTILITIES
@@ -75,14 +67,10 @@ export function uint8ArrayToString(array) {
 export function adjustControlsLayout() {
     const controlsContainer = document.querySelector('.diagram-controls');
     const editor = document.querySelector('.editor');
-    const STACK_THRESHOLD = 350; // Width in pixels below which to stack controls
+    const STACK_THRESHOLD = CONTROLS_STACK_THRESHOLD_PX;
 
     // Check if elements exist before accessing their properties
     if (!controlsContainer || !editor) {
-        console.warn('adjustControlsLayout: Required elements not found', {
-            controlsContainer: !!controlsContainer,
-            editor: !!editor
-        });
         return;
     }
 
@@ -129,8 +117,6 @@ export function initializeResizeHandle() {
 
         if (width >= minWidth && width <= maxWidth) {
             editor.style.width = width + 'px';
-            // Adjust line numbers after resize
-            updateLineNumbers();
             // Check if controls need to be rearranged
             adjustControlsLayout();
         }
@@ -145,21 +131,3 @@ export function initializeResizeHandle() {
     });
 }
 
-// ========================================
-// HTML UTILITIES
-// ========================================
-
-/**
- * Escape HTML special characters in text
- * Prevents XSS by converting special characters to HTML entities
- * 
- * @function escapeHtml
- * @param {string} text - Text to escape
- * @returns {string} HTML-escaped text
- * @public
- */
-export function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-} 

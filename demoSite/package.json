@@ -1,0 +1,39 @@
+{
+    "name": "kroki-server-frontend",
+    "version": "2.0.0",
+    "description": "Interactive frontend for Kroki diagram rendering server (DocCode)",
+    "author": "Vysakh P Pillai",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vppillai/kroki-server.git"
+    },
+    "cdn-dependencies": {
+        "codemirror": "6.0.1",
+        "@codemirror/view": "6.36.5",
+        "@codemirror/state": "6.5.2",
+        "@codemirror/search": "6.5.10",
+        "@codemirror/commands": "6.8.1",
+        "@codemirror/language": "6.11.0",
+        "@codemirror/autocomplete": "6.18.6",
+        "@codemirror/lint": "6.8.5",
+        "@codemirror/lang-json": "6.0.2",
+        "@codemirror/lang-xml": "6.1.0",
+        "@codemirror/lang-yaml": "6.1.2",
+        "@codemirror/legacy-modes": "6.5.2",
+        "@lezer/common": "1.2.3",
+        "@lezer/highlight": "1.2.1",
+        "@lezer/lr": "1.4.2",
+        "@lezer/json": "1.0.3",
+        "@lezer/xml": "1.0.6",
+        "@lezer/yaml": "1.0.4",
+        "style-mod": "4.1.2",
+        "w3c-keyname": "2.2.8",
+        "crelt": "1.0.6",
+        "@marijn/find-cluster-break": "1.0.2",
+        "codemirror-lang-mermaid": "0.5.0",
+        "@viz-js/lang-dot": "1.0.5",
+        "codemirror-lang-latex": "0.2.0",
+        "pako": "2.1.0"
+    }
+}

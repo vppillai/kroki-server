@@ -14,7 +14,7 @@
  * - Automatic migration from legacy settings
  * 
  * @author Kroki Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 // ========================================
@@ -134,7 +134,7 @@ const DEFAULT_CONFIG = {
  * 
  * @class ConfigManager
  * @author Kroki Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 class ConfigManager {
     /**
@@ -315,6 +315,11 @@ class ConfigManager {
      * @public
      */
     set(path, value) {
+        // Sanitize string values
+        if (typeof value === 'string' && window.inputValidation) {
+            value = window.inputValidation.sanitizeString(value);
+        }
+
         const keys = path.split('.');
         const lastKey = keys.pop();
         let current = this.config;

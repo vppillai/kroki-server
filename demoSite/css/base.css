@@ -1,6 +1,21 @@
 /* Modern font imports */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
+/* Utility: hidden class for show/hide toggling */
+.hidden {
+    display: none !important;
+}
+
+/* Elements that use non-block display need explicit rules
+   so removing .hidden restores their correct display type */
+#help-modal {
+    display: flex;
+}
+
+#drawio-edit-btn {
+    display: inline-flex;
+}
+
 /* Reset and base styles */
 * {
     box-sizing: border-box;

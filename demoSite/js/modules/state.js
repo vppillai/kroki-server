@@ -9,7 +9,7 @@
  * @author Vysakh Pillai
  */
 
-import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, DEFAULT_AUTO_RELOAD_DELAY, defaultExample } from './constants.js';
+import { DEFAULT_DEBOUNCE_DELAY, DEFAULT_AUTO_SAVE_DELAY, DEFAULT_AUTO_RELOAD_DELAY, defaultExample, MIN_SCALE, MAX_SCALE, SCALE_STEP } from './constants.js';
 
 // ========================================
 // APPLICATION STATE
@@ -83,9 +83,9 @@ export const state = {
         scale: 1,                    // Current zoom level
         translateX: 0,               // X-axis translation
         translateY: 0,               // Y-axis translation
-        minScale: 0.1,              // Minimum allowed zoom
-        maxScale: 5,                // Maximum allowed zoom
-        scaleStep: 0.1,             // Zoom increment/decrement amount
+        minScale: MIN_SCALE,        // Minimum allowed zoom
+        maxScale: MAX_SCALE,        // Maximum allowed zoom
+        scaleStep: SCALE_STEP,      // Zoom increment/decrement amount
         userHasInteracted: false    // Whether user manually zoomed/panned
     },
 

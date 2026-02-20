@@ -18,7 +18,7 @@ import {
 } from './state.js';
 import { ThemeManager } from './theme.js';
 import { startAutoSave, restartFileMonitoring } from './fileOperations.js';
-import { updateLineNumbers, adjustControlsLayout } from './utils.js';
+import { adjustControlsLayout } from './utils.js';
 
 /**
  * Initialize configuration system integration
@@ -243,8 +243,6 @@ export function setupConfigurationListeners() {
         const editor = document.querySelector('.editor');
         if (editor) {
             editor.style.width = `${newValue}%`;
-            // Trigger resize event to update line numbers
-            updateLineNumbers();
             adjustControlsLayout();
         }
     });

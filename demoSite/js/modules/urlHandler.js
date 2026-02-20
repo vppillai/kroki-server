@@ -15,7 +15,6 @@ import {
     updateUserHasEditedContent as setUserHasEditedContent
 } from './state.js';
 import { formatCompatibility } from './constants.js';
-import { updateLineNumbers } from './utils.js';
 
 // ========================================
 // URL PARAMETER PARSING
@@ -104,7 +103,7 @@ function continueProcessing(params, diagramModule) {
         try {
             const decodedText = diagramModule.decodeKrokiDiagram(params.im);
             document.getElementById('code').value = decodedText;
-            updateLineNumbers();
+
             setUserHasEditedContent(true);
         } catch (error) {
             console.error('Failed to decode diagram from URL:', error);
@@ -132,7 +131,7 @@ export function loadDefaultExample(diagramType) {
     import('./diagramOperations.js').then(module => {
         module.loadExampleForDiagramType(diagramType).then(example => {
             document.getElementById('code').value = example;
-            updateLineNumbers();
+
             setUserHasEditedContent(false);
             import('./state.js').then(stateModule => {
                 if (stateModule.state.autoRefreshEnabled) {

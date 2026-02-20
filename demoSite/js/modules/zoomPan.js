@@ -9,6 +9,7 @@
  */
 
 import { state, updateZoomState } from './state.js';
+import { DOUBLE_CLICK_THRESHOLD_MS, ZOOM_FIT_PADDING_PX } from './constants.js';
 
 // ========================================
 // ZOOM AND PAN INITIALIZATION
@@ -92,7 +93,7 @@ export function initializeZoomPan() {
         const imageHeight = diagram.naturalHeight;
 
         // Calculate scale to fit image in viewport with some padding
-        const padding = window.configManager ? window.configManager.get('zoom.resetPadding') : 40;
+        const padding = window.configManager ? window.configManager.get('zoom.resetPadding') : ZOOM_FIT_PADDING_PX;
         const availableWidth = viewportWidth - (padding * 2);
         const availableHeight = viewportHeight - (padding * 2);
 
@@ -180,8 +181,8 @@ export function initializeZoomPan() {
             const currentTime = new Date().getTime();
             const timeSinceLastClick = currentTime - lastClickTime;
 
-            // Check for double click (within 300ms)
-            if (timeSinceLastClick < 300) {
+            // Check for double click
+            if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD_MS) {
                 e.preventDefault();
                 resetZoom();
                 return;

@@ -129,11 +129,6 @@ export const DEFAULT_AUTO_SAVE_DELAY = 2000;
  */
 export const DEFAULT_AUTO_RELOAD_DELAY = 1000;
 
-// Legacy exports for backward compatibility
-export const DEBOUNCE_DELAY = DEFAULT_DEBOUNCE_DELAY;
-export const AUTO_SAVE_DELAY = DEFAULT_AUTO_SAVE_DELAY;
-export const AUTO_RELOAD_DELAY = DEFAULT_AUTO_RELOAD_DELAY;
-
 // ========================================
 // API CONSTANTS
 // ========================================
@@ -157,3 +152,79 @@ export const DEFAULT_URL_LENGTH_THRESHOLD = 4096;
 export const DEFAULT_POST_REQUEST_TIMEOUT = 30000;
 
 // ========================================
+// UI DIMENSION CONSTANTS
+// ========================================
+
+/** Width threshold (px) below which diagram controls stack vertically */
+export const CONTROLS_STACK_THRESHOLD_PX = 350;
+
+/** Padding (px) around diagram when fitting to screen */
+export const ZOOM_FIT_PADDING_PX = 40;
+
+// ========================================
+// ZOOM CONSTANTS
+// ========================================
+
+/** Minimum zoom scale */
+export const MIN_SCALE = 0.1;
+
+/** Maximum zoom scale */
+export const MAX_SCALE = 5;
+
+/** Zoom increment/decrement step */
+export const SCALE_STEP = 0.1;
+
+/** Double-click detection threshold in milliseconds */
+export const DOUBLE_CLICK_THRESHOLD_MS = 300;
+
+// ========================================
+// AI CONSTANTS
+// ========================================
+
+/** Token limit for AI responses */
+export const AI_MAX_TOKENS = 16000;
+
+/** Default AI temperature */
+export const AI_TEMPERATURE = 0.7;
+
+/** Maximum retry attempts for AI requests */
+export const AI_MAX_RETRY_ATTEMPTS = 3;
+
+/** Maximum number of messages to keep in chat history */
+export const MAX_MESSAGE_HISTORY = 50;
+
+/** Minimum input height for AI chat input (px) */
+export const AI_MIN_INPUT_HEIGHT_PX = 60;
+
+// ========================================
+// FILE CONSTANTS
+// ========================================
+
+/** Maximum file size in bytes (10 MB) */
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** Default max text size for editor (1 MB, matches Kroki's default POST body limit) */
+export const DEFAULT_MAX_TEXT_SIZE = 1048576;
+
+// ========================================
+// UI FEEDBACK TIMING CONSTANTS
+// ========================================
+
+/** Duration to show success feedback messages (ms) */
+export const SUCCESS_FEEDBACK_MS = 1500;
+
+/** Duration to show error display messages (ms) */
+export const ERROR_DISPLAY_MS = 5000;
+
+/** General animation delay (ms) */
+export const ANIMATION_DELAY_MS = 300;
+
+/** Delay before cleaning up blob URLs (ms) */
+export const BLOB_CLEANUP_DELAY_MS = 1000;
+
+// ========================================
+// CONFIG CONSTANTS
+// ========================================
+
+/** Maximum length for config string values */
+export const MAX_CONFIG_STRING_LENGTH = 10000;

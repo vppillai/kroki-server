@@ -24,6 +24,7 @@ import { clojure } from '@codemirror/legacy-modes/mode/clojure';
 import { mermaid } from 'codemirror-lang-mermaid';
 import { dot } from '@viz-js/lang-dot';
 import { latex } from 'codemirror-lang-latex';
+import { DEFAULT_MAX_TEXT_SIZE } from './constants.js';
 
 /** @type {EditorView|null} */
 let view = null;
@@ -138,9 +139,6 @@ const syntaxColors = HighlightStyle.define([
     { tag: t.annotation, color: 'var(--syntax-comment)' },
     { tag: t.color, color: 'var(--syntax-number)' },
 ]);
-
-/** Default max text size in bytes (matches Kroki's default 1MB POST body limit) */
-const DEFAULT_MAX_TEXT_SIZE = 1048576;
 
 /** Current font size in px */
 let currentFontSize = 13;

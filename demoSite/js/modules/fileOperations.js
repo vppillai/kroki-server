@@ -1,189 +1,33 @@
 /**
  * File Operations Module
- * 
- * Handles all file-related operations including open, save, save as,
- * auto-save functionality, and file status management.
- * Supports both File System Access API and fallback methods.
- * 
+ *
+ * Core file operations: open, save, save-as, new, keyboard shortcuts.
+ * Status display, auto-save, and file monitoring are delegated to sub-modules.
+ *
  * @author Vysakh Pillai
  */
 
-import { state, updateCurrentFile, updateAutoSaveTimer, updateFileMonitoring } from './state.js';
-import { updateLineNumbers } from './utils.js';
-import { updateDiagram, debounceUpdateDiagram } from './diagramOperations.js';
+import { state, updateCurrentFile, updateUserHasEditedContent, updateCurrentDiagramType } from './state.js';
+import { debounceUpdateDiagram, updateFormatDropdown } from './diagramOperations.js';
 
-/**
- * Update file status display in UI
- * Updates file name, save status, and button states based on current file state
- * Handles visibility of file status elements when no file is open
- * 
- * @public
- */
-export function updateFileStatus() {
-    const fileNameElement = document.getElementById('file-name');
-    const saveStatusElement = document.getElementById('save-status');
-    const saveBtn = document.getElementById('save-file-btn');
-    const autoSaveLabel = document.getElementById('auto-save-label');
-    const autoReloadLabel = document.getElementById('auto-reload-label');
-    const fileStatusContainer = document.querySelector('.file-status');
+import {
+    updateFileStatus, markFileAsModified, markFileAsSaved,
+    showSuccessMessage, showErrorMessage
+} from './fileStatus.js';
+import { toggleAutoSave, startAutoSave, stopAutoSave } from './autoSave.js';
+import { toggleAutoReload, startFileMonitoring, stopFileMonitoring, restartFileMonitoring } from './fileMonitoring.js';
 
-    // Check if we have any content to work with (either open file or new file with content)
-    const hasContent = state.currentFile.isOpen || state.currentFile.content;
-
-    // Handle completely empty state - hide the entire file status area
-    if (!hasContent) {
-        if (fileStatusContainer) {
-            fileStatusContainer.style.display = 'none';
-        }
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.title = 'No file to save';
-        }
-        if (autoSaveLabel) {
-            autoSaveLabel.style.display = 'none';
-            autoSaveLabel.classList.remove('active');
-        }
-        if (autoReloadLabel) {
-            autoReloadLabel.style.display = 'none';
-            autoReloadLabel.classList.remove('active');
-        }
-        return;
-    }
-
-    // Show the file status area when a file is open
-    if (fileStatusContainer) {
-        fileStatusContainer.style.display = 'block';
-    }
-
-    // Determine if this is truly a new file (no handle and not opened from disk)
-    const isNewFile = !state.currentFile.handle && !state.currentFile.isOpen;
-
-    // Show auto-save pill only when file has been saved at least once
-    if (autoSaveLabel) {
-        // For new files, always hide auto-save
-        if (isNewFile) {
-            autoSaveLabel.style.display = 'none';
-            autoSaveLabel.classList.remove('active');
-        } else if (state.currentFile.handle || !isFileSystemAccessSupported()) {
-            // Show auto-save for files that have been saved
-            autoSaveLabel.style.display = 'inline-flex';
-            autoSaveLabel.classList.toggle('active', !!state.currentFile.autoSaveEnabled);
-        } else {
-            // Hide auto-save for other cases
-            autoSaveLabel.style.display = 'none';
-        }
-    }
-
-    // Show auto-reload pill only when file has been saved at least once and has a handle
-    if (autoReloadLabel) {
-        // For new files, always hide auto-reload
-        if (isNewFile) {
-            autoReloadLabel.style.display = 'none';
-            autoReloadLabel.classList.remove('active');
-        } else if (state.currentFile.handle && isFileSystemAccessSupported()) {
-            // Show auto-reload for files that have been opened with File System Access API
-            autoReloadLabel.style.display = 'inline-flex';
-            autoReloadLabel.classList.toggle('active', !!state.currentFile.autoReloadEnabled);
-        } else if (state.currentFile.isOpen) {
-            // FALLBACK: Show auto-reload for any opened file (for testing purposes)
-            autoReloadLabel.style.display = 'inline-flex';
-            autoReloadLabel.classList.toggle('active', !!state.currentFile.autoReloadEnabled);
-            // Add a note that auto-reload won't work without File System Access API
-            autoReloadLabel.title = 'Auto-reload requires File System Access API (not available)';
-        } else {
-            // Hide auto-reload for files without handles or browsers without File System Access API
-            autoReloadLabel.style.display = 'none';
-            autoReloadLabel.classList.remove('active');
-        }
-    }
-
-    // Add animation class for file name changes
-    if (fileNameElement.textContent !== state.currentFile.name) {
-        fileNameElement.classList.add('changed');
-        setTimeout(() => fileNameElement.classList.remove('changed'), 300);
-    }
-
-    fileNameElement.textContent = state.currentFile.name || 'Untitled';
-
-    if (isNewFile) {
-        // New file - never show "Saved" status
-        saveStatusElement.textContent = '';
-        saveStatusElement.className = 'save-status';
-        saveStatusElement.style.visibility = 'hidden'; // Hide the element completely
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.title = 'Save file (Ctrl+S)';
-        }
-    } else if (state.currentFile.saved) {
-        saveStatusElement.textContent = 'Saved';
-        saveStatusElement.className = 'save-status saved';
-        saveStatusElement.style.visibility = 'visible';
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.title = 'File is saved';
-        }
-    } else {
-        saveStatusElement.textContent = '• Unsaved changes';
-        saveStatusElement.className = 'save-status';
-        saveStatusElement.style.visibility = 'visible';
-        if (saveBtn) {
-            saveBtn.disabled = false;
-            saveBtn.title = 'Save file (Ctrl+S)';
-        }
-    }
-}
-
-/**
- * Mark current file as modified
- * Updates UI to reflect unsaved changes and provides visual feedback
- * Only acts if a file is currently open and was previously saved
- * 
- * @public
- */
-export function markFileAsModified() {
-    // Mark as modified if we have content (either open file or new file)
-    const hasContent = state.currentFile.isOpen || state.currentFile.content;
-    if (hasContent && state.currentFile.saved) {
-        updateCurrentFile({ saved: false });
-        updateFileStatus();
-
-        // Visual feedback for modification
-        const editor = document.getElementById('code');
-        if (editor) {
-            editor.style.borderLeftColor = 'var(--warning-color)';
-            setTimeout(() => {
-                editor.style.borderLeftColor = '';
-            }, 1000);
-        }
-    }
-}
-
-/**
- * Mark current file as saved
- * Updates file state and UI to reflect saved status with visual feedback
- * 
- * @public
- */
-export function markFileAsSaved() {
-    updateCurrentFile({ saved: true });
-    updateFileStatus();
-
-    // Visual feedback for save
-    const saveStatusElement = document.getElementById('save-status');
-    if (saveStatusElement) {
-        saveStatusElement.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-            saveStatusElement.style.transform = '';
-        }, 200);
-    }
-}
+// Re-export from sub-modules
+export {
+    updateFileStatus, markFileAsModified, markFileAsSaved,
+    showSuccessMessage, showErrorMessage
+} from './fileStatus.js';
+export { toggleAutoSave, startAutoSave, stopAutoSave } from './autoSave.js';
+export { toggleAutoReload, startFileMonitoring, stopFileMonitoring, restartFileMonitoring } from './fileMonitoring.js';
 
 /**
  * Check File System Access API support
- * Determines if the browser supports modern file system APIs
- * 
- * @returns {boolean} True if File System Access API is available
- * @public
+ * @returns {boolean}
  */
 export function isFileSystemAccessSupported() {
     return 'showOpenFilePicker' in window;
@@ -191,11 +35,7 @@ export function isFileSystemAccessSupported() {
 
 /**
  * Open file dialog and load file content
- * Uses File System Access API when available, falls back to file input
- * Handles file content loading, diagram type detection, and UI updates
- * 
  * @async
- * @public
  */
 export async function openFile() {
     try {
@@ -218,25 +58,21 @@ export async function openFile() {
                 content: content,
                 saved: true,
                 isOpen: true
-                // Note: auto-save state is preserved if it was previously set
             });
 
             const codeTextarea = document.getElementById('code');
             codeTextarea.value = content;
-            updateLineNumbers();
+
             debounceUpdateDiagram();
             updateFileStatus();
 
-            // Detect diagram type from content or filename
             detectDiagramType(content, file.name);
 
-            // Start file monitoring if auto-reload is enabled
             if (state.currentFile.autoReloadEnabled) {
                 startFileMonitoring();
             }
 
         } else {
-            // Fallback to file input
             const fileInput = document.getElementById('file-input');
             fileInput.click();
         }
@@ -250,15 +86,21 @@ export async function openFile() {
 
 /**
  * Handle file input change for fallback file loading
- * Processes file selection from traditional file input element
- * Updates application state and detects diagram type
- * 
- * @param {Event} event - File input change event
- * @public
+ * @param {Event} event
  */
 export function handleFileInputChange(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    // Validate file before processing
+    if (window.inputValidation) {
+        const validation = window.inputValidation.validateFile(file);
+        if (!validation.valid) {
+            showErrorMessage(validation.error);
+            event.target.value = '';
+            return;
+        }
+    }
 
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -270,39 +112,30 @@ export function handleFileInputChange(event) {
             content: content,
             saved: true,
             isOpen: true
-            // Note: no handle means limited file operations (no auto-save with File System Access)
         });
 
         const codeTextarea = document.getElementById('code');
         codeTextarea.value = content;
-        updateLineNumbers();
         debounceUpdateDiagram();
         updateFileStatus();
 
-        // Detect diagram type from content or filename
         detectDiagramType(content, file.name);
     };
     reader.readAsText(file);
 
-    // Reset the input
     event.target.value = '';
 }
 
 /**
- * Detect diagram type from file content or filename
- * Analyzes content patterns and file extensions to determine diagram type
- * Updates diagram type dropdown and format options
- * 
- * @param {string} content - File content to analyze
- * @param {string} filename - Original filename for extension detection
- * @public
+ * Detect diagram type from content or filename
+ * @param {string} content
+ * @param {string} filename
  */
 export function detectDiagramType(content, filename) {
     const diagramTypeSelect = document.getElementById('diagramType');
     const lowerContent = content.toLowerCase();
     const lowerFilename = filename.toLowerCase();
 
-    // Try to detect from content
     if (lowerContent.includes('@startuml') || lowerContent.includes('@enduml')) {
         diagramTypeSelect.value = 'plantuml';
     } else if (lowerContent.includes('graph') && (lowerContent.includes('mermaid') || lowerFilename.includes('.mmd'))) {
@@ -315,41 +148,27 @@ export function detectDiagramType(content, filename) {
         diagramTypeSelect.value = 'structurizr';
     }
 
-    // Update format dropdown and trigger diagram update
-    import('./diagramOperations.js').then(module => {
-        module.updateFormatDropdown();
-    });
-    import('./state.js').then(module => {
-        module.updateCurrentDiagramType(diagramTypeSelect.value);
-    });
+    updateFormatDropdown();
+    updateCurrentDiagramType(diagramTypeSelect.value);
 }
 
 /**
  * Save current file content
- * Uses existing file handle when available, prompts for save location otherwise
- * Handles File System Access API and fallback download methods
- * 
  * @async
- * @public
  */
 export async function saveFile() {
     const content = document.getElementById('code').value;
 
     try {
         if (state.currentFile.handle && isFileSystemAccessSupported()) {
-            // Use existing file handle
             const writable = await state.currentFile.handle.createWritable();
             await writable.write(content);
             await writable.close();
 
-            updateCurrentFile({
-                content: content,
-                saved: true
-            });
+            updateCurrentFile({ content: content, saved: true });
             updateFileStatus();
             showSuccessMessage('File saved successfully!');
         } else {
-            // No handle available, prompt for save as
             await saveAsFile();
         }
     } catch (error) {
@@ -362,11 +181,7 @@ export async function saveFile() {
 
 /**
  * Save file with new name or location
- * Always prompts user for save location regardless of existing file handle
- * Creates new file handle for future save operations
- * 
  * @async
- * @public
  */
 export async function saveAsFile() {
     const content = document.getElementById('code').value;
@@ -391,14 +206,12 @@ export async function saveAsFile() {
                 name: fileHandle.name || getDefaultFileName(),
                 handle: fileHandle,
                 content: content,
-                isOpen: true,  // Now it's a "real" file
+                isOpen: true,
                 saved: true
-                // Note: auto-save state is preserved from current file
             });
-            updateFileStatus();  // This will show auto-save button
+            updateFileStatus();
             showSuccessMessage('File saved successfully!');
         } else {
-            // Fallback to download
             downloadAsFile(content);
         }
     } catch (error) {
@@ -411,10 +224,7 @@ export async function saveAsFile() {
 
 /**
  * Generate default filename based on current diagram type
- * Provides appropriate file extensions for different diagram formats
- * 
- * @returns {string} Default filename with appropriate extension
- * @public
+ * @returns {string}
  */
 export function getDefaultFileName() {
     const extensions = {
@@ -434,12 +244,8 @@ export function getDefaultFileName() {
 }
 
 /**
- * Fallback download function for browsers without File System Access API
- * Creates and triggers download of file content using blob URLs
- * Updates file state and provides user feedback
- * 
- * @param {string} content - File content to download
- * @public
+ * Fallback download function
+ * @param {string} content
  */
 export function downloadAsFile(content) {
     const filename = getDefaultFileName();
@@ -455,109 +261,22 @@ export function downloadAsFile(content) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Update current file info
     updateCurrentFile({
         name: filename,
         content: content,
-        isOpen: true,  // Treat downloaded files as "open"
+        isOpen: true,
         saved: true,
-        handle: null  // Downloaded files don't have a handle
+        handle: null
     });
     updateFileStatus();
     showSuccessMessage('File downloaded successfully!');
 }
 
 /**
- * Display success message to user
- * Shows temporary success feedback in the save status area
- * 
- * @param {string} message - Success message to display
- * @public
- */
-export function showSuccessMessage(message) {
-    const saveStatus = document.getElementById('save-status');
-    const originalClass = saveStatus.className;
-    const originalText = saveStatus.textContent;
-
-    saveStatus.textContent = message;
-    saveStatus.className = 'save-status saved';
-
-    setTimeout(() => {
-        saveStatus.textContent = originalText;
-        saveStatus.className = originalClass;
-    }, 2000);
-}
-
-/**
- * Display error message to user
- * Shows error feedback in the main error message area
- * 
- * @param {string} message - Error message to display
- * @public
- */
-export function showErrorMessage(message) {
-    const errorElement = document.getElementById('errorMessage');
-    errorElement.textContent = message;
-    errorElement.style.display = 'block';
-
-    setTimeout(() => {
-        errorElement.style.display = 'none';
-    }, 5000);
-}
-
-/**
- * Show non-dismissible error banner in diagram pane
- * Displays persistent error information at bottom of image area
- * 
- * @param {string} message - Error message to display in banner
- * @public
- */
-export function showImageErrorBanner(message) {
-    const banner = document.getElementById('image-error-banner');
-    const messageElement = document.getElementById('error-banner-message');
-    const copyBtn = document.getElementById('error-copy-btn');
-
-    if (banner && messageElement) {
-        messageElement.textContent = message;
-        banner.style.display = 'block';
-
-        if (copyBtn) {
-            const handler = () => {
-                navigator.clipboard.writeText(message).then(() => {
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(() => { copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy'; }, 1500);
-                });
-            };
-            copyBtn.replaceWith(copyBtn.cloneNode(true));
-            document.getElementById('error-copy-btn').addEventListener('click', handler);
-        }
-    }
-}
-
-/**
- * Hide image error banner
- * Removes error banner from diagram pane when error is resolved
- * 
- * @public
- */
-export function hideImageErrorBanner() {
-    const banner = document.getElementById('image-error-banner');
-
-    if (banner) {
-        banner.style.display = 'none';
-    }
-}
-
-/**
  * Create new file with example content
- * Prompts user about unsaved changes, loads appropriate example for current diagram type
- * Resets file state and user edit tracking
- * 
  * @async
- * @public
  */
 export async function newFile() {
-    // Check for unsaved changes either in an open file or user-edited content
     const hasUnsavedChanges = (state.currentFile.isOpen && !state.currentFile.saved) ||
         (state.userHasEditedContent && document.getElementById('code').value.trim() !== '');
 
@@ -567,51 +286,40 @@ export async function newFile() {
         }
     }
 
-    // Get the current diagram type to load the appropriate example
     const diagramType = document.getElementById('diagramType').value;
     const { loadExampleForDiagramType } = await import('./diagramOperations.js');
     const exampleCode = await loadExampleForDiagramType(diagramType);
 
-    // Stop auto-save if it's running (new files can't auto-save without a handle)
     if (state.currentFile.autoSaveEnabled) {
         stopAutoSave();
     }
 
-    // Stop file monitoring if it's running (new files don't need monitoring)
     if (state.fileMonitoring.isWatching) {
         stopFileMonitoring();
     }
 
-    // Completely reset file state for new file
     updateCurrentFile({
-        name: null,  // Will show as "Untitled" in UI
-        handle: null,  // No file handle for new files
+        name: null,
+        handle: null,
         content: exampleCode,
-        saved: true,  // Start as "saved" since it's just the example
-        isOpen: false,  // Not actually "open" from disk
-        autoSaveEnabled: false,  // Disable auto-save for new files
-        autoReloadEnabled: true  // Keep auto-reload enabled by default for future files
+        saved: true,
+        isOpen: false,
+        autoSaveEnabled: false,
+        autoReloadEnabled: true
     });
 
     const codeTextarea = document.getElementById('code');
     codeTextarea.value = exampleCode;
 
-    // Reset user edit tracking since we're starting fresh
-    import('./state.js').then(module => {
-        module.updateUserHasEditedContent(false);
-    });
+    updateUserHasEditedContent(false);
 
-    updateLineNumbers();
     debounceUpdateDiagram();
-    updateFileStatus(); // This will handle auto-save UI properly
+    updateFileStatus();
 }
 
 /**
  * Handle keyboard shortcuts for file operations
- * Processes Ctrl/Cmd key combinations for file operations and settings
- * 
- * @param {KeyboardEvent} event - Keyboard event to process
- * @public
+ * @param {KeyboardEvent} event
  */
 export function handleFileShortcuts(event) {
     if (event.ctrlKey || event.metaKey) {
@@ -650,214 +358,9 @@ export function handleFileShortcuts(event) {
 }
 
 /**
- * Toggle auto-save functionality for current file
- * Enables or disables automatic file saving and updates UI indicators
- * 
- * @public
- */
-export function toggleAutoSave() {
-    updateCurrentFile({ autoSaveEnabled: !state.currentFile.autoSaveEnabled });
-    const autoSaveLabel = document.getElementById('auto-save-label');
-
-    if (autoSaveLabel) {
-        autoSaveLabel.classList.toggle('active', state.currentFile.autoSaveEnabled);
-    }
-
-    if (state.currentFile.autoSaveEnabled) {
-        startAutoSave();
-    } else {
-        stopAutoSave();
-    }
-}
-
-/**
- * Start auto-save timer for current file
- * Initiates periodic automatic saving based on configuration delay
- * 
- * @public
- */
-export function startAutoSave() {
-    stopAutoSave(); // Clear any existing timer
-    const timer = setInterval(() => {
-        // Only auto-save if we have a file handle (can't show file picker without user interaction)
-        if (state.currentFile.isOpen && !state.currentFile.saved && state.currentFile.handle) {
-            saveFile();
-        }
-    }, state.AUTO_SAVE_DELAY);
-    updateAutoSaveTimer(timer);
-}
-
-/**
- * Stop auto-save timer
- * Clears active auto-save interval to prevent further automatic saves
- * 
- * @public
- */
-export function stopAutoSave() {
-    if (state.autoSaveTimer) {
-        clearInterval(state.autoSaveTimer);
-        updateAutoSaveTimer(null);
-    }
-}
-
-/**
- * Start file monitoring for auto-reload functionality
- * Uses efficient polling to check for file changes when a file is open
- * Only works with File System Access API enabled files
- * 
- * @public
- */
-export function startFileMonitoring() {
-    stopFileMonitoring(); // Clear any existing monitoring
-
-    if (!state.currentFile.handle || !state.currentFile.autoReloadEnabled) {
-        return;
-    }
-
-    const checkFileChanges = async () => {
-        try {
-            const file = await state.currentFile.handle.getFile();
-            const currentModified = file.lastModified;
-
-            // Initialize last modified on first check
-            if (state.fileMonitoring.lastModified === null) {
-                updateFileMonitoring({ lastModified: currentModified });
-                return;
-            }
-
-            // Check if file has been modified
-            if (currentModified > state.fileMonitoring.lastModified) {
-                updateFileMonitoring({ lastModified: currentModified });
-                
-                // Read the new content
-                const newContent = await file.text();
-                
-                // Only update if content actually changed
-                if (newContent !== state.currentFile.content) {
-                    await reloadFileContent(newContent);
-                }
-            }
-        } catch (error) {
-            console.warn('File monitoring error:', error);
-            // Stop monitoring if file becomes inaccessible
-            stopFileMonitoring();
-        }
-    };
-
-    // Start monitoring with configurable polling interval
-    const timer = setInterval(checkFileChanges, state.AUTO_RELOAD_DELAY);
-    updateFileMonitoring({
-        watchTimer: timer,
-        isWatching: true
-    });
-}
-
-/**
- * Stop file monitoring
- * Clears the monitoring timer and resets monitoring state
- * 
- * @public
- */
-export function stopFileMonitoring() {
-    if (state.fileMonitoring.watchTimer) {
-        clearInterval(state.fileMonitoring.watchTimer);
-    }
-    
-    updateFileMonitoring({
-        watchTimer: null,
-        isWatching: false,
-        lastModified: null
-    });
-}
-
-/**
- * Restart file monitoring with updated delay
- * Stops current monitoring and starts again with new delay from state
- * Used when auto-reload delay configuration changes
- * 
- * @public
- */
-export function restartFileMonitoring() {
-    if (state.fileMonitoring.isWatching) {
-        stopFileMonitoring();
-        startFileMonitoring();
-    }
-}
-
-/**
- * Reload file content when external changes are detected
- * Updates the editor content and provides user feedback
- * 
- * @param {string} newContent - The new file content
- * @private
- */
-async function reloadFileContent(newContent) {
-    // Update the current file state
-    updateCurrentFile({
-        content: newContent,
-        saved: true
-    });
-
-    // Update the editor
-    const codeTextarea = document.getElementById('code');
-    if (codeTextarea) {
-        // Save cursor position
-        const cursorPosition = codeTextarea.selectionStart;
-        
-        // Update content
-        codeTextarea.value = newContent;
-        
-        // Try to restore cursor position if still valid
-        if (cursorPosition <= newContent.length) {
-            codeTextarea.setSelectionRange(cursorPosition, cursorPosition);
-        }
-        
-        // Visual feedback for reload
-        codeTextarea.style.borderLeftColor = 'var(--success-color)';
-        setTimeout(() => {
-            codeTextarea.style.borderLeftColor = '';
-        }, 1000);
-    }
-
-    // Update UI
-    updateLineNumbers();
-    debounceUpdateDiagram();
-    updateFileStatus();
-
-    // Show subtle notification
-    showSuccessMessage('File reloaded from disk');
-}
-
-/**
- * Toggle auto-reload functionality for current file
- * Enables or disables automatic file reloading and updates UI indicators
- * 
- * @public
- */
-export function toggleAutoReload() {
-    updateCurrentFile({ autoReloadEnabled: !state.currentFile.autoReloadEnabled });
-    const autoReloadLabel = document.getElementById('auto-reload-label');
-
-    if (autoReloadLabel) {
-        autoReloadLabel.classList.toggle('active', state.currentFile.autoReloadEnabled);
-    }
-
-    if (state.currentFile.autoReloadEnabled && state.currentFile.handle) {
-        startFileMonitoring();
-    } else {
-        stopFileMonitoring();
-    }
-}
-
-/**
  * Initialize file operations system
- * Sets up event listeners for file operation buttons and keyboard shortcuts
- * Establishes file content change tracking
- * 
- * @public
  */
 export function initializeFileOperations() {
-    // Set up event listeners
     const newBtn = document.getElementById('new-file-btn');
     const openBtn = document.getElementById('open-file-btn');
     const saveBtn = document.getElementById('save-file-btn');
@@ -866,49 +369,14 @@ export function initializeFileOperations() {
     const autoReloadLabel = document.getElementById('auto-reload-label');
     const fileInput = document.getElementById('file-input');
 
-    if (newBtn) {
-        newBtn.addEventListener('click', newFile);
-    }
+    if (newBtn) newBtn.addEventListener('click', newFile);
+    if (openBtn) openBtn.addEventListener('click', openFile);
+    if (saveBtn) saveBtn.addEventListener('click', saveFile);
+    if (saveAsBtn) saveAsBtn.addEventListener('click', saveAsFile);
+    if (autoSaveLabel) autoSaveLabel.addEventListener('click', toggleAutoSave);
+    if (autoReloadLabel) autoReloadLabel.addEventListener('click', toggleAutoReload);
+    if (fileInput) fileInput.addEventListener('change', handleFileInputChange);
 
-    if (openBtn) {
-        openBtn.addEventListener('click', openFile);
-    }
-
-    if (saveBtn) {
-        saveBtn.addEventListener('click', saveFile);
-    }
-
-    if (saveAsBtn) {
-        saveAsBtn.addEventListener('click', saveAsFile);
-    }
-
-    if (autoSaveLabel) {
-        autoSaveLabel.addEventListener('click', toggleAutoSave);
-    }
-
-    if (autoReloadLabel) {
-        autoReloadLabel.addEventListener('click', toggleAutoReload);
-    }
-
-    if (fileInput) {
-        fileInput.addEventListener('change', handleFileInputChange);
-    }
-
-    // Add keyboard shortcuts
     document.addEventListener('keydown', handleFileShortcuts);
-
-    // Initial file status update
     updateFileStatus();
-
-    // Track content changes
-    const codeTextarea = document.getElementById('code');
-    if (codeTextarea) {
-        codeTextarea.addEventListener('input', function () {
-            // Check if content changed from what was loaded/saved
-            const hasContent = state.currentFile.isOpen || state.currentFile.content;
-            if (hasContent && state.currentFile.saved && this.value !== state.currentFile.content) {
-                markFileAsModified();
-            }
-        });
-    }
 }
