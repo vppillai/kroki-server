@@ -808,25 +808,35 @@ class ConfigUI {
 
         // Get current config value
         const currentModel = this.configManager.get('ai.model') || data.default_model || 'openai/gpt-4o';
-        
-        // Add models by provider - show everything from JSON
+
+        // Build flat set of all available model IDs for validation
+        const availableModelIds = new Set();
         const models = data.models;
+        for (const providerModels of Object.values(models)) {
+            for (const modelId of Object.keys(providerModels)) {
+                availableModelIds.add(modelId);
+            }
+        }
+
+        // Add models by provider - show everything from JSON
+        let foundCurrent = false;
         for (const [provider, providerModels] of Object.entries(models)) {
             if (Object.keys(providerModels).length === 0) continue;
 
             // Create optgroup for provider
             const optgroup = document.createElement('optgroup');
             optgroup.label = provider.charAt(0).toUpperCase() + provider.slice(1);
-            
+
             // Add all models for this provider (no filtering)
             for (const [modelId, modelInfo] of Object.entries(providerModels)) {
                 const option = document.createElement('option');
                 option.value = modelId;
-                option.textContent = modelInfo.name;
+                option.textContent = modelId;
 
                 // Select current model
                 if (modelId === currentModel) {
                     option.selected = true;
+                    foundCurrent = true;
                 }
 
                 optgroup.appendChild(option);
@@ -840,6 +850,19 @@ class ConfigUI {
         customOption.value = 'custom';
         customOption.textContent = 'Custom Model';
         selectElement.appendChild(customOption);
+
+        // If stored model is not available, auto-switch to server default or first available
+        if (!foundCurrent && currentModel !== 'custom') {
+            const fallbackModel = data.default_model && availableModelIds.has(data.default_model)
+                ? data.default_model
+                : availableModelIds.values().next().value;
+
+            if (fallbackModel) {
+                selectElement.value = fallbackModel;
+                this.configManager.set('ai.model', fallbackModel);
+                console.info(`AI model "${currentModel}" not available, switched to "${fallbackModel}"`);
+            }
+        }
     }
 
     populateModelSelectFallback(selectElement) {

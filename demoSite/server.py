@@ -86,7 +86,79 @@ def load_available_models():
             }
         }
 
-AVAILABLE_MODELS = load_available_models()
+# Known non-chat model keywords to filter out
+NON_CHAT_MODEL_KEYWORDS = ['embedding', 'embed', 'tts', 'whisper', 'dall-e', 'moderation']
+
+def fetch_models_from_proxy():
+    """Fetch available models from the LiteLLM proxy /models endpoint at startup.
+
+    Returns a dict grouped by provider prefix in the same shape as ai-models.json,
+    or None if the proxy is unreachable.
+    """
+    if not AI_PROXY_URL or not AI_PROXY_API_KEY:
+        logger.warning("AI_PROXY_URL or AI_PROXY_API_KEY not configured, skipping proxy model fetch")
+        return None
+
+    models_url = AI_PROXY_URL.rstrip('/') + '/models'
+    headers = {
+        'Authorization': f'Bearer {AI_PROXY_API_KEY}',
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        logger.info(f"Fetching model list from proxy: {models_url}")
+        response = requests.get(models_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        model_list = response.json().get('data', [])
+        if not model_list:
+            logger.warning("Proxy returned empty model list")
+            return None
+
+        grouped = {}
+        skipped = []
+
+        for entry in model_list:
+            model_id = entry.get('id', '')
+            if not model_id:
+                continue
+
+            # Filter out non-chat models
+            if any(kw in model_id.lower() for kw in NON_CHAT_MODEL_KEYWORDS):
+                skipped.append(model_id)
+                continue
+
+            provider = model_id.split('/')[0] if '/' in model_id else 'other'
+            if provider not in grouped:
+                grouped[provider] = {}
+
+            grouped[provider][model_id] = {
+                'name': model_id,
+                'provider': provider
+            }
+
+        if skipped:
+            logger.info(f"Filtered out {len(skipped)} non-chat models: {skipped}")
+
+        total = sum(len(m) for m in grouped.values())
+        logger.info(f"Fetched {total} chat models from proxy across {len(grouped)} providers")
+        return grouped if grouped else None
+
+    except requests.exceptions.Timeout:
+        logger.warning("Timeout fetching models from proxy (10s)")
+        return None
+    except requests.exceptions.ConnectionError:
+        logger.warning(f"Could not connect to proxy at {models_url}")
+        return None
+    except requests.exceptions.HTTPError as e:
+        logger.warning(f"HTTP error fetching models from proxy: {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Unexpected error fetching models from proxy: {e}")
+        return None
+
+# Try proxy first, fall back to static JSON
+AVAILABLE_MODELS = fetch_models_from_proxy() or load_available_models()
 
 # Default prompt templates - configurable via environment
 DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are an expert diagram assistant for the Kroki diagram server. You help users create, modify, and troubleshoot diagrams.
@@ -283,10 +355,13 @@ def ai_assist():
         }
         
         # Prepare payload for AI API
+        # Newer OpenAI/Azure models require max_completion_tokens instead of max_tokens
+        max_tokens_value = data.get('max_tokens', AI_MAX_TOKENS)
+        token_param = 'max_completion_tokens' if model.startswith(('azure/', 'openai/')) else 'max_tokens'
         ai_payload = {
             'model': model,
             'messages': data['messages'],
-            'max_tokens': data.get('max_tokens', AI_MAX_TOKENS),
+            token_param: max_tokens_value,
             'temperature': data.get('temperature', 0.7)
         }
         
@@ -419,7 +494,9 @@ if __name__ == '__main__':
     logger.info(f"Starting Kroki Demo Site Server on port {PORT}")
     logger.info(f"Static files served from: {STATIC_ROOT}")
     logger.info(f"AI Assistant enabled: {DEFAULT_AI_CONFIG['enabled']}")
-    
+    model_count = sum(len(models) for models in AVAILABLE_MODELS.values())
+    logger.info(f"Available AI models: {model_count} across {len(AVAILABLE_MODELS)} providers")
+
     # Run the Flask app
     app.run(
         host='0.0.0.0',

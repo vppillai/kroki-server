@@ -1477,7 +1477,7 @@ class AIAssistant {
             }
 
             // Handle specific error types with user-friendly messages
-            const errorMessage = this.getErrorMessage(error, response);
+            const errorMessage = this.getErrorMessage(error);
             throw new Error(errorMessage);
         } finally {
             clearTimeout(timeoutId);
@@ -1557,7 +1557,7 @@ class AIAssistant {
             }
 
             // Handle specific error types with user-friendly messages
-            const errorMessage = this.getErrorMessage(error, response);
+            const errorMessage = this.getErrorMessage(error);
             throw new Error(errorMessage);
         } finally {
             clearTimeout(timeoutId);
@@ -1973,35 +1973,10 @@ Please provide the updated or new diagram code in a code block, along with a bri
      * @returns {string} Shortened model name
      */
     getShortModelName(modelName) {
-        const shortNames = {
-            'gpt-4o': 'GPT-4o',
-            'gpt-4o-mini': 'GPT-4o Mini',
-            'gpt-4-turbo': 'GPT-4 Turbo',
-            'gpt-4': 'GPT-4',
-            'gpt-3.5-turbo': 'GPT-3.5',
-            'o1-preview': 'O1 Preview',
-            'o1-mini': 'O1 Mini',
-            'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-            'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
-            'claude-3-opus-20240229': 'Claude 3 Opus',
-            'claude-3-sonnet-20240229': 'Claude 3 Sonnet',
-            'claude-3-haiku-20240307': 'Claude 3 Haiku',
-            'gemini-1.5-pro': 'Gemini 1.5 Pro',
-            'gemini-1.5-flash': 'Gemini 1.5 Flash',
-            'gemini-1.0-pro': 'Gemini 1.0 Pro',
-            'llama-3.1-405b': 'Llama 3.1 405B',
-            'llama-3.1-70b': 'Llama 3.1 70B',
-            'llama-3.1-8b': 'Llama 3.1 8B',
-            'mistral-large': 'Mistral Large',
-            'mistral-medium': 'Mistral Medium',
-            'mistral-small': 'Mistral Small',
-            'openrouter/auto': 'OpenRouter Auto',
-            'anthropic/claude-3.5-sonnet': 'Claude 3.5 Sonnet',
-            'openai/gpt-4o': 'GPT-4o',
-            'meta-llama/llama-3.1-8b-instruct:free': 'Llama 3.1 8B (Free)'
-        };
-        
-        return shortNames[modelName] || modelName.split('/').pop() || modelName;
+        if (!modelName) return 'Unknown';
+        // Strip provider prefix: "azure/gpt-4o" -> "gpt-4o"
+        const parts = modelName.split('/');
+        return parts.length > 1 ? parts.slice(1).join('/') : modelName;
     }
 
     /**
