@@ -60,8 +60,10 @@ window.AIAssistantAPI = {
             if (contentType.includes('text/event-stream') || body.stream) {
                 const streamingEl = callbacks.addStreamingMessage();
                 const fullText = await this.readSSEStream(response, streamingEl, callbacks);
-                if (streamingEl && streamingEl.parentElement) {
-                    streamingEl.parentElement.remove();
+                if (streamingEl) {
+                    const wrapper = streamingEl.closest('.ai-message');
+                    if (wrapper) wrapper.remove();
+                    else if (streamingEl.parentElement) streamingEl.parentElement.remove();
                 }
                 return fullText;
             }
@@ -131,8 +133,10 @@ window.AIAssistantAPI = {
             if (contentType.includes('text/event-stream')) {
                 const streamingEl = callbacks.addStreamingMessage();
                 const fullText = await this.readSSEStream(response, streamingEl, callbacks);
-                if (streamingEl && streamingEl.parentElement) {
-                    streamingEl.parentElement.remove();
+                if (streamingEl) {
+                    const wrapper = streamingEl.closest('.ai-message');
+                    if (wrapper) wrapper.remove();
+                    else if (streamingEl.parentElement) streamingEl.parentElement.remove();
                 }
                 return fullText;
             }

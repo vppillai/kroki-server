@@ -152,21 +152,45 @@ window.AIAssistantUI = {
     },
 
     /**
-     * Create a streaming message element
+     * Create a collapsible streaming message element.
+     * Shows a "Generating response..." indicator that can be expanded to see raw streaming output.
      * @param {HTMLElement} chatMessages
-     * @returns {HTMLElement} Content element to update
+     * @returns {HTMLElement} Content element to update with streaming text
      */
     addStreamingMessage(chatMessages) {
         if (!chatMessages) return null;
 
         const messageElement = document.createElement('div');
-        messageElement.classList.add('ai-message', 'assistant');
+        messageElement.classList.add('ai-message', 'assistant', 'ai-streaming-wrapper');
 
+        const container = document.createElement('div');
+        container.classList.add('ai-streaming-collapsed');
+
+        // Header row: spinner + label + toggle arrow
+        const header = document.createElement('div');
+        header.classList.add('ai-streaming-header');
+        // SAFE: developer-controlled template
+        header.innerHTML = `
+            <span class="ai-streaming-spinner"></span>
+            <span class="ai-streaming-label">Generating response...</span>
+            <span class="ai-streaming-toggle" title="Show raw output">&#9660;</span>
+        `;
+        header.addEventListener('click', () => {
+            const isExpanded = container.classList.toggle('expanded');
+            const toggle = header.querySelector('.ai-streaming-toggle');
+            toggle.innerHTML = isExpanded ? '&#9650;' : '&#9660;';
+            toggle.title = isExpanded ? 'Hide raw output' : 'Show raw output';
+            this.scrollToBottom(chatMessages);
+        });
+
+        // Hidden content area for streaming text
         const contentElement = document.createElement('div');
-        contentElement.classList.add('ai-message-content');
+        contentElement.classList.add('ai-streaming-content');
         contentElement.textContent = '';
 
-        messageElement.appendChild(contentElement);
+        container.appendChild(header);
+        container.appendChild(contentElement);
+        messageElement.appendChild(container);
         chatMessages.appendChild(messageElement);
 
         return contentElement;

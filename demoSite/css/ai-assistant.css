@@ -313,6 +313,72 @@
     color: var(--text-primary);
 }
 
+/* Collapsible Streaming Message */
+.ai-streaming-collapsed {
+    border-radius: var(--border-radius-lg);
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    border-bottom-left-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.ai-streaming-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: background 0.2s ease;
+}
+
+.ai-streaming-header:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.ai-streaming-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-top: 2px solid rgb(59, 130, 246);
+    border-radius: 50%;
+    animation: ai-spin 1s linear infinite;
+    flex-shrink: 0;
+}
+
+.ai-streaming-label {
+    flex: 1;
+    font-weight: 500;
+    color: rgb(59, 130, 246);
+    animation: statusTextPulse 2s ease-in-out infinite;
+}
+
+.ai-streaming-toggle {
+    font-size: 10px;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease;
+}
+
+.ai-streaming-content {
+    display: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary);
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--background-tertiary);
+}
+
+.ai-streaming-collapsed.expanded .ai-streaming-content {
+    display: block;
+}
+
 /* Code blocks in messages */
 .ai-message-content pre {
     background: var(--background-tertiary);

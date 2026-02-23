@@ -26,6 +26,7 @@ class AIAssistant {
         this.maxRetryAttempts = 3;
         this.currentAbortController = null;
         this.isRequestInProgress = false;
+        this.pendingStreamingElement = null;
 
         // Chat State
         this.chatHistory = [];
@@ -409,6 +410,10 @@ class AIAssistant {
     updateStreamingMessage(element, text) {
         if (!element) return;
         element.textContent = text;
+        // Auto-scroll the streaming content if it's expanded
+        if (element.classList.contains('ai-streaming-content')) {
+            element.scrollTop = element.scrollHeight;
+        }
         this.scrollToBottom();
     }
 
@@ -436,7 +441,16 @@ class AIAssistant {
         this.retryAttempts = 0;
         this.setSendButtonState(false);
         this.hideStatus();
+        // Remove any streaming indicator left in the chat
+        this.removeStreamingIndicator();
         this.addMessage('system', 'Request cancelled by user');
+    }
+
+    /** Remove the collapsible streaming indicator from the chat */
+    removeStreamingIndicator() {
+        this.pendingStreamingElement = null;
+        const wrapper = this.chatMessages?.querySelector('.ai-streaming-wrapper');
+        if (wrapper) wrapper.remove();
     }
 
     // ========================================
@@ -457,7 +471,9 @@ class AIAssistant {
         this.isRequestInProgress = true;
         this.currentAbortController = new AbortController();
         this.setSendButtonState(true);
-        this.showStatus('Generating response...');
+
+        // Show the collapsible streaming indicator immediately
+        this.pendingStreamingElement = this.addStreamingMessage();
 
         try {
             const currentCode = document.getElementById('code')?.value || '';
@@ -472,6 +488,7 @@ class AIAssistant {
             this.setSendButtonState(false);
             this.hideStatus();
             this.currentAbortController = null;
+            this.removeStreamingIndicator();
         }
     }
 
@@ -533,7 +550,15 @@ class AIAssistant {
             }
 
             const callbacks = {
-                addStreamingMessage: () => this.addStreamingMessage(),
+                addStreamingMessage: () => {
+                    // Reuse the indicator created in sendMessage() if available
+                    if (this.pendingStreamingElement) {
+                        const el = this.pendingStreamingElement;
+                        this.pendingStreamingElement = null;
+                        return el;
+                    }
+                    return this.addStreamingMessage();
+                },
                 updateStreamingMessage: (el, text) => this.updateStreamingMessage(el, text),
                 scrollToBottom: () => this.scrollToBottom()
             };
