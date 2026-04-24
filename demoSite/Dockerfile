@@ -36,7 +36,7 @@ RUN find /app -type d -exec chmod 755 {} \; && \
 
 # Add healthcheck using the dedicated health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 -O /dev/null http://localhost:${PORT}/api/health || exit 1
+  CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:${PORT}/api/health || exit 1
 
 # Expose the port (for documentation)
 EXPOSE ${PORT}

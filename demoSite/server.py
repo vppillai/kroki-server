@@ -51,7 +51,7 @@ PORT = int(os.environ.get('PORT', 8006))
 HTTPS_PORT = int(os.environ.get('HTTPS_PORT', 8443))
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost')
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
-AI_TIMEOUT = 30  # Default timeout for AI API requests
+AI_TIMEOUT = 60  # Default timeout for AI API requests
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE', 1048576))  # Kroki backend body limit
@@ -92,6 +92,56 @@ def load_available_models():
 
 # Known non-chat model keywords to filter out
 NON_CHAT_MODEL_KEYWORDS = ['embedding', 'embed', 'tts', 'whisper', 'dall-e', 'moderation']
+
+# Provider-specific API parameter rules.
+# Keyed by the provider prefix (the part before '/' in a model ID like 'anthropic/claude-opus-4').
+# Each entry can specify:
+#   'token_param'    - key name for the token limit ('max_tokens' or 'max_completion_tokens')
+#   'exclude_params' - set of parameter names to omit from the payload entirely
+# Providers not listed here fall through to DEFAULT_PARAM_RULES.
+PROVIDER_PARAM_RULES = {
+    'anthropic': {
+        'token_param': 'max_tokens',
+        'exclude_params': {'temperature'},
+    },
+    'openai': {
+        'token_param': 'max_completion_tokens',
+    },
+    'azure': {
+        'token_param': 'max_completion_tokens',
+    },
+}
+
+DEFAULT_PARAM_RULES = {
+    'token_param': 'max_tokens',
+    'exclude_params': set(),
+}
+
+
+def build_ai_payload(model, messages, data):
+    """Build the AI API payload with provider-specific parameter handling.
+
+    Uses PROVIDER_PARAM_RULES to determine which parameters each provider
+    supports, what key names to use, and which params to exclude.
+    """
+    provider = model.split('/')[0] if '/' in model else 'other'
+    rules = PROVIDER_PARAM_RULES.get(provider, {})
+
+    token_param = rules.get('token_param', DEFAULT_PARAM_RULES['token_param'])
+    exclude_params = rules.get('exclude_params', DEFAULT_PARAM_RULES['exclude_params'])
+
+    max_tokens_value = data.get('max_tokens', AI_MAX_TOKENS)
+
+    payload = {
+        'model': model,
+        'messages': messages,
+        token_param: max_tokens_value,
+    }
+
+    if 'temperature' not in exclude_params:
+        payload['temperature'] = data.get('temperature', 0.7)
+
+    return payload
 
 def fetch_models_from_proxy():
     """Fetch available models from the LiteLLM proxy /models endpoint at startup.
@@ -363,16 +413,8 @@ def ai_assist():
             'Authorization': f'Bearer {api_key}'
         }
         
-        # Prepare payload for AI API
-        # Newer OpenAI/Azure models require max_completion_tokens instead of max_tokens
-        max_tokens_value = data.get('max_tokens', AI_MAX_TOKENS)
-        token_param = 'max_completion_tokens' if model.startswith(('azure/', 'openai/')) else 'max_tokens'
-        ai_payload = {
-            'model': model,
-            'messages': data['messages'],
-            token_param: max_tokens_value,
-            'temperature': data.get('temperature', 0.7)
-        }
+        # Build payload with provider-specific parameter handling
+        ai_payload = build_ai_payload(model, data['messages'], data)
         
         logger.info(f"Proxying AI request to {endpoint} with model {model}")
 
