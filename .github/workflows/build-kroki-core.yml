@@ -1,14 +1,16 @@
 name: Build Kroki core (GoAT) image
 
 # Builds the Kroki "core" image from upstream main — which includes GoAT
-# (PR #2033), not present in any released yuzutech/kroki image — and publishes
-# it to GHCR so deployments can `docker-compose up` without a local source build.
+# (PR #2033), not present in any released yuzutech/kroki image — and publishes a
+# MULTI-ARCH (amd64 + arm64) image to GHCR so deployments on either architecture
+# can `docker-compose up` without a local source build. Each arch is built on a
+# native runner (no QEMU) and pushed as :goat-<arch>; a merge job stitches them
+# into the multi-arch ghcr.io/<owner>/kroki-core:goat manifest that
+# docker-compose.yml references.
 #
-# Run manually (Actions tab -> Run workflow) or on the weekly schedule.
-# The published image is referenced by docker-compose.yml as
-#   ghcr.io/${owner}/kroki-core:goat
-# After the first successful run, make the package public (Packages -> settings)
-# or have deployers `docker login ghcr.io` so the pull works unauthenticated.
+# Run manually (Actions -> Run workflow) or on the weekly schedule. After the
+# first run, make the GHCR package public (Packages -> settings) or have
+# deployers `docker login ghcr.io` so the pull works.
 
 on:
   workflow_dispatch:
@@ -25,11 +27,24 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
     env:
       KROKI_REF: ${{ github.event.inputs.kroki_ref || '1d20d1d6e518a6c2eab4c44bbf50b02802b94561' }}
     steps:
+      - name: Lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Checkout Kroki source
         uses: actions/checkout@v4
         with:
@@ -61,17 +76,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Lowercase owner
-        id: owner
-        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
-
-      - name: Build & push core image (phase 2 — bake)
+      - name: Build & push per-arch image (phase 2 — bake, native build)
         working-directory: kroki
         env:
-          OWNER: ${{ steps.owner.outputs.name }}
-          # KROKI_REF is a job-level env; referenced as a shell var (no ${{ }} in run).
+          PLATFORM: ${{ matrix.platform }}
+          ARCH: ${{ matrix.arch }}
         run: |
           docker buildx bake kroki \
-            --set "kroki.tags=ghcr.io/${OWNER}/kroki-core:goat" \
-            --set "kroki.tags=ghcr.io/${OWNER}/kroki-core:${KROKI_REF}" \
+            --set "kroki.platform=${PLATFORM}" \
+            --set "kroki.tags=ghcr.io/${OWNER}/kroki-core:goat-${ARCH}" \
             --push
+
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lowercase owner
+        run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch manifest :goat from the per-arch images
+        run: |
+          docker buildx imagetools create \
+            -t "ghcr.io/${OWNER}/kroki-core:goat" \
+            "ghcr.io/${OWNER}/kroki-core:goat-amd64" \
+            "ghcr.io/${OWNER}/kroki-core:goat-arm64"
+          docker buildx imagetools inspect "ghcr.io/${OWNER}/kroki-core:goat"
