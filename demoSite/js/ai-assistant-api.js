@@ -7,6 +7,8 @@
  * @module AIAssistantAPI
  */
 
+import { interpretSSEData } from './modules/aiStream.js';
+
 const AI_API_MAX_TOKENS = window.APP_CONSTANTS ? window.APP_CONSTANTS.AI_MAX_TOKENS : 16000;
 const AI_API_TEMPERATURE = window.APP_CONSTANTS ? window.APP_CONSTANTS.AI_TEMPERATURE : 0.7;
 
@@ -19,21 +21,11 @@ window.AIAssistantAPI = {
      * @param {Object} callbacks - { addStreamingMessage, updateStreamingMessage, scrollToBottom }
      * @returns {Promise<string|Object>}
      */
-    async callCustomAPI(prompt, config, abortController, callbacks) {
+    async callCustomAPI(messages, config, abortController, callbacks) {
         const controller = abortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
         try {
-            let messages;
-            if (typeof prompt === 'object' && prompt.system && prompt.user) {
-                messages = [
-                    { role: 'system', content: prompt.system },
-                    { role: 'user', content: prompt.user }
-                ];
-            } else {
-                messages = [{ role: 'user', content: prompt }];
-            }
-
             const body = {
                 model: config.model === 'custom' ? config.customModel : config.model,
                 messages: messages,
@@ -57,7 +49,7 @@ window.AIAssistantAPI = {
             }
 
             const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('text/event-stream') || body.stream) {
+            if (contentType.includes('text/event-stream')) {
                 const streamingEl = callbacks.addStreamingMessage();
                 const fullText = await this.readSSEStream(response, streamingEl, callbacks);
                 if (streamingEl) {
@@ -70,7 +62,7 @@ window.AIAssistantAPI = {
 
             return await response.json();
         } catch (error) {
-            if (error.name === 'AbortError') throw error;
+            if (error.name === 'AbortError' || error.isProviderError) throw error;
             throw new Error(this.getErrorMessage(error));
         } finally {
             clearTimeout(timeoutId);
@@ -85,23 +77,11 @@ window.AIAssistantAPI = {
      * @param {Object} callbacks
      * @returns {Promise<string|Object>}
      */
-    async callProxyAPI(prompt, config, abortController, callbacks) {
+    async callProxyAPI(messages, config, abortController, callbacks) {
         const controller = abortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
         try {
-            let messages = [];
-            if (typeof prompt === 'object' && prompt.system && prompt.user) {
-                messages = [
-                    { role: 'system', content: prompt.system },
-                    { role: 'user', content: prompt.user }
-                ];
-            } else if (typeof prompt === 'string') {
-                messages = [{ role: 'user', content: prompt }];
-            } else {
-                throw new Error('Invalid prompt format for proxy API');
-            }
-
             const response = await fetch('/api/ai-assist', {
                 method: 'POST',
                 headers: {
@@ -143,7 +123,7 @@ window.AIAssistantAPI = {
 
             return await response.json();
         } catch (error) {
-            if (error.name === 'AbortError') throw error;
+            if (error.name === 'AbortError' || error.isProviderError) throw error;
             throw new Error(this.getErrorMessage(error));
         } finally {
             clearTimeout(timeoutId);
@@ -163,6 +143,22 @@ window.AIAssistantAPI = {
         let fullText = '';
         let buffer = '';
 
+        // Interpret one raw SSE line; appends content, throws on a provider error.
+        const handleLine = (line) => {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) return;
+            const evt = interpretSSEData(trimmed.slice(5).trim());
+            if (evt.kind === 'error') {
+                throw Object.assign(new Error(evt.value), { isProviderError: true });
+            }
+            if (evt.kind === 'content') {
+                fullText += evt.value;
+                if (streamingElement && callbacks.updateStreamingMessage) {
+                    callbacks.updateStreamingMessage(streamingElement, fullText);
+                }
+            }
+        };
+
         try {
             while (true) {
                 const { done, value } = await reader.read();
@@ -171,28 +167,11 @@ window.AIAssistantAPI = {
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
                 buffer = lines.pop();
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-                    const dataStr = trimmed.slice(5).trim();
-                    if (dataStr === '[DONE]') continue;
-
-                    try {
-                        const parsed = JSON.parse(dataStr);
-                        const delta = parsed.choices?.[0]?.delta?.content;
-                        if (delta) {
-                            fullText += delta;
-                            if (streamingElement && callbacks.updateStreamingMessage) {
-                                callbacks.updateStreamingMessage(streamingElement, fullText);
-                            }
-                        }
-                    } catch {
-                        // Skip unparseable chunks
-                    }
-                }
+                for (const line of lines) handleLine(line);
             }
+            // Flush any final buffered line that did not end with a newline.
+            buffer += decoder.decode();
+            if (buffer.trim()) handleLine(buffer);
         } finally {
             reader.releaseLock();
         }

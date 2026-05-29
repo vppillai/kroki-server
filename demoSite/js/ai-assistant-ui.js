@@ -76,7 +76,7 @@ window.AIAssistantUI = {
                         <div class="ai-message-content">
                             <p>Hi! I'm your AI diagram assistant. I can help you create or update your diagram code.</p>
                             <div style="background: rgba(255, 193, 7, 0.1); padding: 8px; border-radius: 4px; margin-top: 10px; font-size: 12px;">
-                                <strong>Note:</strong> Each request is independent - I only see your current message and the current diagram code, not our previous conversation history.
+                                <strong>Note:</strong> I remember our recent conversation this session along with your current diagram code. History is cleared when you close the chat.
                             </div>
                         </div>
                     </div>
