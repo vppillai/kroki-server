@@ -39,17 +39,18 @@ export function startFileMonitoring() {
         return;
     }
 
+    let checking = false;
+
     const checkFileChanges = async () => {
+        if (checking) return; // avoid overlapping polls when a read is slow
+        checking = true;
         try {
             const file = await state.currentFile.handle.getFile();
             const currentModified = file.lastModified;
 
             if (state.fileMonitoring.lastModified === null) {
                 updateFileMonitoring({ lastModified: currentModified });
-                return;
-            }
-
-            if (currentModified > state.fileMonitoring.lastModified) {
+            } else if (currentModified > state.fileMonitoring.lastModified) {
                 updateFileMonitoring({ lastModified: currentModified });
                 const newContent = await file.text();
                 if (newContent !== state.currentFile.content) {
@@ -59,14 +60,33 @@ export function startFileMonitoring() {
         } catch (error) {
             console.warn('File monitoring error:', error);
             stopFileMonitoring();
+            return;
+        } finally {
+            checking = false;
+        }
+
+        // Reschedule only after this check finishes (no overlap) and only while
+        // monitoring is still active.
+        if (state.fileMonitoring.isWatching) {
+            const next = setTimeout(checkFileChanges, state.AUTO_RELOAD_DELAY);
+            updateFileMonitoring({ watchTimer: next });
         }
     };
 
-    const timer = setInterval(checkFileChanges, state.AUTO_RELOAD_DELAY);
-    updateFileMonitoring({
-        watchTimer: timer,
-        isWatching: true
-    });
+    updateFileMonitoring({ isWatching: true, lastModified: null });
+
+    // Establish the baseline mtime up front so an edit during the first interval
+    // is not swallowed by the first poll.
+    state.currentFile.handle.getFile()
+        .then(f => {
+            if (state.fileMonitoring.isWatching && state.fileMonitoring.lastModified === null) {
+                updateFileMonitoring({ lastModified: f.lastModified });
+            }
+        })
+        .catch(() => { /* the first poll will establish the baseline */ });
+
+    const timer = setTimeout(checkFileChanges, state.AUTO_RELOAD_DELAY);
+    updateFileMonitoring({ watchTimer: timer });
 }
 
 /**
@@ -74,7 +94,7 @@ export function startFileMonitoring() {
  */
 export function stopFileMonitoring() {
     if (state.fileMonitoring.watchTimer) {
-        clearInterval(state.fileMonitoring.watchTimer);
+        clearTimeout(state.fileMonitoring.watchTimer);
     }
 
     updateFileMonitoring({

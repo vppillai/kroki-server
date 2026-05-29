@@ -13,6 +13,7 @@ from flask import Flask, request, jsonify, send_from_directory, send_file, Respo
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 from datetime import datetime
 
 # Load environment variables from .env file
@@ -43,14 +44,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
-limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 # Configuration
 PORT = int(os.environ.get('PORT', 8006))
 HTTPS_PORT = int(os.environ.get('HTTPS_PORT', 8443))
 HOSTNAME = os.environ.get('HOSTNAME', 'localhost')
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
+
+# Origins allowed to call the API (exact match). Same-origin browser requests
+# that omit the Origin header are also allowed (see validate_origin()).
+ALLOWED_ORIGINS = {
+    f"https://{HOSTNAME}:{HTTPS_PORT}",
+    f"https://{HOSTNAME}",
+    "https://localhost",
+    f"https://localhost:{HTTPS_PORT}",
+    "https://127.0.0.1",
+    f"https://127.0.0.1:{HTTPS_PORT}",
+}
+
+# Restrict CORS to the allowlist (was wildcard); trust one proxy hop so the rate
+# limiter keys on the real client IP (nginx sets X-Forwarded-For).
+CORS(app, resources={r"/api/*": {"origins": list(ALLOWED_ORIGINS)}})
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
+
 AI_TIMEOUT = 60  # Default timeout for AI API requests
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
@@ -226,20 +243,38 @@ else:
     logger.warning("Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).")
 
 # Default prompt templates - configurable via environment
-DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are a Kroki diagram assistant. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no backticks, no extra text. Response format: {"diagramCode": "<code or empty string>", "explanation": "<your message>"}.
+DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are DocCode's Kroki diagram assistant. Respond with ONLY a JSON object — no prose, no markdown, no code fences — exactly:
+{"diagramCode":"<diagram source, or empty>","explanation":"<short friendly message>"}
 
-RESPONSE RULES:
-1. Questions about diagrams (what, how, why, explain): set diagramCode to empty string, provide detailed explanation.
-2. New diagram requests (create, make, generate): ignore existing code, create fresh diagram for the selected type.
-3. Modification requests (update, change, add, edit): make minimal targeted changes to existing code, preserve structure and style.
-4. Greetings or off-topic: set diagramCode to empty string, respond helpfully.
-5. Always generate code ONLY for the selected diagram type — never switch types or mix syntaxes.
+How to respond:
+- Create ("make/generate/draw a ..."): write a fresh, complete diagram for the selected type; ignore any existing code.
+- Modify ("add/change/rename/remove ..."): start from the existing code; make the smallest change that satisfies the request; preserve the user's structure, names, ordering, and comments.
+- Question/explain ("what/why/how/explain"): set diagramCode to "" and answer in explanation.
+- Greeting/off-topic: set diagramCode to "" and reply briefly.
 
-DIAGRAM QUALITY: Use descriptive labels. Ensure readable layout with logical flow. Self-validate syntax before responding. Prefer pastel colors unless asked otherwise.''')
+Rules:
+- diagramCode MUST be valid {{diagramType}} syntax; never switch or mix diagram types.
+- diagramCode contains ONLY diagram source — no backticks, no language label, no commentary.
+- Use descriptive labels (not generic A, B, Node1) and a readable layout with logical flow; prefer soft/pastel colors unless asked otherwise.
+- Self-validate before responding: define every referenced element, connect every path, include required start/end markers; add nothing beyond what was requested.
+- Keep explanation to 1-3 plain-language sentences; do not restate the code.
 
-DEFAULT_USER_PROMPT = os.environ.get('AI_USER_PROMPT', '''Respond with a raw JSON object only — no markdown, no backticks. Format: {"diagramCode":"...", "explanation":"..."}. Diagram type: {{diagramType}}. User request: {{userPrompt}}. Existing code: {{currentCode}}.''')
+Type tips: PlantUML - use @startuml/@enduml and skinparams. Mermaid - pick a direction (TB/LR) and proper node shapes. Graphviz - set rankdir, label nodes/edges, group with subgraphs. C4-PlantUML - use C4 macros (Person, System, Container). BPMN - proper start/end events, gateways, tasks.
 
-DEFAULT_RETRY_PROMPT = os.environ.get('AI_RETRY_PROMPT', '''The previous response produced invalid diagram code. Fix ONLY the syntax error below with minimal changes. Respond with a raw JSON object only — no markdown, no backticks. Format: {"diagramCode":"...", "explanation":"..."}. Diagram type: {{diagramType}}. Original request: {{userPrompt}}. Code before error: {{currentCode}}. Failed code: {{failedCode}}. Validation error: {{validationError}}.''')
+Current diagram type: {{diagramType}}
+Current diagram code:
+{{currentCode}}''')
+
+DEFAULT_USER_PROMPT = os.environ.get('AI_USER_PROMPT', '''User request: {{userPrompt}}
+
+Reply with the JSON object described in the system message (diagramCode + explanation), valid for {{diagramType}}.''')
+
+DEFAULT_RETRY_PROMPT = os.environ.get('AI_RETRY_PROMPT', '''The diagram you returned failed to render. Fix ONLY the error with the smallest possible change, keeping everything else identical. Reply with the same JSON object (diagramCode + explanation), valid {{diagramType}} syntax, no code fences.
+Original request: {{userPrompt}}
+Code that failed to render:
+{{failedCode}}
+Renderer error:
+{{validationError}}''')
 
 @app.route('/api/ai-prompts', methods=['GET'])
 def get_ai_prompts():
@@ -322,17 +357,15 @@ def validate_model():
 # Removed complex validation endpoint - frontend will handle validation via diagram rendering
 
 def validate_origin(request):
-    """Validate request origin for security"""
+    """Validate request Origin against an exact allowlist.
+
+    Header-less requests (same-origin GETs don't send Origin) are allowed; a
+    present Origin must match exactly — no startswith prefix matching, which
+    previously let "https://localhost.evil.com" slip through.
+    """
     origin = request.headers.get('Origin', '')
-    referer = request.headers.get('Referer', '')
-    allowed_origins = [
-        f"https://{HOSTNAME}:{HTTPS_PORT}",
-        f"https://{HOSTNAME}",
-        "https://localhost",
-        "https://127.0.0.1",
-    ]
-    if origin and not any(origin.startswith(allowed) for allowed in allowed_origins):
-        logger.warning(f"Rejected request from origin: {origin}. Allowed origins: {allowed_origins}")
+    if origin and origin not in ALLOWED_ORIGINS:
+        logger.warning(f"Rejected request from origin: {origin}")
         return False
     return True
 
@@ -390,23 +423,16 @@ def ai_assist():
                 logger.error(f"Default model '{DEFAULT_AI_CONFIG['model']}' is not in allowed models list")
                 return jsonify({'error': 'Server configuration error: default model not supported'}), 500
         
-        # Use backend proxy by default, allow user config override
-        use_custom_api = config.get('use_custom_api', False)
-        
-        if use_custom_api and config.get('endpoint') and config.get('api_key'):
-            # Use user-provided direct API configuration
-            endpoint = config.get('endpoint')
-            api_key = config.get('api_key')
-            logger.info(f"Using user-configured direct API: {endpoint}")
-        else:
-            # Use backend proxy (default, recommended)
-            endpoint = f"{AI_PROXY_URL}/chat/completions"
-            api_key = AI_PROXY_API_KEY
-            
-            if not api_key:
-                return jsonify({'error': 'Backend proxy API key not configured'}), 400
-            
-            logger.info(f"Using backend proxy: {endpoint}")
+        # This endpoint ONLY ever proxies to the trusted, server-configured AI
+        # proxy. Direct/custom API endpoints are handled entirely client-side, so
+        # /api/ai-assist cannot be used as an SSRF / open relay to arbitrary URLs.
+        endpoint = f"{AI_PROXY_URL}/chat/completions"
+        api_key = AI_PROXY_API_KEY
+
+        if not api_key:
+            return jsonify({'error': 'Backend proxy API key not configured'}), 400
+
+        logger.info(f"Using backend proxy: {endpoint}")
         
         headers = {
             'Content-Type': 'application/json',
@@ -442,9 +468,16 @@ def ai_assist():
                 return jsonify({'error': error_msg}), resp.status_code
 
             def generate():
-                for line in resp.iter_lines():
-                    if line:
-                        yield line.decode('utf-8') + '\n'
+                try:
+                    for line in resp.iter_lines():
+                        if line:
+                            yield line.decode('utf-8') + '\n'
+                except Exception as stream_err:
+                    # Surface mid-stream upstream failures as a terminal SSE error
+                    # frame so the client shows a real error instead of an empty/
+                    # "invalid JSON" result.
+                    logger.error(f"AI API stream interrupted: {stream_err}")
+                    yield 'data: ' + json.dumps({'error': 'The AI stream was interrupted. Please try again.'}) + '\n'
                 logger.info(f"AI API streaming completed in {time.time() - start_time:.2f}s")
 
             return Response(stream_with_context(generate()), content_type='text/event-stream')

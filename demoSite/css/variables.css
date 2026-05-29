@@ -52,6 +52,24 @@
 
     /* Layout */
     --toolbar-height: 64px;
+
+    /* Aliases & additional tokens referenced across components.
+       var() aliases resolve per-theme automatically (the referenced token is
+       overridden in .dark-theme), so they only need to be declared once. */
+    --accent-color: var(--primary-color);
+    --accent-primary: var(--primary-color);
+    --color-error: var(--error-color);
+    --text-disabled: var(--text-muted);
+    --border-color-light: var(--border-color);
+    --border-radius-md: var(--border-radius);
+    --border-radius-xs: var(--border-radius-sm);
+    --button-secondary-bg: var(--background-tertiary);
+    --button-secondary-bg-hover: var(--border-hover);
+    --font-mono: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
+    --font-family-mono: var(--font-mono);
+    --transition-fast: 150ms ease;
+    --background-tooltip: #1f2937;
+    --text-tooltip: #f9fafb;
 }
 
 /* Dark theme variables */

@@ -32,6 +32,10 @@ jobs:
         uses: docker/setup-buildx-action@v2
         
       - name: Test setup script
+        env:
+          # Smoke-test against the stock released core (instantly pullable); the
+          # GoAT-from-main image is verified separately and isn't needed here.
+          KROKI_CORE_IMAGE: yuzutech/kroki:0.30.1
         run: |
           chmod +x ./setup-kroki-server.sh
           ./setup-kroki-server.sh start

@@ -172,20 +172,20 @@
 }
 
 /* Dark theme support */
-[data-theme="dark"] .drawio-modal-content {
+.dark-theme .drawio-modal-content {
     background: #2c3e50;
 }
 
-[data-theme="dark"] .drawio-modal-header {
+.dark-theme .drawio-modal-header {
     background: #1a252f;
     border-bottom-color: #16202a;
 }
 
-[data-theme="dark"] .drawio-modal-body {
+.dark-theme .drawio-modal-body {
     background: #34495e;
 }
 
-[data-theme="dark"] .drawio-loading {
+.dark-theme .drawio-loading {
     background: rgba(44, 62, 80, 0.95);
     color: #ecf0f1;
 }

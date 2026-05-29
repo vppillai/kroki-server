@@ -128,11 +128,22 @@ export async function updateDiagram() {
  * Render an image diagram (SVG, PNG, JPEG)
  * @private
  */
+// The blob URL currently shown in #diagram (revoked when replaced) and the
+// AbortController for the active render's image listeners (aborted when a newer
+// render starts, so load/error listeners don't accumulate on #diagram).
+let displayedBlobUrl = null;
+let imageListenerAbort = null;
+
 async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url, diagramType, outputFormat, code, shouldUsePost, savedZoomState) {
     diagramViewport.style.display = 'block';
     zoomControls.style.display = 'flex';
     diagramImg.classList.add('loading');
     hideBanner();
+
+    // Cancel the previous render's pending image listeners before this render.
+    if (imageListenerAbort) imageListenerAbort.abort();
+    imageListenerAbort = new AbortController();
+    const listenerSignal = imageListenerAbort.signal;
 
     try {
         let imageUrl;
@@ -189,12 +200,21 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
             const actualImageErrorHandler = function () {
                 diagramImg.classList.remove('loading');
                 showBanner('Failed to load diagram image');
+                // Revoke the failed render's blob URL (it won't be displayed).
+                if (typeof imageUrl === 'string' && imageUrl.startsWith('blob:') && imageUrl !== displayedBlobUrl) {
+                    revokeBlobUrl(imageUrl);
+                }
                 diagramImg.removeEventListener('load', actualImageLoadHandler);
                 diagramImg.removeEventListener('error', actualImageErrorHandler);
             };
 
             const actualImageLoadHandler = function () {
                 diagramImg.classList.remove('loading');
+                // New image is loaded; revoke the previously displayed blob URL.
+                if (displayedBlobUrl && displayedBlobUrl !== imageUrl) {
+                    revokeBlobUrl(displayedBlobUrl);
+                }
+                displayedBlobUrl = (typeof imageUrl === 'string' && imageUrl.startsWith('blob:')) ? imageUrl : null;
 
                 const checkImageReady = () => {
                     if (diagramImg.complete && diagramImg.naturalWidth > 0) {
@@ -233,11 +253,12 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
                 setTimeout(checkImageReady, 10);
             };
 
-            diagramImg.addEventListener('load', actualImageLoadHandler);
-            diagramImg.addEventListener('error', actualImageErrorHandler);
+            diagramImg.addEventListener('load', actualImageLoadHandler, { signal: listenerSignal });
+            diagramImg.addEventListener('error', actualImageErrorHandler, { signal: listenerSignal });
 
             diagramImg.style.display = 'block';
             diagramImg.src = imageUrl;
+            diagramImg.alt = (document.getElementById('diagramType')?.value || 'Diagram') + ' diagram preview';
         };
 
         tempImg.onerror = function () {

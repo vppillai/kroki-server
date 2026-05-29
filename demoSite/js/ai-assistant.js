@@ -1,3 +1,5 @@
+import { extractDiagramJson } from './modules/aiResponseParser.js';
+import { buildMessages, DEFAULT_HISTORY_CAP } from './modules/aiMessages.js';
 /**
  * AI Assistant Module for Kroki Diagram Editor
  *
@@ -457,6 +459,20 @@ class AIAssistant {
     // SEND MESSAGE
     // ========================================
 
+    /**
+     * Recent user/assistant turns to send as conversation context — excludes the
+     * current user message (captured separately) and system/status lines.
+     * @returns {Array<{type:string,text:string}>}
+     */
+    getConversationHistory() {
+        const turns = this.chatHistory.filter(m => m.type === 'user' || m.type === 'assistant');
+        // Drop the current user message (the last entry on the happy path).
+        if (turns.length && turns[turns.length - 1].type === 'user') {
+            turns.pop();
+        }
+        return turns;
+    }
+
     async sendMessage() {
         const message = this.chatInput.value.trim();
         if (!message || this.isRequestInProgress) return;
@@ -527,21 +543,24 @@ class AIAssistant {
 
         try {
             const promptTemplates = await window.AIAssistantAPI.fetchPromptTemplates();
-            const composedPrompt = window.AIAssistantPrompts.composePrompt(promptTemplates, {
+            const composed = window.AIAssistantPrompts.composePrompt(promptTemplates, {
                 diagramType, currentCode, userPrompt,
                 useCustomAPI: aiConfig.useCustomAPI,
                 userPromptTemplate: aiConfig.userPromptTemplate
             });
 
+            // System role + recent conversation history + current user turn.
+            const messages = buildMessages(composed.system, composed.user, this.getConversationHistory(), DEFAULT_HISTORY_CAP);
+
             this.retryAttempts = 0;
-            await this.makeAIRequest(composedPrompt, diagramType, currentCode, aiConfig, userPrompt);
+            await this.makeAIRequest(messages, diagramType, currentCode, aiConfig, userPrompt);
         } catch (error) {
             console.error('AI Assistant error:', error);
             this.addMessage('system', `Error: ${error.message}`);
         }
     }
 
-    async makeAIRequest(prompt, diagramType, originalCode, aiConfig, originalUserPrompt = '') {
+    async makeAIRequest(messages, diagramType, originalCode, aiConfig, originalUserPrompt = '') {
         try {
             let rawResponseContent;
 
@@ -564,12 +583,19 @@ class AIAssistant {
             };
 
             if (aiConfig.useCustomAPI && aiConfig.endpoint && aiConfig.apiKey) {
-                rawResponseContent = await window.AIAssistantAPI.callCustomAPI(prompt, aiConfig, this.currentAbortController, callbacks);
+                rawResponseContent = await window.AIAssistantAPI.callCustomAPI(messages, aiConfig, this.currentAbortController, callbacks);
             } else {
-                rawResponseContent = await window.AIAssistantAPI.callProxyAPI(prompt, aiConfig, this.currentAbortController, callbacks);
+                rawResponseContent = await window.AIAssistantAPI.callProxyAPI(messages, aiConfig, this.currentAbortController, callbacks);
             }
 
-            if (rawResponseContent.error) throw new Error(rawResponseContent.error);
+            // Empty streamed response → clear message instead of a confusing JSON-parse error.
+            if (typeof rawResponseContent === 'string' && !rawResponseContent.trim()) {
+                if (!this.isRequestInProgress) return;
+                this.addMessage('system', 'The AI returned an empty response. Please try again.');
+                return;
+            }
+
+            if (rawResponseContent && rawResponseContent.error) throw new Error(rawResponseContent.error);
 
             const aiParsedResponse = this.parseAIResponse(rawResponseContent);
             const { diagramCode, explanation } = aiParsedResponse;
@@ -588,12 +614,14 @@ class AIAssistant {
                         this.showStatus(`Diagram rendering failed, refining response (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
 
                         const promptTemplates = await window.AIAssistantAPI.fetchPromptTemplates();
-                        const retryPrompt = window.AIAssistantPrompts.composeRetryPrompt(
-                            prompt, diagramCode,
+                        const systemContent = messages.find(m => m.role === 'system')?.content;
+                        const retry = window.AIAssistantPrompts.composeRetryPrompt(
+                            { system: systemContent }, diagramCode,
                             `The diagram code failed to render: ${validationResult.error}. Please fix the syntax.`,
                             originalUserPrompt, diagramType, originalCode, promptTemplates
                         );
-                        await this.makeAIRequest(retryPrompt, diagramType, originalCode, aiConfig, originalUserPrompt);
+                        const retryMessages = buildMessages(retry.system, retry.user, this.getConversationHistory(), DEFAULT_HISTORY_CAP);
+                        await this.makeAIRequest(retryMessages, diagramType, originalCode, aiConfig, originalUserPrompt);
                         return;
                     } else {
                         this.updateDiagramCode(diagramCode);
@@ -625,7 +653,7 @@ class AIAssistant {
                 this.showStatus(`Network error, retrying (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
                 const delay = Math.min(1000 * Math.pow(2, this.retryAttempts - 1), 5000);
                 await new Promise(resolve => setTimeout(resolve, delay));
-                await this.makeAIRequest(prompt, diagramType, originalCode, aiConfig);
+                await this.makeAIRequest(messages, diagramType, originalCode, aiConfig, originalUserPrompt);
             } else {
                 const errorMessage = error.message.toLowerCase().includes('configuration')
                     ? `${error.message} Check your <button onclick="window.aiAssistant?.openSettings()">AI settings</button>.`
@@ -708,53 +736,19 @@ class AIAssistant {
             }
         }
 
-        try {
-            if (typeof actualStringToParse !== 'string') {
-                throw new Error('Content to parse from AI response is not a string.');
-            }
-
-            let jsonString = actualStringToParse.trim()
-                .replace(/^```json\s*/, '').replace(/\s*```$/, '')
-                .replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-
-            // Try direct parse
-            try {
-                const parsed = JSON.parse(jsonString);
-                if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                    return parsed;
-                }
-            } catch { /* continue */ }
-
-            // Try JSON from code blocks
-            const jsonCodeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)```/g;
-            for (const match of jsonString.matchAll(jsonCodeBlockRegex)) {
-                try {
-                    const parsed = JSON.parse(match[1].trim());
-                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                        return parsed;
-                    }
-                } catch { /* continue */ }
-            }
-
-            // Try finding JSON object in text
-            const jsonObjectRegex = /\{[\s\S]*?"diagramCode"[\s\S]*?"explanation"[\s\S]*?\}/g;
-            for (const match of jsonString.matchAll(jsonObjectRegex)) {
-                try {
-                    const parsed = JSON.parse(match[0]);
-                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                        return parsed;
-                    }
-                } catch { /* continue */ }
-            }
-
-            // Fallback extraction
-            const extractedCode = this._fallbackExtractCode(actualStringToParse);
-            if (extractedCode) return extractedCode;
-
-            throw new Error('No valid JSON or extractable diagram code found');
-        } catch (e) {
-            throw new Error(`AI response was not valid JSON and diagram code could not be extracted. ${e.message}`);
+        if (typeof actualStringToParse !== 'string') {
+            throw new Error('Content to parse from AI response is not a string.');
         }
+
+        // Robust, brace-balanced extraction (handles fences + '}' inside diagram code).
+        const parsed = extractDiagramJson(actualStringToParse);
+        if (parsed) return parsed;
+
+        // Last-resort heuristic extraction of bare diagram code from prose/markdown.
+        const extractedCode = this._fallbackExtractCode(actualStringToParse);
+        if (extractedCode) return extractedCode;
+
+        throw new Error('AI response was not valid JSON and diagram code could not be extracted.');
     }
 
     _fallbackExtractCode(responseText) {
@@ -802,14 +796,10 @@ class AIAssistant {
         const codeTextarea = document.getElementById('code');
         if (!codeTextarea) return;
 
-        let processedCode = code
-            .replace(/\\n/g, '\n')
-            .replace(/\\t/g, '\t')
-            .replace(/\\"/g, '"')
-            .replace(/\\'/g, "'")
-            .replace(/\\\\/g, '\\');
-
-        codeTextarea.value = processedCode;
+        // Values from JSON.parse are already unescaped — do NOT re-unescape them
+        // (that corrupts literal "\n" in DOT/PlantUML labels). All callers pass
+        // already-correct strings (parsed diagramCode, fallback code, or originalCode).
+        codeTextarea.value = code;
         codeTextarea.dispatchEvent(new Event('change', { bubbles: true }));
         codeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
     }

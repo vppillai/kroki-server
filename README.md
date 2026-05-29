@@ -63,6 +63,13 @@ cd kroki-server
 # (Accept the self-signed certificate warning)
 ```
 
+> **GoAT diagrams:** GoAT (ASCII-art → SVG) is supported, but it is not in any
+> released Kroki image yet, so the `core` service uses a build from Kroki `main`
+> (`ghcr.io/vppillai/kroki-core:goat`). `./setup-kroki-server.sh start` pulls that
+> image automatically; publish it once via the **Build Kroki core (GoAT) image**
+> GitHub Action, or build it locally with `./build-kroki-core.sh` if you have no
+> registry access. All other diagram types use the standard released images.
+
 ### Custom Configuration
 
 Edit the `.env` file to customize ports and settings:

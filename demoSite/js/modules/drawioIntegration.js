@@ -5,6 +5,8 @@
  * @author Vysakh Pillai
  */
 
+import { handleTabTrap } from './focusTrap.js';
+
 class DrawioIntegration {
     constructor() {
         this.isOpen = false;
@@ -140,6 +142,7 @@ class DrawioIntegration {
     openModal() {
         if (this.isOpen) return;
 
+        this._previouslyFocused = document.activeElement;
         this.modal = document.getElementById('drawio-modal');
         this.iframe = document.getElementById('drawio-iframe');
 
@@ -177,6 +180,8 @@ class DrawioIntegration {
                 event.preventDefault();
                 event.stopPropagation();
                 this.closeModal();
+            } else {
+                handleTabTrap(event, this.modal);
             }
         };
         this.modal.addEventListener('keydown', this.modalKeyHandler);
@@ -220,6 +225,12 @@ class DrawioIntegration {
 
         // Re-enable body scroll
         document.body.style.overflow = '';
+
+        // Restore focus to whatever opened the editor.
+        if (this._previouslyFocused && typeof this._previouslyFocused.focus === 'function') {
+            this._previouslyFocused.focus();
+            this._previouslyFocused = null;
+        }
     }
 
     /**

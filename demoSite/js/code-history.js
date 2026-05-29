@@ -1,3 +1,5 @@
+import { isTypingContext } from './modules/keyboard.js';
+
 /**
  * Code History Manager for Kroki Diagram Editor
  * Manages undo/redo functionality for diagram code changes
@@ -116,7 +118,7 @@ class CodeHistory {
 
         // Keyboard shortcuts — skip when CM6 editor is focused (let CM6 handle undo/redo)
         document.addEventListener('keydown', (e) => {
-            if (document.activeElement?.closest('.cm-editor')) return;
+            if (isTypingContext(e.target)) return;
 
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
                 e.preventDefault();

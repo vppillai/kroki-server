@@ -17,6 +17,7 @@ window.AIAssistantUI = {
         button.id = 'ai-assist-btn';
         button.className = 'ai-assist-btn';
         button.title = 'AI Assistant - Help with diagram generation';
+        button.setAttribute('aria-label', 'Open AI assistant');
         // SAFE: developer-controlled template
         button.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -56,18 +57,18 @@ window.AIAssistantUI = {
                     </svg>
                     <div class="ai-title-content">
                         <span>AI Assistant <span class="ai-beta-badge">BETA</span></span>
-                        <button class="ai-model-indicator" id="ai-model-indicator" title="Click to change AI model"></button>
+                        <button class="ai-model-indicator" id="ai-model-indicator" aria-label="Change AI model" title="Click to change AI model"></button>
                     </div>
                 </div>
                 <div class="ai-chat-controls">
-                    <button class="ai-chat-settings" title="Settings">
+                    <button class="ai-chat-settings" aria-label="AI settings" title="Settings">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
                         </svg>
                     </button>
-                    <button class="ai-chat-minimize" title="Minimize">\u2212</button>
-                    <button class="ai-chat-close" title="Close">\u00d7</button>
+                    <button class="ai-chat-minimize" aria-label="Minimize chat" title="Minimize">\u2212</button>
+                    <button class="ai-chat-close" aria-label="Close chat" title="Close">\u00d7</button>
                 </div>
             </div>
             <div class="ai-chat-body">
@@ -76,7 +77,7 @@ window.AIAssistantUI = {
                         <div class="ai-message-content">
                             <p>Hi! I'm your AI diagram assistant. I can help you create or update your diagram code.</p>
                             <div style="background: rgba(255, 193, 7, 0.1); padding: 8px; border-radius: 4px; margin-top: 10px; font-size: 12px;">
-                                <strong>Note:</strong> Each request is independent - I only see your current message and the current diagram code, not our previous conversation history.
+                                <strong>Note:</strong> I remember our recent conversation this session along with your current diagram code. History is cleared when you close the chat.
                             </div>
                         </div>
                     </div>
@@ -94,7 +95,7 @@ window.AIAssistantUI = {
                             placeholder="Describe what you want to create or change..."
                             rows="2"
                         ></textarea>
-                        <button id="ai-chat-send" class="ai-chat-send" title="Send message">
+                        <button id="ai-chat-send" class="ai-chat-send" aria-label="Send message" title="Send message">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="22" y1="2" x2="11" y2="13"/>
                                 <polygon points="22,2 15,22 11,13 2,9"/>

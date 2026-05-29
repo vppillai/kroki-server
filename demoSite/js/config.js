@@ -146,7 +146,7 @@ class ConfigManager {
         // CONFIGURATION STATE
         // ========================================
         /** @type {Object} Current configuration object with all settings */
-        this.config = { ...DEFAULT_CONFIG };
+        this.config = structuredClone(DEFAULT_CONFIG);
 
         /** @type {string} localStorage key for persistent storage */
         this.storageKey = 'kroki-user-config';
@@ -187,7 +187,7 @@ class ConfigManager {
             }
         } catch (error) {
             console.warn('Failed to load user configuration:', error);
-            this.config = { ...DEFAULT_CONFIG };
+            this.config = structuredClone(DEFAULT_CONFIG);
         }
 
         // Migrate old settings
@@ -255,7 +255,10 @@ class ConfigManager {
      * @private
      */
     mergeConfig(defaultConfig, userConfig) {
-        const result = { ...defaultConfig };
+        // Deep-clone the default base so nested defaults that the user never
+        // overrode do NOT remain live references into DEFAULT_CONFIG (a later
+        // set() on such a path would otherwise mutate the shared defaults).
+        const result = structuredClone(defaultConfig);
 
         for (const [key, value] of Object.entries(userConfig)) {
             if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -316,7 +319,7 @@ class ConfigManager {
      */
     set(path, value) {
         // Sanitize string values
-        if (typeof value === 'string' && window.inputValidation) {
+        if (typeof value === 'string' && typeof window !== 'undefined' && window.inputValidation) {
             value = window.inputValidation.sanitizeString(value);
         }
 
@@ -390,13 +393,13 @@ class ConfigManager {
      * @public
      */
     reset(serverDefaults = {}) {
-        // Merge server defaults with hardcoded defaults
-        const effectiveDefaults = { ...DEFAULT_CONFIG };
+        // Deep-clone defaults so we never mutate the shared DEFAULT_CONFIG.
+        const effectiveDefaults = structuredClone(DEFAULT_CONFIG);
         if (serverDefaults.ai && serverDefaults.ai.model) {
             effectiveDefaults.ai.model = serverDefaults.ai.model;
         }
-        
-        this.config = { ...effectiveDefaults };
+
+        this.config = effectiveDefaults;
         this.save();
 
         // Clear old localStorage entries
@@ -421,7 +424,10 @@ class ConfigManager {
      * @public
      */
     export() {
-        return JSON.stringify(this.config, null, 2);
+        // Never write the API key into exported settings — it is a secret.
+        const safe = structuredClone(this.config);
+        if (safe.ai) safe.ai.apiKey = '';
+        return JSON.stringify(safe, null, 2);
     }
 
     /**
@@ -691,9 +697,8 @@ class ConfigManager {
 }
 
 // Create global configuration manager instance
-window.configManager = new ConfigManager();
+export { ConfigManager, DEFAULT_CONFIG };
 
-// Export for module systems
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { ConfigManager, DEFAULT_CONFIG };
+if (typeof window !== 'undefined') {
+    window.configManager = new ConfigManager();
 }

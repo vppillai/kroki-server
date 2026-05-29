@@ -289,16 +289,6 @@ export function initializeEditor(mountEl, initialContent) {
             syntaxHighlighting(syntaxColors),
             languageCompartment.of([]),
             fontSizeCompartment.of(buildTheme(fontSize)),
-            // Max text size filter: reject changes that would exceed the limit
-            EditorState.changeFilter.of((tr) => {
-                const maxSize = window.configManager
-                    ? window.configManager.get('editor.maxTextSize') || DEFAULT_MAX_TEXT_SIZE
-                    : DEFAULT_MAX_TEXT_SIZE;
-                if (tr.newDoc.length > maxSize) {
-                    return false;
-                }
-                return true;
-            }),
             // Update listener: sync hidden textarea + dispatch input event + size warning
             EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
@@ -306,18 +296,26 @@ export function initializeEditor(mountEl, initialContent) {
                         const inputEvent = new Event('input', { bubbles: true });
                         hiddenTextarea.dispatchEvent(inputEvent);
                     }
-                    // Update size limit warning
                     const maxSize = window.configManager
                         ? window.configManager.get('editor.maxTextSize') || DEFAULT_MAX_TEXT_SIZE
                         : DEFAULT_MAX_TEXT_SIZE;
                     const docLen = update.state.doc.length;
                     const cmEditor = update.view.dom;
-                    if (docLen >= maxSize) {
+                    const banner = document.getElementById('editor-size-banner');
+                    if (docLen > maxSize) {
                         cmEditor.dataset.sizeWarning = 'limit';
+                        if (banner) {
+                            banner.textContent = `Content is ${docLen.toLocaleString()} characters, ` +
+                                `over the ${maxSize.toLocaleString()}-character limit. ` +
+                                `The diagram may fail to render or cannot be shared via URL.`;
+                            banner.style.display = 'block';
+                        }
                     } else if (docLen >= maxSize * 0.9) {
                         cmEditor.dataset.sizeWarning = 'near';
+                        if (banner) banner.style.display = 'none';
                     } else {
                         delete cmEditor.dataset.sizeWarning;
+                        if (banner) banner.style.display = 'none';
                     }
                 }
             }),

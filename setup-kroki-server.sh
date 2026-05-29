@@ -14,6 +14,14 @@ CUSTOM_CERT_CRT=""
 # Load environment variables
 # Function to display help message (removed duplicate - using detailed version below)
 
+# Bootstrap .env from the example on first run. .env is intentionally untracked
+# (it holds secrets) but docker-compose requires it, so fresh clones / CI need a
+# copy. Edit the created .env to add your AI_PROXY_API_KEY.
+if [ ! -f "${SCRIPT_DIR}/.env" ] && [ -f "${SCRIPT_DIR}/.env.example" ]; then
+    echo "No .env found — creating one from .env.example. Edit it to add your AI_PROXY_API_KEY."
+    cp "${SCRIPT_DIR}/.env.example" "${SCRIPT_DIR}/.env"
+fi
+
 # Load configuration from .env file if it exists
 if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a
@@ -115,6 +123,34 @@ build_demo_site() {
         exit 1
     fi
     cd "${SCRIPT_DIR}" || exit 1
+}
+
+# Ensure the Kroki "core" image (built from main, includes GoAT) is available.
+# Prefers pulling the published GHCR image; falls back to a one-time local build.
+ensure_kroki_core() {
+    local img="${KROKI_CORE_IMAGE:-ghcr.io/vppillai/kroki-core:goat}"
+    if docker image inspect "$img" >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "Kroki core image '$img' not present locally; attempting to pull..."
+    if docker pull "$img" >/dev/null 2>&1; then
+        echo "Pulled $img"
+        return 0
+    fi
+    echo "Pull failed for '$img'."
+    # CI / constrained environments can set KROKI_SKIP_CORE_BUILD=1 (and usually
+    # KROKI_CORE_IMAGE to a stock pullable core) to avoid the heavy source build.
+    if [ -n "${KROKI_SKIP_CORE_BUILD:-}" ]; then
+        echo "Error: core image unavailable and KROKI_SKIP_CORE_BUILD is set."
+        exit 1
+    fi
+    echo "Building Kroki core from source (one-time, ~15-30 min)..."
+    if "${SCRIPT_DIR}/build-kroki-core.sh"; then
+        echo "Kroki core image built."
+    else
+        echo "Error: failed to build Kroki core image (see output above)."
+        exit 1
+    fi
 }
 
 # Function to create Nginx config
@@ -400,6 +436,7 @@ case "$COMMAND" in
         generate_certs
         create_nginx_config
         build_demo_site
+        ensure_kroki_core
         echo "Starting services with Docker Compose..."
 
         if [ -f "$DOCKER_COMPOSE_FILE" ]; then
@@ -442,6 +479,7 @@ case "$COMMAND" in
         build_demo_site
         generate_certs
         create_nginx_config
+        ensure_kroki_core
         echo "Starting services with Docker Compose..."
         $DOCKER_COMPOSE up -d
         sleep 5

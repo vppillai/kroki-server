@@ -18,3 +18,10 @@ __pycache__/
 .env.local
 .env.production
 __pycache__/
+
+# Local Kroki source checkout for build-kroki-core.sh
+.kroki-src/
+
+# Local environment (may contain secrets) — do not commit
+.env
+!.env.example

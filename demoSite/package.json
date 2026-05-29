@@ -4,6 +4,9 @@
     "description": "Interactive frontend for Kroki diagram rendering server (DocCode)",
     "author": "Vysakh P Pillai",
     "license": "MIT",
+    "scripts": {
+        "test": "bun test tests/"
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/vppillai/kroki-server.git"

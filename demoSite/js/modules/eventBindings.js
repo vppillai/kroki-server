@@ -15,6 +15,7 @@ import {
 import { markFileAsModified, stopFileMonitoring } from './fileOperations.js';
 import { updateUrl, clearUrlParameters } from './urlHandler.js';
 import { show, hide } from './dom.js';
+import { isTypingContext } from './keyboard.js';
 
 /**
  * Bind all event listeners.
@@ -182,10 +183,9 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
             closeHelpModal();
         }
 
-        // '?': open help modal
+        // '?': open help modal (not while typing into an editable surface)
         if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-            const tag = document.activeElement?.tagName?.toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
+            if (isTypingContext(e.target)) return;
             openHelpModal();
         }
 

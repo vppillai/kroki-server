@@ -39,12 +39,11 @@
             "codemirror-lang-mermaid": "https://esm.sh/*codemirror-lang-mermaid@0.5.0",
             "@viz-js/lang-dot": "https://esm.sh/*@viz-js/lang-dot@1.0.5",
             "codemirror-lang-latex": "https://esm.sh/*codemirror-lang-latex@0.2.0",
-            "@codemirror/legacy-modes/mode/clojure": "https://esm.sh/*@codemirror/legacy-modes@6.5.2/mode/clojure"
+            "@codemirror/legacy-modes/mode/clojure": "https://esm.sh/*@codemirror/legacy-modes@6.5.2/mode/clojure",
+            "pako": "https://esm.sh/pako@2.1.0"
         }
     }
     </script>
-    <!-- Include pako library for deflate compression -->
-    <script src="js/pako.min.js" defer></script>
     <script type="module" src="js/modules/globals-bridge.js"></script>
     <script type="module" src="js/config.js"></script>
     <script type="module" src="js/config-ui-templates.js"></script>
@@ -208,6 +207,7 @@ Alice -> Bob: Hello
 Bob --> Alice: Hi there
 @enduml</textarea>
             </div>
+            <div id="editor-size-banner" class="editor-size-banner" style="display:none;" aria-live="polite" role="status"></div>
             <div id="loadingMessage" class="loading" aria-live="polite">Loading example...</div>
             <div id="errorMessage" class="error" aria-live="assertive" role="alert"></div>
         </div>
@@ -400,7 +400,7 @@ Bob --> Alice: Hi there
     </div>
 
     <!-- Draw.io Modal -->
-    <div id="drawio-modal" class="drawio-modal" style="display: none;" tabindex="-1">
+    <div id="drawio-modal" class="drawio-modal" style="display: none;" tabindex="-1" role="dialog" aria-modal="true" aria-label="Visual Diagram Editor">
         <div class="drawio-modal-content">
             <div class="drawio-modal-header">
                 <div class="drawio-modal-title">
@@ -409,7 +409,7 @@ Bob --> Alice: Hi there
                 </div>
                 <div class="drawio-modal-controls">
                     <span id="drawio-status" class="drawio-status">Loading...</span>
-                    <button id="drawio-close-btn" class="close-btn">×</button>
+                    <button id="drawio-close-btn" class="close-btn" aria-label="Close visual editor">×</button>
                 </div>
             </div>
             <div class="drawio-modal-body">

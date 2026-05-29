@@ -1,40 +1,47 @@
 services:
   core:
-    image: yuzutech/kroki
+    # Kroki core built from main for GoAT support (GoAT is not in any released
+    # image yet). Published to GHCR by .github/workflows/build-kroki-core.yml, so
+    # `docker-compose up` just pulls it. To build locally instead (offline / no
+    # registry access), run ./build-kroki-core.sh (it produces this exact tag).
+    # Override KROKI_CORE_IMAGE to use the stock released core (e.g. CI smoke
+    # tests set yuzutech/kroki:0.30.1, which has no GoAT but pulls instantly).
+    image: ${KROKI_CORE_IMAGE:-ghcr.io/vppillai/kroki-core:goat}
     environment:
       - KROKI_MAX_URI_LENGTH=8192
       - KROKI_MERMAID_HOST=mermaid
       - KROKI_BPMN_HOST=bpmn
       - KROKI_EXCALIDRAW_HOST=excalidraw
       - KROKI_DIAGRAMSNET_HOST=diagramsnet
-    ports:
-      - "${HTTP_PORT:-8000}:8000"
+    # Internal only — reachable via nginx (core:8000), never published to the host.
+    expose:
+      - "8000"
     networks:
       - kroki_network
 
   mermaid:
-    image: yuzutech/kroki-mermaid
+    image: yuzutech/kroki-mermaid:0.30.1
     expose:
       - "8002"
     networks:
       - kroki_network
 
   bpmn:
-    image: yuzutech/kroki-bpmn
+    image: yuzutech/kroki-bpmn:0.30.1
     expose:
       - "8003"
     networks:
       - kroki_network
 
   excalidraw:
-    image: yuzutech/kroki-excalidraw
+    image: yuzutech/kroki-excalidraw:0.30.1
     expose:
       - "8004"
     networks:
       - kroki_network
 
   diagramsnet:
-    image: yuzutech/kroki-diagramsnet
+    image: yuzutech/kroki-diagramsnet:0.30.1
     expose:
       - "8005"
     networks:
