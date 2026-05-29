@@ -235,60 +235,57 @@ document.addEventListener('DOMContentLoaded', function () {
     // Bind all event listeners (textarea, dropdowns, toolbar, keyboard, etc.)
     bindEvents({ updateDrawioButtonVisibility });
 
-    // Initialize configuration system (delayed to ensure all scripts are loaded)
-    setTimeout(() => {
-        if (window.configManager && typeof ConfigUI !== 'undefined') {
-            try {
-                window.configUI = new ConfigUI(window.configManager);
-            } catch (error) {
-                console.error('Error creating ConfigUI:', error);
+    // Initialize configuration system. Module scripts are deferred and run in
+    // document order before DOMContentLoaded, so configManager / ConfigUI /
+    // AIAssistant / CodeHistory are guaranteed defined here — no timer needed.
+    if (window.configManager && typeof ConfigUI !== 'undefined') {
+        try {
+            window.configUI = new ConfigUI(window.configManager);
+        } catch (error) {
+            console.error('Error creating ConfigUI:', error);
+        }
+    } else {
+        console.warn('ConfigManager or ConfigUI class not available');
+    }
+
+    if (typeof AIAssistant !== 'undefined') {
+        try {
+            window.aiAssistant = new AIAssistant(window.configManager);
+        } catch (error) {
+            console.error('Error creating AI Assistant:', error);
+        }
+    } else {
+        console.warn('AIAssistant class not available');
+    }
+
+    if (typeof CodeHistory !== 'undefined') {
+        try {
+            window.codeHistory = new CodeHistory();
+            window.codeHistory.initializeWithCurrentCode();
+        } catch (error) {
+            console.error('Error creating Code History:', error);
+        }
+    } else {
+        console.warn('CodeHistory class not available');
+    }
+
+    initializeConfigurationSystem();
+
+    // Fetch server config (sets editor.maxTextSize from the Kroki backend limit),
+    // THEN do the first render so the size limit is correct on first paint.
+    fetch('/api/config')
+        .then(r => r.json())
+        .then(config => {
+            if (config.kroki && config.kroki.maxBodySize && window.configManager) {
+                window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
             }
-        } else {
-            console.warn('ConfigManager or ConfigUI class not available');
-        }
-
-        if (typeof AIAssistant !== 'undefined') {
-            try {
-                window.aiAssistant = new AIAssistant(window.configManager);
-            } catch (error) {
-                console.error('Error creating AI Assistant:', error);
+        })
+        .catch(() => { /* server config unavailable, use default */ })
+        .finally(() => {
+            if (state.autoRefreshEnabled) {
+                updateDiagram();
             }
-        } else {
-            console.warn('AIAssistant class not available');
-        }
-
-        if (typeof CodeHistory !== 'undefined') {
-            try {
-                window.codeHistory = new CodeHistory();
-                setTimeout(() => {
-                    window.codeHistory.initializeWithCurrentCode();
-                }, 100);
-            } catch (error) {
-                console.error('Error creating Code History:', error);
-            }
-        } else {
-            console.warn('CodeHistory class not available');
-        }
-
-        initializeConfigurationSystem();
-
-        // Fetch server config to sync editor max text size with Kroki backend limit
-        fetch('/api/config')
-            .then(r => r.json())
-            .then(config => {
-                if (config.kroki && config.kroki.maxBodySize && window.configManager) {
-                    window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
-                }
-            })
-            .catch(() => { /* server config unavailable, use default */ });
-    }, 150);
-
-    // Update diagram after all initialization is complete
-    setTimeout(() => {
-        if (state.autoRefreshEnabled) {
-            updateDiagram();
-        }
-    }, 200);
+        });
 });
 
 /**
