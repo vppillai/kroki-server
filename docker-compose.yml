@@ -11,8 +11,9 @@ services:
       - KROKI_BPMN_HOST=bpmn
       - KROKI_EXCALIDRAW_HOST=excalidraw
       - KROKI_DIAGRAMSNET_HOST=diagramsnet
-    ports:
-      - "${HTTP_PORT:-8000}:8000"
+    # Internal only — reachable via nginx (core:8000), never published to the host.
+    expose:
+      - "8000"
     networks:
       - kroki_network
 

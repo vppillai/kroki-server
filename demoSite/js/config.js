@@ -424,7 +424,10 @@ class ConfigManager {
      * @public
      */
     export() {
-        return JSON.stringify(this.config, null, 2);
+        // Never write the API key into exported settings — it is a secret.
+        const safe = structuredClone(this.config);
+        if (safe.ai) safe.ai.apiKey = '';
+        return JSON.stringify(safe, null, 2);
     }
 
     /**
