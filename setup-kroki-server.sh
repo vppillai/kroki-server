@@ -14,6 +14,14 @@ CUSTOM_CERT_CRT=""
 # Load environment variables
 # Function to display help message (removed duplicate - using detailed version below)
 
+# Bootstrap .env from the example on first run. .env is intentionally untracked
+# (it holds secrets) but docker-compose requires it, so fresh clones / CI need a
+# copy. Edit the created .env to add your AI_PROXY_API_KEY.
+if [ ! -f "${SCRIPT_DIR}/.env" ] && [ -f "${SCRIPT_DIR}/.env.example" ]; then
+    echo "No .env found — creating one from .env.example. Edit it to add your AI_PROXY_API_KEY."
+    cp "${SCRIPT_DIR}/.env.example" "${SCRIPT_DIR}/.env"
+fi
+
 # Load configuration from .env file if it exists
 if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a
