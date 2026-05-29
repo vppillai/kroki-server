@@ -9,6 +9,8 @@
  *
  * @class ConfigUI
  */
+import { handleTabTrap } from './modules/focusTrap.js';
+
 class ConfigUI {
     /**
      * Initialize the Configuration UI component
@@ -74,6 +76,7 @@ class ConfigUI {
             if (this.modal.style.display === 'block') {
                 if (e.key === 'Escape') this.close();
                 else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) this.save();
+                else handleTabTrap(e, this.modal);
             }
         });
 
@@ -172,8 +175,12 @@ class ConfigUI {
     open() {
         this.loadCurrentConfig();
         this.resetPasswordVisibility();
+        this._previouslyFocused = document.activeElement;
         this.modal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        // Move focus into the dialog for keyboard / screen-reader users.
+        const firstFocusable = this.modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        (firstFocusable || this.modal).focus();
     }
 
     close() {
@@ -184,6 +191,11 @@ class ConfigUI {
         document.body.style.overflow = '';
         this.unsavedChanges = false;
         this.tempConfig = {};
+        // Restore focus to whatever opened the dialog.
+        if (this._previouslyFocused && typeof this._previouslyFocused.focus === 'function') {
+            this._previouslyFocused.focus();
+            this._previouslyFocused = null;
+        }
     }
 
     // ========================================

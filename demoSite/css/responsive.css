@@ -1,0 +1,85 @@
+/* Responsive layout
+ *
+ * The desktop layout is a fixed-height (100dvh) column: toolbar on top, then a
+ * horizontal editor|preview split. On small screens that split is unusable
+ * (~33% of a phone width for the editor), so below 768px we stack the editor
+ * above the preview, let the page scroll, wrap the toolbar, turn the AI chat
+ * into a full-screen sheet, and enlarge touch targets.
+ */
+
+@media (max-width: 768px) {
+    /* Let the page scroll instead of clipping the taller stacked layout. */
+    body {
+        height: auto;
+        min-height: 100dvh;
+        overflow-y: auto;
+    }
+
+    /* Stack editor over preview. */
+    .container {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+    }
+
+    .editor,
+    .preview {
+        width: 100%;
+        height: auto;
+        border-right: none;
+    }
+
+    .editor {
+        min-height: 42vh;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .preview {
+        min-height: 50vh;
+    }
+
+    /* The horizontal drag handle is meaningless when stacked. */
+    .resize-handle {
+        display: none;
+    }
+
+    /* Wrap the toolbar instead of clipping its controls. */
+    .main-toolbar {
+        height: auto;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        padding-top: var(--spacing-sm);
+        padding-bottom: var(--spacing-sm);
+    }
+
+    .toolbar-section {
+        flex-wrap: wrap;
+    }
+
+    /* AI chat becomes a full-screen sheet (the fixed 400px window overflows). */
+    .ai-chat-window {
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .ai-chat-resize-handle {
+        display: none;
+    }
+
+    /* Meet the 44x44px minimum touch-target size on icon-only controls. */
+    .zoom-btn,
+    .code-history-btn,
+    .ai-chat-controls button,
+    .ai-chat-send,
+    .close-btn,
+    .refresh-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

@@ -238,6 +238,7 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
 
             diagramImg.style.display = 'block';
             diagramImg.src = imageUrl;
+            diagramImg.alt = (document.getElementById('diagramType')?.value || 'Diagram') + ' diagram preview';
         };
 
         tempImg.onerror = function () {

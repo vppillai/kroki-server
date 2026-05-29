@@ -400,7 +400,7 @@ Bob --> Alice: Hi there
     </div>
 
     <!-- Draw.io Modal -->
-    <div id="drawio-modal" class="drawio-modal" style="display: none;" tabindex="-1">
+    <div id="drawio-modal" class="drawio-modal" style="display: none;" tabindex="-1" role="dialog" aria-modal="true" aria-label="Visual Diagram Editor">
         <div class="drawio-modal-content">
             <div class="drawio-modal-header">
                 <div class="drawio-modal-title">
@@ -409,7 +409,7 @@ Bob --> Alice: Hi there
                 </div>
                 <div class="drawio-modal-controls">
                     <span id="drawio-status" class="drawio-status">Loading...</span>
-                    <button id="drawio-close-btn" class="close-btn">×</button>
+                    <button id="drawio-close-btn" class="close-btn" aria-label="Close visual editor">×</button>
                 </div>
             </div>
             <div class="drawio-modal-body">
