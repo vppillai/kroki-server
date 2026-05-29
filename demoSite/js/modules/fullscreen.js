@@ -8,6 +8,8 @@
  * @author Vysakh Pillai
  */
 
+import { isTypingContext } from './keyboard.js';
+
 // ========================================
 // FULLSCREEN MODE INITIALIZATION
 // ========================================
@@ -147,18 +149,19 @@ export function initializeFullscreenMode() {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-        // Only handle fullscreen shortcuts when not typing in text areas
-        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-            if (e.key === 'f' || e.key === 'F') {
+        // Escape always exits fullscreen, even from the editor (Escape is not a typed character).
+        if (e.key === 'Escape') {
+            if (isFullscreen) {
                 e.preventDefault();
-                if (!isFullscreen) {
-                    enterFullscreen();
-                }
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                if (isFullscreen) {
-                    exitFullscreen();
-                }
+                exitFullscreen();
+            }
+            return;
+        }
+        // 'f' toggles fullscreen ONLY when the user is not typing into an editable surface.
+        if ((e.key === 'f' || e.key === 'F') && !isTypingContext(e.target)) {
+            e.preventDefault();
+            if (!isFullscreen) {
+                enterFullscreen();
             }
         }
     });
