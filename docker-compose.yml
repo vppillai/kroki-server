@@ -18,28 +18,28 @@ services:
       - kroki_network
 
   mermaid:
-    image: yuzutech/kroki-mermaid
+    image: yuzutech/kroki-mermaid:0.30.1
     expose:
       - "8002"
     networks:
       - kroki_network
 
   bpmn:
-    image: yuzutech/kroki-bpmn
+    image: yuzutech/kroki-bpmn:0.30.1
     expose:
       - "8003"
     networks:
       - kroki_network
 
   excalidraw:
-    image: yuzutech/kroki-excalidraw
+    image: yuzutech/kroki-excalidraw:0.30.1
     expose:
       - "8004"
     networks:
       - kroki_network
 
   diagramsnet:
-    image: yuzutech/kroki-diagramsnet
+    image: yuzutech/kroki-diagramsnet:0.30.1
     expose:
       - "8005"
     networks:
