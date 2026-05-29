@@ -1,6 +1,10 @@
 services:
   core:
-    image: yuzutech/kroki
+    # Kroki core built from main for GoAT support (GoAT is not in any released
+    # image yet). Published to GHCR by .github/workflows/build-kroki-core.yml, so
+    # `docker-compose up` just pulls it. To build locally instead (offline / no
+    # registry access), run ./build-kroki-core.sh (it produces this exact tag).
+    image: ghcr.io/vppillai/kroki-core:goat
     environment:
       - KROKI_MAX_URI_LENGTH=8192
       - KROKI_MERMAID_HOST=mermaid

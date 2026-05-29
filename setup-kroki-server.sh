@@ -117,6 +117,28 @@ build_demo_site() {
     cd "${SCRIPT_DIR}" || exit 1
 }
 
+# Ensure the Kroki "core" image (built from main, includes GoAT) is available.
+# Prefers pulling the published GHCR image; falls back to a one-time local build.
+ensure_kroki_core() {
+    local img="ghcr.io/vppillai/kroki-core:goat"
+    if docker image inspect "$img" >/dev/null 2>&1; then
+        return 0
+    fi
+    echo "Kroki core image '$img' not present locally; attempting to pull..."
+    if docker pull "$img" >/dev/null 2>&1; then
+        echo "Pulled $img"
+        return 0
+    fi
+    echo "Pull failed (the GoAT core image may not be published yet)."
+    echo "Building Kroki core from source (one-time, ~15-30 min)..."
+    if "${SCRIPT_DIR}/build-kroki-core.sh"; then
+        echo "Kroki core image built."
+    else
+        echo "Error: failed to build Kroki core image (see output above)."
+        exit 1
+    fi
+}
+
 # Function to create Nginx config
 create_nginx_config() {
     echo "Creating Nginx configuration..."
@@ -400,6 +422,7 @@ case "$COMMAND" in
         generate_certs
         create_nginx_config
         build_demo_site
+        ensure_kroki_core
         echo "Starting services with Docker Compose..."
 
         if [ -f "$DOCKER_COMPOSE_FILE" ]; then
@@ -442,6 +465,7 @@ case "$COMMAND" in
         build_demo_site
         generate_certs
         create_nginx_config
+        ensure_kroki_core
         echo "Starting services with Docker Compose..."
         $DOCKER_COMPOSE up -d
         sleep 5
