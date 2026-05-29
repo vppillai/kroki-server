@@ -75,3 +75,13 @@
     display: flex;
     align-items: center;
 }
+
+/* Editor over-size warning banner */
+.editor-size-banner {
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8rem;
+    color: #fff;
+    background: var(--error-color);
+    border-radius: var(--border-radius);
+}

@@ -17,6 +17,7 @@ import {
 } from './state.js';
 import { formatCompatibility, formatDisplayTypes } from './constants.js';
 import { textEncode, uint8ArrayToString } from './utils.js';
+import { deflate, inflate } from 'pako';
 
 // Re-export from sub-modules
 export { shouldUsePostForCurrentDiagram } from './diagramApi.js';
@@ -116,7 +117,7 @@ export async function loadExampleForDiagramType(type) {
  */
 export function encodeKrokiDiagram(text) {
     const bytes = textEncode(text);
-    const compressed = pako.deflate(bytes);
+    const compressed = deflate(bytes);
     const strData = uint8ArrayToString(compressed);
     return btoa(strData)
         .replace(/\+/g, '-')
@@ -141,7 +142,7 @@ export function decodeKrokiDiagram(encodedString) {
             bytes[i] = binaryString.charCodeAt(i);
         }
 
-        const decompressed = pako.inflate(bytes);
+        const decompressed = inflate(bytes);
 
         const decoder = new TextDecoder('utf-8');
         return decoder.decode(decompressed);
