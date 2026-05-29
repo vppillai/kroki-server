@@ -120,7 +120,7 @@ build_demo_site() {
 # Ensure the Kroki "core" image (built from main, includes GoAT) is available.
 # Prefers pulling the published GHCR image; falls back to a one-time local build.
 ensure_kroki_core() {
-    local img="ghcr.io/vppillai/kroki-core:goat"
+    local img="${KROKI_CORE_IMAGE:-ghcr.io/vppillai/kroki-core:goat}"
     if docker image inspect "$img" >/dev/null 2>&1; then
         return 0
     fi
@@ -129,7 +129,13 @@ ensure_kroki_core() {
         echo "Pulled $img"
         return 0
     fi
-    echo "Pull failed (the GoAT core image may not be published yet)."
+    echo "Pull failed for '$img'."
+    # CI / constrained environments can set KROKI_SKIP_CORE_BUILD=1 (and usually
+    # KROKI_CORE_IMAGE to a stock pullable core) to avoid the heavy source build.
+    if [ -n "${KROKI_SKIP_CORE_BUILD:-}" ]; then
+        echo "Error: core image unavailable and KROKI_SKIP_CORE_BUILD is set."
+        exit 1
+    fi
     echo "Building Kroki core from source (one-time, ~15-30 min)..."
     if "${SCRIPT_DIR}/build-kroki-core.sh"; then
         echo "Kroki core image built."
