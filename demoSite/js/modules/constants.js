@@ -58,6 +58,7 @@ export const formatCompatibility = {
     diagramsnet: ['png', 'svg'],
     erd: ['png', 'svg', 'jpeg', 'pdf'],
     excalidraw: ['svg'],
+    goat: ['svg'],
     graphviz: ['png', 'svg', 'jpeg', 'pdf'],
     mermaid: ['png', 'svg'],
     nomnoml: ['svg'],
