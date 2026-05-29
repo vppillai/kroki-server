@@ -1,3 +1,4 @@
+import { extractDiagramJson } from './modules/aiResponseParser.js';
 /**
  * AI Assistant Module for Kroki Diagram Editor
  *
@@ -708,53 +709,19 @@ class AIAssistant {
             }
         }
 
-        try {
-            if (typeof actualStringToParse !== 'string') {
-                throw new Error('Content to parse from AI response is not a string.');
-            }
-
-            let jsonString = actualStringToParse.trim()
-                .replace(/^```json\s*/, '').replace(/\s*```$/, '')
-                .replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-
-            // Try direct parse
-            try {
-                const parsed = JSON.parse(jsonString);
-                if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                    return parsed;
-                }
-            } catch { /* continue */ }
-
-            // Try JSON from code blocks
-            const jsonCodeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)```/g;
-            for (const match of jsonString.matchAll(jsonCodeBlockRegex)) {
-                try {
-                    const parsed = JSON.parse(match[1].trim());
-                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                        return parsed;
-                    }
-                } catch { /* continue */ }
-            }
-
-            // Try finding JSON object in text
-            const jsonObjectRegex = /\{[\s\S]*?"diagramCode"[\s\S]*?"explanation"[\s\S]*?\}/g;
-            for (const match of jsonString.matchAll(jsonObjectRegex)) {
-                try {
-                    const parsed = JSON.parse(match[0]);
-                    if (typeof parsed.diagramCode === 'string' && typeof parsed.explanation === 'string') {
-                        return parsed;
-                    }
-                } catch { /* continue */ }
-            }
-
-            // Fallback extraction
-            const extractedCode = this._fallbackExtractCode(actualStringToParse);
-            if (extractedCode) return extractedCode;
-
-            throw new Error('No valid JSON or extractable diagram code found');
-        } catch (e) {
-            throw new Error(`AI response was not valid JSON and diagram code could not be extracted. ${e.message}`);
+        if (typeof actualStringToParse !== 'string') {
+            throw new Error('Content to parse from AI response is not a string.');
         }
+
+        // Robust, brace-balanced extraction (handles fences + '}' inside diagram code).
+        const parsed = extractDiagramJson(actualStringToParse);
+        if (parsed) return parsed;
+
+        // Last-resort heuristic extraction of bare diagram code from prose/markdown.
+        const extractedCode = this._fallbackExtractCode(actualStringToParse);
+        if (extractedCode) return extractedCode;
+
+        throw new Error('AI response was not valid JSON and diagram code could not be extracted.');
     }
 
     _fallbackExtractCode(responseText) {
@@ -802,14 +769,10 @@ class AIAssistant {
         const codeTextarea = document.getElementById('code');
         if (!codeTextarea) return;
 
-        let processedCode = code
-            .replace(/\\n/g, '\n')
-            .replace(/\\t/g, '\t')
-            .replace(/\\"/g, '"')
-            .replace(/\\'/g, "'")
-            .replace(/\\\\/g, '\\');
-
-        codeTextarea.value = processedCode;
+        // Values from JSON.parse are already unescaped — do NOT re-unescape them
+        // (that corrupts literal "\n" in DOT/PlantUML labels). All callers pass
+        // already-correct strings (parsed diagramCode, fallback code, or originalCode).
+        codeTextarea.value = code;
         codeTextarea.dispatchEvent(new Event('change', { bubbles: true }));
         codeTextarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
