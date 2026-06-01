@@ -21,6 +21,7 @@ import { createTrackedBlobUrl, revokeBlobUrl } from './dom.js';
 import { showBanner, hideBanner } from './errors.js';
 import { encodeKrokiDiagram } from './diagramOperations.js';
 import { generateDiagramWithPost, generateDiagramWithJsonPost, fetchDiagramViaPost } from './diagramApi.js';
+import { diagramOptionsQuery } from './diagramOptions.js';
 import { updateUrl, clearUrlParameters } from './urlHandler.js';
 import { api } from './api.js';
 
@@ -73,7 +74,7 @@ export async function updateDiagram() {
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : '';
-        const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}`;
+        const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}${diagramOptionsQuery(diagramType)}`;
 
         const shouldUsePost = alwaysUsePost || url.length > urlLengthThreshold;
 
