@@ -10,6 +10,7 @@ import { api } from './api.js';
 import { createTrackedBlobUrl } from './dom.js';
 import { DEFAULT_POST_REQUEST_TIMEOUT } from './constants.js';
 import { encodeKrokiDiagram } from './diagramOperations.js';
+import { diagramOptionsQuery, diagramOptionsObject } from './diagramOptions.js';
 
 /**
  * Build the base URL for Kroki API requests
@@ -43,7 +44,7 @@ function getTimeout() {
  * @returns {Promise<string>} Blob URL for the diagram
  */
 export async function generateDiagramWithPost(diagramType, outputFormat, diagramCode) {
-    const postUrl = `${getBaseUrl()}/${diagramType}/${outputFormat}`;
+    const postUrl = `${getBaseUrl()}/${diagramType}/${outputFormat}${diagramOptionsQuery(diagramType)}`;
     const blob = await api.postBlob(postUrl, diagramCode, { timeout: getTimeout() });
     return createTrackedBlobUrl(blob);
 }
@@ -64,6 +65,8 @@ export async function generateDiagramWithJsonPost(diagramType, outputFormat, dia
         diagram_type: diagramType,
         output_format: outputFormat
     };
+    const opts = diagramOptionsObject(diagramType);
+    if (opts) body.diagram_options = opts;
     const blob = await api.postJSON(postUrl, body, { parseAs: 'blob', timeout: getTimeout() });
     return createTrackedBlobUrl(blob);
 }
