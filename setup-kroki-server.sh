@@ -209,9 +209,12 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
 
-            # Add caching headers for static assets
-            expires 1d;
-            add_header Cache-Control "public";
+            # Revalidate via ETag instead of hard-caching. These assets are
+            # un-versioned (no content hash in the filename), so a 1-day cache
+            # meant deploys didn't reach returning users. "expires -1" emits
+            # Cache-Control: no-cache -> the browser revalidates and gets a fast
+            # 304 when unchanged, but always picks up a changed asset next load.
+            expires -1;
         }
 
         # Static files at root level
@@ -222,9 +225,12 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
 
-            # Add caching headers for static assets
-            expires 1d;
-            add_header Cache-Control "public";
+            # Revalidate via ETag instead of hard-caching. These assets are
+            # un-versioned (no content hash in the filename), so a 1-day cache
+            # meant deploys didn't reach returning users. "expires -1" emits
+            # Cache-Control: no-cache -> the browser revalidates and gets a fast
+            # 304 when unchanged, but always picks up a changed asset next load.
+            expires -1;
         }
 
         # Demo site API endpoints (must come before Kroki patterns)
