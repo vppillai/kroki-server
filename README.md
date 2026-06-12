@@ -1,6 +1,12 @@
-# DocCode - The Kroki Frontend
+# DocCode — self-hostable diagram editor with optional AI assistant
 
-A comprehensive web-based diagram editor with AI assistance, built on top of the powerful Kroki diagram rendering server.
+DocCode is an open-source, self-hostable web diagram editor built on
+[Kroki](https://kroki.io/): 50+ text-to-diagram formats (PlantUML, Mermaid,
+GraphViz, D2, BPMN, Excalidraw, ...), a syntax-highlighted editor with live
+preview, Draw.io visual editing, and an *optional* AI assistant that works with
+your own API key (OpenRouter, LiteLLM, or any OpenAI-compatible endpoint) — or
+fully bring-your-own-key from the browser. One `docker compose` stack, no
+database, all user state stays in the browser.
 
 ![DocCode Demo](./images/demoSite.png)
 
@@ -14,6 +20,20 @@ A comprehensive web-based diagram editor with AI assistance, built on top of the
   <img src="./images/ai-assistant.gif" alt="AI Assistant Demo" />
 </p>
 
+---
+
+## Deployment modes
+
+| Mode | When to use | TLS | AI relay | Rate limits |
+|---|---|---|---|---|
+| **Closed-network** (default) | Trusted LAN / team / CI | Self-signed | On with your key | Relaxed (no 429s for batch jobs) |
+| **Production / public** | Internet-facing | Let's Encrypt (acme) | BYOK or token-gated relay | Strict (10 r/s, 1 MB body cap) |
+
+The default `./setup-kroki-server.sh start` is the closed-network mode — safe for
+trusted networks out of the box, not hardened for the public internet.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -26,9 +46,13 @@ cd kroki-server
 # Test health: ./setup-kroki-server.sh health
 ```
 
+---
+
 ## What is DocCode?
 
-DocCode is a feature-rich web frontend for [Kroki](https://kroki.io/) diagram servers that transforms diagram creation from code into an intuitive, AI-powered experience.
+DocCode is a feature-rich web frontend for [Kroki](https://kroki.io/) diagram
+servers that transforms diagram creation from code into an intuitive, AI-powered
+experience.
 
 ### Key Features
 
@@ -41,11 +65,13 @@ DocCode is a feature-rich web frontend for [Kroki](https://kroki.io/) diagram se
 - **File Management**: Open, save, auto-reload with external editor support
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile
 
+---
+
 ## Installation & Setup
 
 ### System Requirements
 
-- Docker and Docker Compose
+- Docker and Docker Compose >= 2.24.0
 - Bash shell (Linux/macOS/WSL)
 
 ### Basic Setup
@@ -72,50 +98,79 @@ cd kroki-server
 
 ### Custom Configuration
 
-Edit the `.env` file to customize ports and settings:
-
-```bash
-# Server Configuration
-HOSTNAME=localhost              # Server hostname
-HTTP_PORT=8000                  # Kroki core server port
-HTTPS_PORT=8443                 # Main HTTPS access port
-
-# Application Information
-VERSION=2.3.2
-BUILD_DATE=2025-08-26
-AUTHOR_NAME="Your Name"
-
-# Visual Editor (Draw.io integration)
-DRAWIO_SERVER_URL="https://embed.diagrams.net/embed"
-```
+Edit the `.env` file (auto-created from `.env.example` on first run) to customize
+ports and settings. See `.env.example` for all available options with comments.
 
 After editing `.env`, restart the services:
 ```bash
 ./setup-kroki-server.sh restart
 ```
 
+---
+
+## Production / Public Deployment
+
+The default `./setup-kroki-server.sh start` is tuned for **closed networks**: it
+generates a self-signed certificate, enables the AI relay with the server's API key,
+and applies no render rate limits. **Do not expose it to the internet as-is.**
+
+For a public deployment, see:
+
+- **[docs/production-deployment.md](docs/production-deployment.md)** — threat model,
+  quick recipe, and reference for every knob: `TLS_MODE`, `DEPLOY_PROFILE`,
+  `RENDER_CACHE_ENABLED`, `COMPOSE_PROFILES`, AI posture, `GUNICORN_*`, sizing
+- **[docs/acme-tls.md](docs/acme-tls.md)** — real TLS via Let's Encrypt (staging-first
+  procedure, renewal mechanics, rollback)
+- **[docs/public-demo-hosting-runbook.md](docs/public-demo-hosting-runbook.md)** —
+  Hetzner provisioning, DNS, OpenRouter relay setup, monitoring, abuse response
+
+Key knobs at a glance:
+
+| Knob | Closed-network default | Production / public |
+|---|---|---|
+| `TLS_MODE` | `selfsigned` | `acme` |
+| `DEPLOY_PROFILE` | `private` | `public` |
+| `RENDER_CACHE_ENABLED` | `true` | `true` |
+| `COMPOSE_PROFILES` | `companions` | `` (trimmed) or `companions` |
+| `AI_PROXY_API_KEY` | your key or empty | empty (byok) or token-gated relay |
+
+---
+
 ## AI Assistant Setup
 
-DocCode includes a powerful AI assistant that can generate, modify, and explain diagrams using natural language.
+DocCode includes an AI assistant that can generate, modify, and explain diagrams
+using natural language.
 
-### AI assistant deployment modes
+### AI deployment modes
 
 The server advertises one of three AI postures depending on your `.env`:
 
 | Mode | When | Behaviour |
 |---|---|---|
-| `relay` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` set | Server proxies requests on its own key. The closed-network default and the public-demo configuration. |
-| `byok` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` empty | Relay unusable; the assistant UI stays visible and guides users to bring their own OpenAI-compatible key. Requests go directly from the browser to the user's provider — the key never reaches this server. |
+| `relay` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` set | Server proxies requests on its own key. |
+| `byok` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` empty | Relay unusable; the assistant UI guides users to bring their own OpenAI-compatible key. Requests go directly from the browser to the user's provider — the key never reaches this server. |
 | `off` | `AI_ENABLED=false` | Assistant button hidden; true kill switch. |
 
-The mode is computed at startup from exactly those two variables — there is no single "public" switch. The public-demo posture is an explicit `.env` bundle (see `docs/public-hosting-plan-2026-06-12.md` §6).
+The mode is computed at startup from exactly those two variables.
 
-**Relay self-hosters:** the relay spends `AI_PROXY_API_KEY` on every assistant request. Before exposing a relay-enabled instance beyond a trusted network:
-- Set `AI_MODEL_ALLOWLIST` to pin cheap/free models (e.g. `"*:free"` on OpenRouter).
+**Relay cost warning:** the relay spends `AI_PROXY_API_KEY` on every assistant
+request. A single motivated user can trigger multi-dollar-per-hour costs against
+an unprotected relay. Before exposing a relay-enabled instance beyond a trusted
+network:
+- Set `AI_MODEL_ALLOWLIST="*:free"` to pin free-tier models (e.g. on OpenRouter).
 - Set `AI_DAILY_LIMIT_PER_IP` to cap per-user spend (e.g. `"10/minute;30/day"`).
+- Set `AI_ACCESS_TOKEN` to require a shared bearer token for relay access.
 - Or leave `AI_PROXY_API_KEY` empty to run in `byok` mode (zero relay cost).
 
-**BYOK privacy guarantee:** in `byok` mode (or when users enable "Use Direct API" in Settings), the API key is stored only in the browser (localStorage) and sent only to the endpoint the user configures — never to the DocCode server. This is structurally enforced in code and locked by regression tests. See [docs/byok-privacy.md](docs/byok-privacy.md) for the full guarantee and DevTools verification steps.
+See [docs/production-deployment.md](docs/production-deployment.md) for the full
+AI cost management section.
+
+**BYOK privacy guarantee:** in `byok` mode (or when users enable "Use Direct API"
+in Settings), the API key is stored only in the browser (localStorage) and sent
+only to the endpoint the user configures — never to the DocCode server. This is
+structurally enforced in code and locked by regression tests. See
+[docs/byok-privacy.md](docs/byok-privacy.md) for the full guarantee and DevTools
+verification steps.
 
 ### Quick AI Setup (Recommended)
 
@@ -136,27 +191,33 @@ AI_MODEL=openai/gpt-4o-mini
 
 ### Dynamic Model Discovery
 
-DocCode automatically fetches the list of available models from the configured LLM proxy at server startup. This means the model dropdown always reflects what the proxy actually supports — no manual model list maintenance required.
+DocCode automatically fetches the list of available models from the configured LLM
+proxy at server startup. This means the model dropdown always reflects what the
+proxy actually supports — no manual model list maintenance required.
 
 - On startup, the server queries the proxy's `/v1/models` endpoint
 - Non-chat models (embeddings, TTS, etc.) are filtered out automatically
 - Models are grouped by provider prefix in the settings dropdown
 - If the proxy is unreachable, a static fallback list (`ai-models.json`) is used
-- The admin script shows the model fetch status in **green** (success) or **red** (fallback) after `start`/`restart`
-- If a previously selected model is no longer available, the frontend auto-switches to the server default
+- The admin script shows the model fetch status in **green** (success) or **red**
+  (fallback) after `start`/`restart`
+- If a previously selected model is no longer available, the frontend auto-switches
+  to the server default
 
 ### Supported AI Providers
 
-The available models depend on your proxy configuration. With **OpenRouter**, you get access to:
+The available models depend on your proxy configuration. With **OpenRouter**, you
+get access to:
 
-- **OpenAI**: GPT-5, GPT-4o, GPT-4o Mini, and more
+- **OpenAI**: GPT-4o, GPT-4o Mini, and more
 - **Anthropic**: Claude Opus, Sonnet, Haiku families
 - **Google**: Gemini 2.5 Pro/Flash, Gemma models
 - **Meta**: Llama 4, Llama 3.3 series
 - **Mistral**: Mistral Medium, Codestral, Small/Nemo
 - **Others**: Qwen, DeepSeek, plus many free-tier options
 
-With **LiteLLM**, you can configure any combination of providers and the model list will be discovered automatically.
+With **LiteLLM**, you can configure any combination of providers and the model list
+will be discovered automatically.
 
 ### Alternative AI Setup Options
 
@@ -172,7 +233,8 @@ AI_PROXY_URL=http://localhost:4000/v1
 ```
 
 **Direct API (frontend configuration):**
-Users can also configure AI credentials directly in the DocCode interface through Settings → AI Assistant.
+Users can also configure AI credentials directly in the DocCode interface through
+Settings → AI Assistant.
 
 ### AI Capabilities
 
@@ -182,15 +244,16 @@ Users can also configure AI credentials directly in the DocCode interface throug
 - **Code Assistance**: "Fix the syntax errors in my diagram"
 - **Explanations**: "Explain what this diagram represents"
 
+---
+
 ## Deployment Footprint
 
 DocCode ships two footprints controlled by `COMPOSE_PROFILES` in `.env`.
-See `docs/public-hosting-plan-2026-06-12.md` for full sizing rationale.
 
 | Config | Containers | Idle RAM | Loaded RAM | Image disk |
 |---|---|---|---|---|
 | **Full set** (default) | core + mermaid + bpmn + excalidraw + diagramsnet + demosite + nginx | ~0.9–1.7 GB | 2.5–3.5 GB+ (uncapped) | ~10.2 GB |
-| **Trimmed public** | core + mermaid + demosite + nginx | ~0.4–0.8 GB | capped ~2.9 GB (sum of limits) | ~5.6 GB |
+| **Trimmed** | core + mermaid + demosite + nginx | ~0.4–0.8 GB | capped ~2.9 GB (sum of limits) | ~5.6 GB |
 
 ### Choosing a footprint
 
@@ -199,7 +262,7 @@ See `docs/public-hosting-plan-2026-06-12.md` for full sizing rationale.
 COMPOSE_PROFILES=companions   # bpmn + excalidraw + diagramsnet included
 ```
 
-**Trimmed public (core + mermaid only — saves ~4.7 GB image pulls and ~0.5–1 GB idle RAM):**
+**Trimmed (core + mermaid only — saves ~4.7 GB image pulls and ~0.5–1 GB idle RAM):**
 ```
 COMPOSE_PROFILES=             # empty = trimmed
 DISABLED_DIAGRAM_TYPES=bpmn,excalidraw,diagramsnet   # hides them from the UI dropdown
@@ -208,13 +271,15 @@ DISABLED_DIAGRAM_TYPES=bpmn,excalidraw,diagramsnet   # hides them from the UI dr
 
 After editing `.env`, apply with `./setup-kroki-server.sh restart`.
 
-> **Note for users bypassing the script:** if your `.env` predates the `COMPOSE_PROFILES`
-> variable, running `docker compose up` directly will silently drop the three companion
-> services. Add `COMPOSE_PROFILES=companions` to your `.env` to restore the full set.
-> The setup script sets this default automatically.
+> **Note for users bypassing the script:** if your `.env` predates the
+> `COMPOSE_PROFILES` variable, running `docker compose up` directly will silently
+> drop the three companion services. Add `COMPOSE_PROFILES=companions` to your
+> `.env` to restore the full set. The setup script sets this default automatically.
 
-> **Docker Compose version required:** `>= 2.24.0` (for `--profile '*'` teardown and
+> **Docker Compose version required:** >= 2.24.0 (for `--profile '*'` teardown and
 > `deploy.resources.limits` support). Check with `docker compose version`.
+
+---
 
 ## Using DocCode
 
@@ -248,6 +313,8 @@ For complex diagrams, use the integrated Draw.io editor:
 3. **Edit Visually**: Use familiar Draw.io interface
 4. **Sync Back**: Changes automatically update the code editor
 
+---
+
 ## Management Commands
 
 DocCode includes comprehensive management tools:
@@ -270,6 +337,8 @@ DocCode includes comprehensive management tools:
 ./setup-kroki-server.sh help      # Show all available commands
 ```
 
+---
+
 ## Advanced Configuration
 
 ### Custom Hostname & SSL
@@ -281,6 +350,24 @@ DocCode includes comprehensive management tools:
 # Custom SSL certificates
 ./setup-kroki-server.sh start --cert path/to/cert.crt --key path/to/key.key
 ```
+
+### Production app server (gunicorn)
+
+The DocCode container runs **gunicorn** (gthread worker,
+`GUNICORN_WORKERS × GUNICORN_THREADS` concurrency) — not the Flask dev server.
+For bare local development outside Docker, `python demoSite/server.py` still works
+(single Werkzeug process), but must not be exposed publicly.
+
+Tune the production app server via `.env`:
+
+```bash
+GUNICORN_WORKERS=2        # processes (default: 2)
+GUNICORN_THREADS=8        # threads per worker (default: 8)
+GUNICORN_GRACEFUL_TIMEOUT=30  # drain window on SIGTERM (seconds)
+GUNICORN_LOG_LEVEL=info   # gunicorn log verbosity
+```
+
+See `demoSite/gunicorn.conf.py` for all tunable parameters and their rationale.
 
 ### Performance Tuning
 
@@ -295,8 +382,11 @@ Configure performance settings through the Settings panel:
 
 - **CORS Protection**: Automatic whitelist generation
 - **Model Validation**: Prevents AI model injection attacks
-- **Request Limits**: 10MB max for diagram content
+- **Request Limits**: Configurable max for diagram content
 - **API Key Security**: Local storage only, never sent to server logs
+- **CSP Headers**: Content-Security-Policy active; all JS/CSS vendored locally
+
+---
 
 ## Supported Diagram Types
 
@@ -318,6 +408,8 @@ DocCode supports all Kroki diagram formats:
 - **Data**: Base64, Text output
 - **Sharing**: Direct image links, encoded URLs
 
+---
+
 ## API Usage
 
 DocCode provides both GET and POST API endpoints:
@@ -337,25 +429,29 @@ Alice -> Bob: Hello
   --insecure
 ```
 
+---
+
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Certificate Warnings**: Accept self-signed certificate or provide trusted certs
 2. **Port Conflicts**: Change `HTTPS_PORT` in `.env` file if 8443 is in use
-3. **AI Not Working**: Check API key configuration and model availability. Run `./setup-kroki-server.sh restart` and look for the red/green model status message
-4. **AI Model Errors**: If the admin script shows a red warning about model fetch failure, verify `AI_PROXY_URL` and `AI_PROXY_API_KEY` in `.env`
+3. **AI Not Working**: Check API key configuration and model availability. Run
+   `./setup-kroki-server.sh restart` and look for the red/green model status message
+4. **AI Model Errors**: If the admin script shows a red warning about model fetch
+   failure, verify `AI_PROXY_URL` and `AI_PROXY_API_KEY` in `.env`
 5. **Slow Performance**: Adjust debounce delays in Settings
 
 ### Debug Commands
 
 ```bash
 # Check container status
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs demosite
-docker-compose logs core
+docker compose logs demosite
+docker compose logs core
 
 # Network inspection
 docker network ls
@@ -369,6 +465,8 @@ docker network inspect kroki-server_kroki_network
 - **View Logs**: `./setup-kroki-server.sh logs`
 - **Reset Everything**: `./setup-kroki-server.sh clean && ./setup-kroki-server.sh start`
 
+---
+
 ## Architecture Overview
 
 ```
@@ -379,73 +477,48 @@ docker network inspect kroki-server_kroki_network
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   DocCode   │     │    BPMN     │     │ Excalidraw │
+│   DocCode   │     │    BPMN     │     │ Excalidraw  │
 │  Frontend   │     │  Renderer   │     │  Renderer   │
 └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-- **Nginx**: HTTPS proxy and static file serving
+- **Nginx**: HTTPS proxy, static file serving, render cache, rate limiting
 - **Core Kroki**: Diagram coordination and routing
 - **Renderers**: Specialized containers for different diagram types
-- **DocCode**: React-like frontend with AI integration
+- **DocCode**: Python/Flask (gunicorn) backend + browser-side JS frontend with AI integration
 
-## Future Enhancements
-
-The current architecture supports upcoming advanced features:
-
-- **Enhanced Conversational AI**: Context-aware conversations with memory
-- **Advanced Diagram Intelligence**: Smart analysis and explanation generation
-- **Workflow Integration**: Documentation generation and version control
-- **Collaboration Features**: Real-time sharing and editing
-- **Voice Integration**: Voice-to-diagram conversion
-- **Visual Context Processing**: Image-to-diagram analysis
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full development guide.
 
-### Development Setup
-
-```bash
-# Clone and setup development environment
-git clone https://github.com/vppillai/kroki-server.git
-cd kroki-server
-
-# Start in development mode
-./setup-kroki-server.sh start
-
-# Make changes to demoSite/ files
-# Restart to apply changes
-./setup-kroki-server.sh restart
-```
-
-### Dev server vs. production (gunicorn)
-
-The DocCode container runs **gunicorn** (gthread worker, `GUNICORN_WORKERS × GUNICORN_THREADS` concurrency) — not the Flask dev server. For bare local development outside Docker, `python demoSite/server.py` still works (single Werkzeug process), but must not be exposed publicly.
-
-Tune the production app server via `.env`:
+Quick reference — the two test commands CI requires:
 
 ```bash
-GUNICORN_WORKERS=2        # processes (default: 2)
-GUNICORN_THREADS=8        # threads per worker (default: 8)
-GUNICORN_GRACEFUL_TIMEOUT=30  # drain window on SIGTERM (seconds)
-GUNICORN_LOG_LEVEL=info   # gunicorn log verbosity
+# Python server tests (install deps first)
+cd demoSite && pip install -r requirements-dev.txt
+python -m pytest tests/test_server.py -q
+
+# JavaScript tests (Bun)
+cd demoSite && bun test tests/
 ```
 
-See `demoSite/gunicorn.conf.py` for all tunable parameters and their rationale.
+---
 
 ## License & Attribution
 
-- **License**: MIT License
+- **License**: MIT License — see [LICENSE.md](LICENSE.md)
 - **Built on**: [Kroki](https://github.com/yuzutech/kroki) by Yuzutech
 - **AI Integration**: Custom implementation with multi-provider support
 
 ---
 
 **Quick Links**:
-- [📖 Kroki Documentation](https://kroki.io/)
-- [💻 Source Code](https://github.com/vppillai/kroki-server)
-- [🔍 Health Check](https://localhost:8443/api/health) (after starting)
-- [⚙️ Settings](https://localhost:8443/) → Settings Panel
+- [Kroki Documentation](https://kroki.io/)
+- [Source Code](https://github.com/vppillai/kroki-server)
+- [Production Deployment Guide](docs/production-deployment.md)
+- [Health Check](https://localhost:8443/api/health) (after starting)
+- [Settings](https://localhost:8443/) → Settings Panel
 
 *Ready to create amazing diagrams? Start with `./setup-kroki-server.sh start` and open https://localhost:8443/*
