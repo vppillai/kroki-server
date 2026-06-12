@@ -22,9 +22,12 @@ export const DEFAULT_HISTORY_CAP = 10;
  * @returns {Array<{role:string,content:string}>}
  */
 export function mapHistory(history, cap = DEFAULT_HISTORY_CAP) {
+    // 'assistant-success' / 'assistant-warning' / 'assistant-error' are styled
+    // assistant turns (see displayMessage's typeMap) — the model must see them.
+    const isAssistant = (t) => typeof t === 'string' && t.startsWith('assistant');
     const turns = (history || [])
-        .filter(m => m && (m.type === 'user' || m.type === 'assistant') && typeof m.text === 'string' && m.text.trim())
-        .map(m => ({ role: m.type === 'assistant' ? 'assistant' : 'user', content: m.text }));
+        .filter(m => m && (m.type === 'user' || isAssistant(m.type)) && typeof m.text === 'string' && m.text.trim())
+        .map(m => ({ role: isAssistant(m.type) ? 'assistant' : 'user', content: m.text }));
     return cap > 0 ? turns.slice(-cap) : turns;
 }
 

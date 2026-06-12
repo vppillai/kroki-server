@@ -62,6 +62,9 @@ export async function openFile() {
 
             const codeTextarea = document.getElementById('code');
             codeTextarea.value = content;
+            // Opened-file content must survive diagram-type switches (the
+            // editor-bridge write is flagged programmatic, so set this here).
+            updateUserHasEditedContent(true);
 
             debounceUpdateDiagram();
             updateFileStatus();
@@ -116,6 +119,9 @@ export function handleFileInputChange(event) {
 
         const codeTextarea = document.getElementById('code');
         codeTextarea.value = content;
+        // Opened-file content must survive diagram-type switches (the
+        // editor-bridge write is flagged programmatic, so set this here).
+        updateUserHasEditedContent(true);
         debounceUpdateDiagram();
         updateFileStatus();
 

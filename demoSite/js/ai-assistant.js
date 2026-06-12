@@ -465,7 +465,9 @@ class AIAssistant {
      * @returns {Array<{type:string,text:string}>}
      */
     getConversationHistory() {
-        const turns = this.chatHistory.filter(m => m.type === 'user' || m.type === 'assistant');
+        // Styled assistant turns ('assistant-success' etc.) are real answers —
+        // without them the model never sees its own prior replies.
+        const turns = this.chatHistory.filter(m => m.type === 'user' || m.type.startsWith('assistant'));
         // Drop the current user message (the last entry on the happy path).
         if (turns.length && turns[turns.length - 1].type === 'user') {
             turns.pop();
@@ -653,14 +655,20 @@ class AIAssistant {
                 this.showStatus(`Network error, retrying (attempt ${this.retryAttempts + 1}/${aiConfig.maxRetryAttempts + 1})...`);
                 const delay = Math.min(1000 * Math.pow(2, this.retryAttempts - 1), 5000);
                 await new Promise(resolve => setTimeout(resolve, delay));
+                // A timeout abort poisons the shared controller — retrying with
+                // it would fail instantly, so issue a fresh one.
+                if (!this.currentAbortController || this.currentAbortController.signal.aborted) {
+                    this.currentAbortController = new AbortController();
+                }
                 await this.makeAIRequest(messages, diagramType, originalCode, aiConfig, originalUserPrompt);
             } else {
                 const errorMessage = error.message.toLowerCase().includes('configuration')
                     ? `${error.message} Check your <button onclick="window.aiAssistant?.openSettings()">AI settings</button>.`
                     : `${error.message}`;
                 const hasHtml = errorMessage.includes('<button');
+                // Message shown here is final — rethrowing would surface the same
+                // error again via sendToAI/sendMessage catch blocks.
                 this.addMessage('system', `${errorMessage}`, hasHtml);
-                throw error;
             }
         }
     }
@@ -669,13 +677,41 @@ class AIAssistant {
     // VALIDATION METHODS
     // ========================================
 
+    /**
+     * Resolve when the next render settles: 'diagramRendered' (success),
+     * 'diagramRenderFailed' (error), or timeout (caller falls back to DOM
+     * heuristics). Must be called BEFORE triggering the render.
+     */
+    waitForRenderOutcome(timeoutMs = 5000) {
+        return new Promise((resolve) => {
+            let timer = null;
+            const finish = (outcome) => {
+                document.removeEventListener('diagramRendered', onRendered);
+                document.removeEventListener('diagramRenderFailed', onFailed);
+                clearTimeout(timer);
+                resolve(outcome);
+            };
+            const onRendered = () => finish({ settled: true, success: true, error: null });
+            const onFailed = (e) => finish({ settled: true, success: false, error: e.detail?.error || 'Diagram failed to render' });
+            document.addEventListener('diagramRendered', onRendered);
+            document.addEventListener('diagramRenderFailed', onFailed);
+            timer = setTimeout(() => finish({ settled: false, success: false, error: null }), timeoutMs);
+        });
+    }
+
     async validateAndApplyDiagramCode(diagramCode, diagramType) {
         try {
             const codeTextarea = document.getElementById('code');
             const originalCode = codeTextarea ? codeTextarea.value : '';
+            // Subscribe before applying the code: the render is debounced
+            // (~1s), so a fixed 500ms sleep always inspected the PREVIOUS
+            // render. Wait for the render outcome event instead.
+            const renderOutcome = this.waitForRenderOutcome();
             this.updateDiagramCode(diagramCode);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const validationResult = this.checkDiagramValidation();
+            const outcome = await renderOutcome;
+            const validationResult = outcome.settled
+                ? { success: outcome.success, error: outcome.error }
+                : this.checkDiagramValidation();
 
             if (!validationResult.success) {
                 if (codeTextarea) {

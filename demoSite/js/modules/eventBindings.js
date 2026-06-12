@@ -32,9 +32,12 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
     // ========================================
 
     if (codeTextarea) {
-        codeTextarea.addEventListener('input', function () {
+        codeTextarea.addEventListener('input', function (e) {
             const code = this.value.trim();
-            if (code !== '') updateUserHasEditedContent(true);
+            // Programmatic writes (example loads, file opens via the editor
+            // bridge) are flagged e.programmatic — only real typing marks the
+            // content as user-edited (see editorBridge updateListener).
+            if (code !== '' && !e.programmatic) updateUserHasEditedContent(true);
 
             if (state.currentFile.isOpen && state.currentFile.saved && this.value !== state.currentFile.content) {
                 markFileAsModified();
@@ -200,7 +203,19 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
     // WINDOW BEFOREUNLOAD
     // ========================================
 
+    // beforeunload may be cancelled by the user ("stay on page"), so it must
+    // only ask — running cleanup here used to kill file monitoring and revoke
+    // blob URLs even when the user stayed.
     window.addEventListener('beforeunload', function (e) {
+        if (state.currentFile.isOpen && !state.currentFile.saved) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            return 'You have unsaved changes. Are you sure you want to leave?';
+        }
+    });
+
+    // pagehide fires only when the page is actually being left.
+    window.addEventListener('pagehide', function () {
         stopFileMonitoring();
 
         if (window.domUtils && window.domUtils.revokeAllBlobUrls) {
@@ -209,12 +224,6 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
 
         if (window.aiAssistant && typeof window.aiAssistant.destroy === 'function') {
             window.aiAssistant.destroy();
-        }
-
-        if (state.currentFile.isOpen && !state.currentFile.saved) {
-            e.preventDefault();
-            e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-            return 'You have unsaved changes. Are you sure you want to leave?';
         }
     });
 

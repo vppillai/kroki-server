@@ -43,6 +43,26 @@ test('caps history to the last N messages', () => {
     assert.deepEqual(m.slice(1, 5).map(x => x.content), ['m26', 'm27', 'm28', 'm29']);
 });
 
+test('includes styled assistant turns (assistant-success/-warning/-error) as assistant role', () => {
+    // Successful AI replies are stored as 'assistant-success' etc. via
+    // displayMessage(); the model must still see its own prior answers.
+    const history = [
+        { type: 'user', text: 'draw a cat' },
+        { type: 'assistant-success', text: 'Created the cat diagram.' },
+        { type: 'user', text: 'add a dog' },
+        { type: 'assistant-warning', text: 'Added the dog (may have issues).' },
+        { type: 'assistant-error', text: 'Something failed.' },
+    ];
+    const mapped = mapHistory(history);
+    assert.deepEqual(mapped, [
+        { role: 'user', content: 'draw a cat' },
+        { role: 'assistant', content: 'Created the cat diagram.' },
+        { role: 'user', content: 'add a dog' },
+        { role: 'assistant', content: 'Added the dog (may have issues).' },
+        { role: 'assistant', content: 'Something failed.' },
+    ]);
+});
+
 test('mapHistory drops blank and non-string turns', () => {
     const mapped = mapHistory([
         { type: 'user', text: '  ' },

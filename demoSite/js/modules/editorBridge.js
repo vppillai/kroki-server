@@ -9,7 +9,7 @@
  */
 
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, Transaction } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { searchKeymap, openSearchPanel, closeSearchPanel } from '@codemirror/search';
 import { bracketMatching, indentOnInput, foldGutter, foldKeymap, syntaxHighlighting, HighlightStyle, StreamLanguage } from '@codemirror/language';
@@ -294,6 +294,11 @@ export function initializeEditor(mountEl, initialContent) {
                 if (update.docChanged) {
                     if (hiddenTextarea) {
                         const inputEvent = new Event('input', { bubbles: true });
+                        // Programmatic writes (shim .value setter, editor.setValue)
+                        // are annotated Transaction.remote; flag the synthetic
+                        // event so listeners can tell them from real typing.
+                        inputEvent.programmatic = update.transactions.length > 0 &&
+                            update.transactions.every(tr => tr.annotation(Transaction.remote));
                         hiddenTextarea.dispatchEvent(inputEvent);
                     }
                     const maxSize = window.configManager
@@ -340,6 +345,7 @@ export function initializeEditor(mountEl, initialContent) {
         setValue(text) {
             view.dispatch({
                 changes: { from: 0, to: view.state.doc.length, insert: text },
+                annotations: Transaction.remote.of(true),
             });
         },
         getCursorPosition() {
@@ -395,6 +401,7 @@ function shimTextarea(textarea) {
             if (view) {
                 view.dispatch({
                     changes: { from: 0, to: view.state.doc.length, insert: text },
+                    annotations: Transaction.remote.of(true),
                 });
             }
         },
