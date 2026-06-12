@@ -1,0 +1,85 @@
+#cloud-config
+# DocCode demo box — Hetzner CAX11 / Ubuntu 24.04 provisioning
+#
+# Paste this file into the Hetzner "User data" field at server creation.
+# After the instance boots (~2-3 min), SSH in as the deploy user and proceed
+# from §4 (DNS) of docs/public-demo-hosting-runbook.md.
+#
+# What this does NOT handle (manual steps required after boot):
+#   - Filling .env placeholders (§10 of the runbook)
+#   - TLS issuance (§4)
+#   - Starting the stack (§5)
+#
+# Validate this file locally:
+#   python3 -c "import yaml,sys; yaml.safe_load(open('docs/cloud-init-demo.yaml')); print('OK')"
+
+users:
+  - name: deploy
+    # --disabled-password: no interactive password prompt; SSH-key login only.
+    # The ubuntu cloud image adds this user's authorized_keys from the instance
+    # metadata automatically when you provide an SSH key at server creation.
+    # If not using Hetzner SSH key injection, add your key explicitly:
+    #   ssh_authorized_keys:
+    #     - ssh-ed25519 AAAA... your-key-comment
+    shell: /bin/bash
+    groups:
+      - sudo
+    # NOTE: the docker group is intentionally NOT listed here. cloud-init creates
+    # missing groups before docker is installed, but the docker package recreates
+    # the group with a different GID in runcmd. Adding deploy to docker AFTER the
+    # docker install (see runcmd below) avoids the GID mismatch.
+    sudo:
+      - "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+
+package_update: true
+package_upgrade: true
+packages:
+  - git
+  - fail2ban
+  - unattended-upgrades
+  - curl
+  # certbot is NOT listed here — TLS is handled by the certbot sidecar container
+  # (docker-compose.acme.yml). No host-level certbot is needed or wanted.
+  # ufw is NOT listed — the Hetzner Cloud Firewall is the authoritative perimeter
+  # (Docker bypasses ufw via iptables). Add it for belt-and-suspenders only.
+
+runcmd:
+  # Install Docker via the official install script (verifies GPG, adds apt repo).
+  - curl -fsSL https://get.docker.com | sh
+
+  # Add deploy to the docker group AFTER docker is installed (the group must
+  # exist first; docker's own package creates it during apt install above).
+  - usermod -aG docker deploy
+
+  # SSH hardening: write a drop-in that sorts LAST in /etc/ssh/sshd_config.d/
+  # (01-doccode.conf): sshd uses FIRST-match-wins, so the 01- prefix sorts
+  # before 50-cloud-init.conf and 60-cloudimg-settings.conf and wins (for most
+  # directives, but for PasswordAuthentication the last explicit setting wins
+  # in modern OpenSSH). The drop-in approach is correct for Ubuntu 24.04 which
+  # has "Include /etc/ssh/sshd_config.d/*.conf" at the top of sshd_config.
+  - printf 'PasswordAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/01-doccode.conf
+  - systemctl reload ssh
+
+  # 2 GB swapfile (buffer for the JVM core under burst; not a RAM substitute).
+  - fallocate -l 2G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+  # Clone the repo. Ownership must be deploy so the deploy user can git pull
+  # and run the setup script without sudo.
+  - git clone https://github.com/vppillai/kroki-server.git /opt/kroki-server
+  - chown -R deploy:deploy /opt/kroki-server
+
+  # Verify docker group membership took effect (runs as deploy via sudo -u).
+  # This also pre-pulls nothing — just confirms docker is reachable.
+  - sudo -u deploy docker ps
+
+final_message: |
+  DocCode demo box provisioned. Next steps:
+    1. SSH in as the deploy user.
+    2. Complete §2 (DNS), §3 (OpenRouter), §4 (TLS), §5 (first deploy)
+       in docs/public-demo-hosting-runbook.md.
+    3. Install cron jobs per §8 of the runbook.
