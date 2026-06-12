@@ -54,6 +54,7 @@ services:
 
   demosite:
     restart: unless-stopped
+    stop_grace_period: 35s
     image: kroki-demosite:latest
     expose:
       - "${DEMOSITE_CONTAINER_PORT:-8006}"

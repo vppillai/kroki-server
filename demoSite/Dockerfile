@@ -22,6 +22,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Copy application files
 COPY --chown=appuser:appgroup server.py .
+COPY --chown=appuser:appgroup gunicorn.conf.py .
 COPY --chown=appuser:appgroup ai-models.json .
 COPY --chown=appuser:appgroup index.html .
 COPY --chown=appuser:appgroup favicon.ico .
@@ -35,7 +36,9 @@ RUN find /app -type d -exec chmod 755 {} \; && \
     chmod +x /app/server.py
 
 # Add healthcheck using the dedicated health endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+# start-period=30s covers the pre-existing import-time proxy /models fetch
+# (server.py:264, 10s timeout) plus gunicorn master+worker spawn time.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:${PORT}/api/health || exit 1
 
 # Expose the port (for documentation)
@@ -45,4 +48,4 @@ EXPOSE ${PORT}
 USER appuser
 
 # Use exec form of CMD for proper signal handling
-CMD ["python", "server.py"]
+CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "server:app"]

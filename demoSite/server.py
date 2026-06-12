@@ -717,6 +717,9 @@ def static_files(filename):
         return "File not found", 404
 
 if __name__ == '__main__':
+    # Bare local development ONLY (`python server.py`, single Werkzeug process).
+    # The container runs gunicorn via demoSite/gunicorn.conf.py (see Dockerfile
+    # CMD); do not use this path in production.
     logger.info(f"Starting Kroki Demo Site Server on port {PORT}")
     logger.info(f"Static files served from: {STATIC_ROOT}")
     logger.info(f"AI Assistant enabled: {DEFAULT_AI_CONFIG['enabled']}")
