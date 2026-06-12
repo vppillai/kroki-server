@@ -4,6 +4,7 @@ Kroki Demo Site Server with AI Assistant API Proxy
 Provides static file serving and AI API proxy functionality
 """
 
+import fnmatch
 import os
 import hashlib
 import hmac
@@ -23,11 +24,11 @@ from datetime import datetime
 try:
     from dotenv import load_dotenv
     import os
-    
+
     # Try to load from parent directory first (top-level .env), then current directory
     parent_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
     current_env = os.path.join(os.path.dirname(__file__), '.env')
-    
+
     if os.path.exists(parent_env):
         load_dotenv(parent_env)
         print(f"Loaded environment from: {parent_env}")
@@ -36,7 +37,7 @@ try:
         print(f"Loaded environment from: {current_env}")
     else:
         print("No .env file found, using system environment variables")
-        
+
 except ImportError:
     # dotenv not available, will use system environment variables
     print("dotenv not available, using system environment variables")
@@ -100,10 +101,67 @@ AI_PROXY_NAME = os.environ.get('AI_PROXY_NAME', 'AI Proxy')
 DEFAULT_AI_CONFIG = {
     'proxy_url': AI_PROXY_URL,
     'api_key': AI_PROXY_API_KEY,
-    'model': os.environ.get('AI_MODEL', 'openai/gpt-4o'),
+    'model': os.environ.get('AI_MODEL', 'openai/gpt-4o-mini'),
     'timeout': int(os.environ.get('AI_TIMEOUT', AI_TIMEOUT)),
     'enabled': os.environ.get('AI_ENABLED', 'true').lower() == 'true'
 }
+
+# ---------------------------------------------------------------------------
+# AI mode computation (no PUBLIC_MODE; superseded by user directive)
+# ---------------------------------------------------------------------------
+
+def compute_ai_mode(ai_enabled, has_proxy_key):
+    """Effective AI posture.
+
+    relay - server proxies AI calls on its own key (closed-network default)
+    byok  - relay disabled; UI guides users to bring their own key
+    off   - AI assistant hidden entirely (AI_ENABLED=false)
+    """
+    if not ai_enabled:
+        return 'off'
+    if not has_proxy_key:
+        return 'byok'  # relay enabled but unusable without a key
+    return 'relay'
+
+
+AI_MODE = compute_ai_mode(DEFAULT_AI_CONFIG['enabled'], bool(AI_PROXY_API_KEY))
+
+# ---------------------------------------------------------------------------
+# Model allowlist + startup fallback walk
+# ---------------------------------------------------------------------------
+
+# Comma-separated glob patterns; empty = allow all (current behavior).
+AI_MODEL_ALLOWLIST = [p.strip() for p in os.environ.get('AI_MODEL_ALLOWLIST', '').split(',') if p.strip()]
+# Ordered fallback models tried at startup when AI_MODEL is filtered/absent.
+AI_MODEL_FALLBACKS = [m.strip() for m in os.environ.get('AI_MODEL_FALLBACKS', '').split(',') if m.strip()]
+
+# ---------------------------------------------------------------------------
+# Per-IP daily cap (flask-limiter, active only when the env var is set)
+# ---------------------------------------------------------------------------
+
+AI_DAILY_LIMIT_PER_IP = os.environ.get('AI_DAILY_LIMIT_PER_IP', '')
+
+# ---------------------------------------------------------------------------
+# Quota error copy (verbatim from the plan §3.5)
+# ---------------------------------------------------------------------------
+
+FREE_QUOTA_COPY = (
+    "The shared free AI quota for this demo is used up for today. "
+    "This demo runs on OpenRouter's free tier, which everyone here shares. "
+    "It resets daily — or you can keep going right now with your own free key: "
+    "1. Sign up at openrouter.ai (email or Google — no credit card). "
+    "2. Create a key under Keys, and in Settings → Privacy, enable free endpoints "
+    "(“training/logging”) so :free models work. "
+    "3. Paste the key in AI Settings → Use my own API key. "
+    "Your key stays in your browser — it is never sent to our server. "
+    "You’ll get your own 50 free requests/day. Everything else in DocCode works without AI."
+)
+
+PER_IP_COPY = (
+    "You’ve hit this demo’s per-user AI limit for today. "
+    "Add your own free OpenRouter key in AI Settings to continue without limits."
+)
+
 
 # Load available models from JSON configuration file
 def load_available_models():
@@ -113,17 +171,37 @@ def load_available_models():
         with open(models_file, 'r') as f:
             models = json.load(f)
             logger.info(f"Successfully loaded {len(models)} provider categories from ai-models.json")
-            return models
+            result = apply_model_allowlist(models)
+            return result
     except Exception as e:
         logger.warning(f"Could not load ai-models.json: {e}. Using fallback models.")
         # Fallback models in case file is missing
-        return {
+        fallback = {
             'openai': {
-                'gpt-4o': {'name': 'GPT-4o', 'provider': 'OpenAI', 'context': '128k', 'cost': 'high'},
-                'gpt-4o-mini': {'name': 'GPT-4o Mini', 'provider': 'OpenAI', 'context': '128k', 'cost': 'low'},
-                'gpt-3.5-turbo': {'name': 'GPT-3.5 Turbo', 'provider': 'OpenAI', 'context': '16k', 'cost': 'low'}
+                'openai/gpt-4o': {'name': 'GPT-4o', 'provider': 'OpenAI', 'context': '128k', 'cost': 'high'},
+                'openai/gpt-4o-mini': {'name': 'GPT-4o Mini', 'provider': 'OpenAI', 'context': '128k', 'cost': 'low'},
             }
         }
+        return apply_model_allowlist(fallback)
+
+
+def apply_model_allowlist(grouped):
+    """Filter the {provider: {model_id: info}} dict by allowlist globs.
+
+    Empty list = allow all (current behavior).
+    This is the SINGLE filter point that secures both the UI list and the relay
+    (both read AVAILABLE_MODELS).
+    """
+    if not AI_MODEL_ALLOWLIST:
+        return grouped
+    out = {}
+    for provider, models in grouped.items():
+        kept = {mid: info for mid, info in models.items()
+                if any(fnmatch.fnmatch(mid, pat) for pat in AI_MODEL_ALLOWLIST)}
+        if kept:
+            out[provider] = kept
+    return out
+
 
 # Known non-chat model keywords to filter out
 NON_CHAT_MODEL_KEYWORDS = ['embedding', 'embed', 'tts', 'whisper', 'dall-e', 'moderation']
@@ -192,7 +270,7 @@ def fetch_models_from_proxy():
     """Fetch available models from the LiteLLM proxy /models endpoint at startup.
 
     Returns a dict grouped by provider prefix in the same shape as ai-models.json,
-    or None if the proxy is unreachable.
+    filtered through the allowlist, or None if the proxy is unreachable.
     """
     if not AI_PROXY_URL or not AI_PROXY_API_KEY:
         logger.warning("AI_PROXY_URL or AI_PROXY_API_KEY not configured, skipping proxy model fetch")
@@ -239,6 +317,9 @@ def fetch_models_from_proxy():
         if skipped:
             logger.info(f"Filtered out {len(skipped)} non-chat models: {skipped}")
 
+        # Apply allowlist filter at the single filter point
+        grouped = apply_model_allowlist(grouped)
+
         total = sum(len(m) for m in grouped.values())
         logger.info(f"Fetched {total} chat models from proxy across {len(grouped)} providers")
         return grouped if grouped else None
@@ -260,15 +341,53 @@ def fetch_models_from_proxy():
 BOLD_RED = '\033[1;31m'
 RESET = '\033[0m'
 
-# Try proxy first, fall back to static JSON
-_proxy_models = fetch_models_from_proxy()
-if _proxy_models:
-    AVAILABLE_MODELS = _proxy_models
-    logger.info("Using model list from LLM proxy")
+# Try proxy first, fall back to static JSON (only in relay mode)
+if AI_MODE != 'relay':
+    AVAILABLE_MODELS = {}
+    logger.info(f"AI mode '{AI_MODE}': relay disabled, skipping proxy model fetch")
 else:
-    AVAILABLE_MODELS = load_available_models()
-    print(f"{BOLD_RED}WARNING: Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).{RESET}")
-    logger.warning("Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).")
+    _proxy_models = fetch_models_from_proxy()
+    if _proxy_models:
+        AVAILABLE_MODELS = _proxy_models
+        logger.info("Using model list from LLM proxy")
+    else:
+        AVAILABLE_MODELS = load_available_models()
+        print(f"{BOLD_RED}WARNING: Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).{RESET}")
+        logger.warning("Failed to fetch models from LLM proxy. Using static fallback (ai-models.json).")
+
+# ---------------------------------------------------------------------------
+# Startup fallback walk: heal AI_MODEL if it was filtered out / absent
+# ---------------------------------------------------------------------------
+
+def _resolve_startup_model():
+    """Walk AI_MODEL_FALLBACKS at startup if the configured AI_MODEL is not in
+    AVAILABLE_MODELS. Logs loudly which model wins. Updates DEFAULT_AI_CONFIG in place.
+    """
+    if AI_MODE != 'relay':
+        return  # no relay, no model to validate
+
+    all_model_ids = [mid for pm in AVAILABLE_MODELS.values() for mid in pm]
+    current = DEFAULT_AI_CONFIG['model']
+
+    if current in all_model_ids:
+        return  # happy path
+
+    logger.warning(f"AI_MODEL '{current}' is absent from the filtered model list.")
+    for candidate in AI_MODEL_FALLBACKS:
+        if candidate in all_model_ids:
+            logger.warning(f"AI startup fallback: '{current}' not available; using '{candidate}' instead.")
+            DEFAULT_AI_CONFIG['model'] = candidate
+            return
+
+    if all_model_ids:
+        winner = all_model_ids[0]
+        logger.warning(f"AI startup fallback: no fallback matched; using first available model '{winner}'.")
+        DEFAULT_AI_CONFIG['model'] = winner
+    else:
+        logger.error(f"AI startup fallback: no models available at all — relay will 400 on every request.")
+
+
+_resolve_startup_model()
 
 # Default prompt templates - configurable via environment
 DEFAULT_SYSTEM_PROMPT = os.environ.get('AI_SYSTEM_PROMPT', '''You are DocCode's Kroki diagram assistant. Respond with ONLY a JSON object — no prose, no markdown, no code fences — exactly:
@@ -306,17 +425,17 @@ Renderer error:
 
 @app.route('/api/ai-prompts', methods=['GET'])
 def get_ai_prompts():
-    """Get default AI prompt templates"""
+    """Get default AI prompt templates — un-gated in all modes (BYOK clients need it)"""
     try:
         if not validate_origin(request):
             return jsonify({'error': 'Unauthorized origin'}), 403
-        
+
         return jsonify({
             'system': DEFAULT_SYSTEM_PROMPT,
             'user': DEFAULT_USER_PROMPT,
             'retry': DEFAULT_RETRY_PROMPT
         })
-    
+
     except Exception as e:
         logger.error(f"Error getting AI prompts: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -327,15 +446,25 @@ def get_available_models():
     try:
         if not validate_origin(request):
             return jsonify({'error': 'Unauthorized origin'}), 403
-        
-        # Return all models from JSON file (no filtering)
+
+        if AI_MODE != 'relay':
+            # Do not leak proxy URL or name in non-relay modes
+            return jsonify({
+                'mode': AI_MODE,
+                'models': {},
+                'proxy_url': None,
+                'proxy_name': None,
+                'default_model': None,
+            })
+
         return jsonify({
+            'mode': 'relay',
             'models': AVAILABLE_MODELS,
             'proxy_url': AI_PROXY_URL,
             'proxy_name': AI_PROXY_NAME,
             'default_model': DEFAULT_AI_CONFIG['model']
         })
-    
+
     except Exception as e:
         logger.error(f"Error getting available models: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -346,18 +475,18 @@ def validate_model():
     try:
         if not validate_origin(request):
             return jsonify({'error': 'Unauthorized origin'}), 403
-        
+
         data = request.get_json()
         model_name = data.get('model')
-        
+
         if not model_name:
             return jsonify({'error': 'Model name is required'}), 400
-        
+
         # Build a flat list of all allowed models from the JSON configuration
         allowed_models = {}
         for provider_models in AVAILABLE_MODELS.values():
             allowed_models.update(provider_models)
-        
+
         # Check if the requested model is in our allowed list
         if model_name not in allowed_models:
             logger.warning(f"Model validation failed for '{model_name}' - not in allowed models list. Request from: {request.remote_addr}")
@@ -365,17 +494,17 @@ def validate_model():
                 'valid': False,
                 'error': f'Model "{model_name}" is not supported. Please select from available models.'
             }), 400
-        
+
         model_info = allowed_models[model_name]
         logger.info(f"Model validation successful for '{model_name}'")
-        
+
         # Return model as valid since it's in the JSON (no proxy validation)
         return jsonify({
             'valid': True,
             'model_info': model_info,
             'note': 'Model found in configuration - validation at deployment time'
         })
-    
+
     except Exception as e:
         logger.error(f"Error validating model: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -436,12 +565,25 @@ def authorize_ai_request(request):
         return hmac.compare_digest(presented, AI_ACCESS_TOKEN)
     return validate_session_token(request.cookies.get(SESSION_COOKIE_NAME, ''))
 
+
 @app.errorhandler(429)
 def ratelimit_handler(e):
+    # Distinguish per-IP quota trips from generic rate limits
+    description = str(getattr(e, 'description', '') or '')
+    if 'per_ip_quota' in description or (AI_DAILY_LIMIT_PER_IP and 'day' in description.lower()):
+        return jsonify({'error': PER_IP_COPY, 'code': 'per_ip_quota'}), 429
     return jsonify({'error': 'Rate limit exceeded. Please wait before sending another request.'}), 429
+
+
+def _per_ip_limit():
+    """Return the per-IP daily limit string, or a harmless fallback."""
+    return AI_DAILY_LIMIT_PER_IP or '1000000/day'
+
 
 @app.route('/api/ai-assist', methods=['POST'])
 @limiter.limit("10/minute")
+@limiter.limit(_per_ip_limit, error_message='per_ip_quota',
+               exempt_when=lambda: not AI_DAILY_LIMIT_PER_IP)
 def ai_assist():
     """AI Assistant API proxy endpoint"""
     try:
@@ -451,26 +593,38 @@ def ai_assist():
         if not validate_origin(request, require=True):
             return jsonify({'error': 'Unauthorized origin'}), 403
 
+        # Mode gate: must be relay before auth (503 exposes mode to the client
+        # so the frontend can guide BYOK instead of chasing a phantom auth error).
+        if AI_MODE != 'relay':
+            return jsonify({
+                'error': ('The AI relay is disabled on this server. Add your own '
+                          'OpenAI-compatible endpoint and API key in Settings → AI Assistant.'),
+                'mode': AI_MODE,
+            }), 503
+
         if not authorize_ai_request(request):
             return jsonify({'error': 'Unauthorized. Please reload the page and try again.'}), 401
 
-        if not DEFAULT_AI_CONFIG['enabled']:
-            return jsonify({'error': 'AI Assistant is disabled'}), 503
-        
         # Check request size
         if request.content_length and request.content_length > MAX_REQUEST_SIZE:
             return jsonify({'error': 'Request too large'}), 413
-        
+
         # Parse request data
         try:
             data = request.get_json(force=True)
         except Exception as e:
             logger.error(f"Invalid JSON in request: {e}")
             return jsonify({'error': 'Invalid JSON'}), 400
-        
+
+        # H6: Belt-and-suspenders — pop client-supplied key/endpoint so they
+        # can never appear in any log entry, even if logging expands later.
+        if isinstance(data, dict) and isinstance(data.get('config'), dict):
+            data['config'].pop('api_key', None)
+            data['config'].pop('endpoint', None)
+
         if not data or 'messages' not in data:
             return jsonify({'error': 'Missing messages in request'}), 400
-        
+
         # Extract configuration from request or use defaults
         config = data.get('config', {})
         model = data.get('model', DEFAULT_AI_CONFIG['model'])  # Get model from top-level, not from config
@@ -482,26 +636,26 @@ def ai_assist():
         except (TypeError, ValueError):
             return jsonify({'error': 'Invalid timeout value'}), 400
         timeout = max(1, min(timeout, AI_TIMEOUT_MAX))
-        
+
         # Validate model against allowed models from JSON to prevent model injection
         if model:
             # Build a flat list of all allowed models from the JSON configuration
             allowed_models = []
             for provider_models in AVAILABLE_MODELS.values():
                 allowed_models.extend(provider_models.keys())
-            
+
             # Check if the requested model is in our allowed list
             if model not in allowed_models:
                 logger.warning(f"Model injection attempt detected: '{model}' not in allowed models list. Request from: {request.remote_addr}")
                 return jsonify({'error': f'Model "{model}" is not supported. Please select from available models.'}), 400
-            
+
             logger.info(f"Validated model '{model}' against allowed models list")
         else:
             # If no model provided, use default (which should also be validated)
             if DEFAULT_AI_CONFIG['model'] not in [model_id for provider_models in AVAILABLE_MODELS.values() for model_id in provider_models.keys()]:
                 logger.error(f"Default model '{DEFAULT_AI_CONFIG['model']}' is not in allowed models list")
                 return jsonify({'error': 'Server configuration error: default model not supported'}), 500
-        
+
         # This endpoint ONLY ever proxies to the trusted, server-configured AI
         # proxy. Direct/custom API endpoints are handled entirely client-side, so
         # /api/ai-assist cannot be used as an SSRF / open relay to arbitrary URLs.
@@ -512,15 +666,15 @@ def ai_assist():
             return jsonify({'error': 'Backend proxy API key not configured'}), 400
 
         logger.info(f"Using backend proxy: {endpoint}")
-        
+
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {api_key}'
         }
-        
+
         # Build payload with provider-specific parameter handling
         ai_payload = build_ai_payload(model, data['messages'], data)
-        
+
         logger.info(f"Proxying AI request to {endpoint} with model {model}")
 
         # Handle streaming responses
@@ -537,12 +691,27 @@ def ai_assist():
 
             if resp.status_code != 200:
                 error_msg = f"AI API error: {resp.status_code}"
+                retry_after = None
                 try:
                     error_data = resp.json()
                     if 'error' in error_data:
                         error_msg = error_data['error'].get('message', error_msg)
-                except:
+                    # Extract retry_after from metadata headers
+                    meta = error_data.get('error', {}).get('metadata', {})
+                    hdrs = meta.get('headers', {})
+                    retry_after = hdrs.get('X-RateLimit-Reset') or resp.headers.get('Retry-After')
+                except Exception:
                     error_msg = resp.text or error_msg
+
+                # Map upstream quota errors to a client-visible quota state
+                if resp.status_code in (429, 402):
+                    logger.warning(f"Upstream quota/billing error {resp.status_code}: {error_msg}")
+                    return jsonify({
+                        'error': FREE_QUOTA_COPY,
+                        'code': 'free_quota_exhausted',
+                        'retry_after': retry_after,
+                    }), 429
+
                 logger.error(f"AI API streaming error: {error_msg}")
                 return jsonify({'error': error_msg}), resp.status_code
 
@@ -582,25 +751,43 @@ def ai_assist():
             ai_response = response.json()
             return jsonify(ai_response)
         else:
+            # Map upstream quota errors to a client-visible quota state
+            if response.status_code in (429, 402):
+                retry_after = None
+                try:
+                    error_data = response.json()
+                    meta = error_data.get('error', {}).get('metadata', {})
+                    hdrs = meta.get('headers', {})
+                    retry_after = hdrs.get('X-RateLimit-Reset') or response.headers.get('Retry-After')
+                    error_msg = error_data.get('error', {}).get('message', '')
+                except Exception:
+                    error_msg = response.text or ''
+                logger.warning(f"Upstream quota/billing error {response.status_code}: {error_msg}")
+                return jsonify({
+                    'error': FREE_QUOTA_COPY,
+                    'code': 'free_quota_exhausted',
+                    'retry_after': retry_after,
+                }), 429
+
             error_msg = f"AI API error: {response.status_code}"
             try:
                 error_data = response.json()
                 if 'error' in error_data:
                     error_msg = error_data['error'].get('message', error_msg)
-            except:
+            except Exception:
                 error_msg = response.text or error_msg
 
             logger.error(f"AI API error: {error_msg}")
             return jsonify({'error': error_msg}), response.status_code
-    
+
     except requests.exceptions.Timeout:
         logger.error("AI API request timeout")
         return jsonify({'error': 'Request timeout'}), 504
-    
+
     except requests.exceptions.ConnectionError:
         logger.error("Failed to connect to AI API")
         return jsonify({'error': 'Failed to connect to AI service'}), 503
-    
+
     except Exception as e:
         logger.error(f"Unexpected error in AI assist: {e}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -610,9 +797,10 @@ def get_config():
     """Get server AI and Draw.io configuration (without sensitive data)"""
     config = {
         'ai': {
-            'enabled': DEFAULT_AI_CONFIG['enabled'],
-            'has_api_key': bool(DEFAULT_AI_CONFIG['api_key']),
-            'model': DEFAULT_AI_CONFIG['model'],
+            'enabled': AI_MODE == 'relay',  # back-compat: true only in relay mode
+            'mode': AI_MODE,
+            'has_api_key': AI_MODE == 'relay' and bool(DEFAULT_AI_CONFIG['api_key']),
+            'model': DEFAULT_AI_CONFIG['model'] if AI_MODE == 'relay' else None,
             'timeout': DEFAULT_AI_CONFIG['timeout']
         },
         'drawio': {
@@ -630,7 +818,8 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'ai_enabled': DEFAULT_AI_CONFIG['enabled']
+        'ai_enabled': AI_MODE == 'relay',
+        'ai_mode': AI_MODE,
     })
 
 @app.route('/api/version', methods=['GET'])
@@ -639,7 +828,7 @@ def get_version():
     try:
         if not validate_origin(request):
             return jsonify({'error': 'Unauthorized origin'}), 403
-        
+
         return jsonify({
             'version': os.environ.get('VERSION', '1.0.0'),
             'name': 'DocCode - The Kroki Server Frontend',
@@ -659,8 +848,9 @@ def get_version():
                 'hostname': HOSTNAME,
                 'port': PORT,
                 'https_port': HTTPS_PORT,
-                'ai_enabled': DEFAULT_AI_CONFIG['enabled'],
-                'ai_model': DEFAULT_AI_CONFIG['model'] if DEFAULT_AI_CONFIG['enabled'] else None
+                'ai_enabled': AI_MODE == 'relay',
+                'ai_mode': AI_MODE,
+                'ai_model': DEFAULT_AI_CONFIG['model'] if AI_MODE == 'relay' else None
             }
         })
     except Exception as e:
@@ -722,9 +912,13 @@ if __name__ == '__main__':
     # CMD); do not use this path in production.
     logger.info(f"Starting Kroki Demo Site Server on port {PORT}")
     logger.info(f"Static files served from: {STATIC_ROOT}")
-    logger.info(f"AI Assistant enabled: {DEFAULT_AI_CONFIG['enabled']}")
+    logger.info(f"AI mode: {AI_MODE} (enabled={DEFAULT_AI_CONFIG['enabled']}, has_key={bool(AI_PROXY_API_KEY)})")
     model_count = sum(len(models) for models in AVAILABLE_MODELS.values())
     logger.info(f"Available AI models: {model_count} across {len(AVAILABLE_MODELS)} providers")
+    if AI_MODEL_ALLOWLIST:
+        logger.info(f"AI model allowlist active: {AI_MODEL_ALLOWLIST}")
+    if AI_DAILY_LIMIT_PER_IP:
+        logger.info(f"Per-IP AI daily limit: {AI_DAILY_LIMIT_PER_IP}")
 
     # Run the Flask app
     app.run(

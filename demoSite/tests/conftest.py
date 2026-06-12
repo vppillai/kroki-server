@@ -18,6 +18,10 @@ os.environ.setdefault('AI_PROXY_API_KEY', 'test-proxy-key')
 os.environ.setdefault('AI_MODEL', 'openai/gpt-5-mini')
 os.environ.setdefault('SESSION_SECRET', 'test-session-secret')
 os.environ.pop('AI_ACCESS_TOKEN', None)
+# Ensure new AI-posture vars don't bleed in from the shell environment
+os.environ.pop('AI_MODEL_ALLOWLIST', None)
+os.environ.pop('AI_MODEL_FALLBACKS', None)
+os.environ.pop('AI_DAILY_LIMIT_PER_IP', None)
 
 import pytest
 
