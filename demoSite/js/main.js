@@ -279,6 +279,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (config.kroki && config.kroki.maxBodySize && window.configManager) {
                 window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
             }
+            // Deliver server AI mode to the assistant so the UI reflects relay/byok/off
+            if (config.ai && window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {
+                const mode = config.ai.mode || (config.ai.enabled ? 'relay' : 'off');
+                window.aiAssistant.applyServerMode(mode);
+            }
         })
         .catch(() => { /* server config unavailable, use default */ })
         .finally(() => {

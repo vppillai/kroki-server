@@ -83,5 +83,7 @@ export function sanitizeString(input, maxLength = MAX_CONFIG_STRING_LENGTH) {
     if (typeof input !== 'string') {
         return String(input);
     }
-    return input.slice(0, maxLength);
+    // H2: strip HTML-significant chars in addition to truncating, so config
+    // values can never carry markup into any innerHTML sink (defense in depth).
+    return input.slice(0, maxLength).replace(/[<>]/g, '');
 }

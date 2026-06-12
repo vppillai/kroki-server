@@ -98,6 +98,25 @@ After editing `.env`, restart the services:
 
 DocCode includes a powerful AI assistant that can generate, modify, and explain diagrams using natural language.
 
+### AI assistant deployment modes
+
+The server advertises one of three AI postures depending on your `.env`:
+
+| Mode | When | Behaviour |
+|---|---|---|
+| `relay` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` set | Server proxies requests on its own key. The closed-network default and the public-demo configuration. |
+| `byok` | `AI_ENABLED=true` + `AI_PROXY_API_KEY` empty | Relay unusable; the assistant UI stays visible and guides users to bring their own OpenAI-compatible key. Requests go directly from the browser to the user's provider — the key never reaches this server. |
+| `off` | `AI_ENABLED=false` | Assistant button hidden; true kill switch. |
+
+The mode is computed at startup from exactly those two variables — there is no single "public" switch. The public-demo posture is an explicit `.env` bundle (see `docs/public-hosting-plan-2026-06-12.md` §6).
+
+**Relay self-hosters:** the relay spends `AI_PROXY_API_KEY` on every assistant request. Before exposing a relay-enabled instance beyond a trusted network:
+- Set `AI_MODEL_ALLOWLIST` to pin cheap/free models (e.g. `"*:free"` on OpenRouter).
+- Set `AI_DAILY_LIMIT_PER_IP` to cap per-user spend (e.g. `"10/minute;30/day"`).
+- Or leave `AI_PROXY_API_KEY` empty to run in `byok` mode (zero relay cost).
+
+**BYOK privacy guarantee:** in `byok` mode (or when users enable "Use Direct API" in Settings), the API key is stored only in the browser (localStorage) and sent only to the endpoint the user configures — never to the DocCode server. This is structurally enforced in code and locked by regression tests. See [docs/byok-privacy.md](docs/byok-privacy.md) for the full guarantee and DevTools verification steps.
+
 ### Quick AI Setup (Recommended)
 
 **Using OpenRouter** (supports 50+ models from multiple providers):
@@ -109,7 +128,7 @@ AI_ENABLED=true
 AI_PROXY_URL=https://openrouter.ai/api/v1
 AI_PROXY_API_KEY=sk-or-v1-your-api-key-here
 AI_PROXY_NAME="OpenRouter"
-AI_MODEL=openai/gpt-4o
+AI_MODEL=openai/gpt-4o-mini
 
 # 3. Restart services
 ./setup-kroki-server.sh restart

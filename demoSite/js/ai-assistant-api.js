@@ -78,6 +78,12 @@ window.AIAssistantAPI = {
      * @returns {Promise<string|Object>}
      */
     async callProxyAPI(messages, config, abortController, callbacks) {
+        // H1: structural impossibility guard — the BYOK key must never travel to
+        // the DocCode origin. If the selector ever regresses, fail loud here.
+        if (config.useCustomAPI && config.apiKey) {
+            throw new Error('proxy path must not run in custom mode');
+        }
+
         const controller = abortController || new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), (config.timeout || 30) * 1000);
 
@@ -94,10 +100,9 @@ window.AIAssistantAPI = {
                     maxRetryAttempts: config.maxRetryAttempts,
                     max_tokens: AI_API_MAX_TOKENS,
                     stream: true,
+                    // H1: never send endpoint or api_key to the DocCode origin —
+                    // only the timeout is a valid server-side config parameter.
                     config: {
-                        use_custom_api: config.useCustomAPI,
-                        endpoint: config.endpoint,
-                        api_key: config.apiKey,
                         timeout: config.timeout
                     }
                 }),
@@ -106,6 +111,13 @@ window.AIAssistantAPI = {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+                // Surface quota codes so the caller can render the right UI state
+                if (errorData.code) {
+                    const err = new Error(errorData.error || this._getHttpErrorMessage(response.status));
+                    err.quotaCode = errorData.code;
+                    err.retryAfter = errorData.retry_after;
+                    throw err;
+                }
                 throw new Error(errorData.error || this._getHttpErrorMessage(response.status));
             }
 
