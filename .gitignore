@@ -14,6 +14,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Python virtual environments
+.venv/
+
 # Environment variables (if containing sensitive data)
 .env.local
 .env.production
