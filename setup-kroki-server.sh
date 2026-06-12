@@ -81,6 +81,70 @@ NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
     add_header X-Frame-Options SAMEORIGIN;
     add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
 
+# --- Render-plane profile: cache + abuse limits (PR-6) ----------------------
+# DEPLOY_PROFILE=private (default): behavior-preserving for closed networks —
+#   zones are always emitted but NO per-location limit_req/limit_conn directives,
+#   so batch pipelines and CI runners are never 429'd. Body 10m, timeouts 300s.
+# DEPLOY_PROFILE=public: strict limits for an internet-facing instance.
+#   10r/s burst 30, conn 20, body 1m, timeouts 30s.
+# Every value is individually overridable via env (RENDER_RATE, RENDER_BURST, …).
+if [ "$DEPLOY_PROFILE" = "public" ]; then
+    RENDER_RATE="${RENDER_RATE:-10r/s}"
+    RENDER_BURST="${RENDER_BURST:-30}"
+    RENDER_CONN_LIMIT="${RENDER_CONN_LIMIT:-20}"
+    RENDER_BODY_LIMIT="${RENDER_BODY_LIMIT:-1m}"
+    RENDER_TIMEOUT="${RENDER_TIMEOUT:-30}"
+    RENDER_CONNECT_TIMEOUT="${RENDER_CONNECT_TIMEOUT:-10}"
+    # Under public profile, emit per-location limit directives.
+    NGINX_RENDER_LIMITS="            limit_req zone=render_req burst=${RENDER_BURST} nodelay;
+            limit_conn render_conn ${RENDER_CONN_LIMIT};"
+else
+    RENDER_RATE="${RENDER_RATE:-100r/s}"
+    RENDER_BURST="${RENDER_BURST:-200}"
+    RENDER_CONN_LIMIT="${RENDER_CONN_LIMIT:-100}"
+    RENDER_BODY_LIMIT="${RENDER_BODY_LIMIT:-10m}"
+    RENDER_TIMEOUT="${RENDER_TIMEOUT:-300}"
+    RENDER_CONNECT_TIMEOUT="${RENDER_CONNECT_TIMEOUT:-300}"
+    # Under private profile, zones exist but directives are omitted — no behavior change.
+    NGINX_RENDER_LIMITS=""
+fi
+
+RENDER_CACHE_ENABLED="${RENDER_CACHE_ENABLED:-true}"
+RENDER_CACHE_MAX_SIZE="${RENDER_CACHE_MAX_SIZE:-500m}"
+RENDER_CACHE_TTL="${RENDER_CACHE_TTL:-24h}"
+RENDER_CACHE_INACTIVE="${RENDER_CACHE_INACTIVE:-7d}"
+
+if [ "$RENDER_CACHE_ENABLED" = "true" ]; then
+    NGINX_CACHE_PATH_BLOCK="
+    # Render cache: GET /<type>/<format>/<encoded> is a pure function of the URL.
+    # Worst case after a core image upgrade: RENDER_CACHE_TTL (${RENDER_CACHE_TTL}) of
+    # old-renderer output. Flush with: docker compose down && docker volume rm <proj>_nginx_cache
+    proxy_cache_path /var/cache/nginx/kroki levels=1:2 keys_zone=kroki_render:10m
+                     max_size=${RENDER_CACHE_MAX_SIZE} inactive=${RENDER_CACHE_INACTIVE} use_temp_path=off;"
+    # add_header in a location cancels http-level add_header inheritance (nginx
+    # documented behaviour). The security headers MUST be restated here alongside
+    # X-Cache-Status — never add a lone add_header without the full set.
+    # Use a heredoc to avoid quote-collision with NGINX_SECURITY_HEADERS content.
+    NGINX_CACHE_LOCATION_BLOCK=$(cat <<CACHE_BLOCK
+
+            proxy_cache kroki_render;
+            # \$request_method in the key guards against future proxy_cache_convert_head off
+            # configs where a HEAD could land as a separate cache entry.
+            proxy_cache_key "\$request_method\$request_uri";
+            proxy_ignore_headers Cache-Control Expires;
+            proxy_cache_valid 200 ${RENDER_CACHE_TTL};
+            proxy_cache_valid 400 404 1m;
+            proxy_cache_lock on;
+            proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+            # Restate security headers: add_header in this location cancels http-level inheritance.
+${NGINX_SECURITY_HEADERS}
+            add_header X-Cache-Status \$upstream_cache_status always;
+CACHE_BLOCK
+)
+else
+    NGINX_CACHE_PATH_BLOCK=""
+    NGINX_CACHE_LOCATION_BLOCK=""
+fi
 # ---------------------------------------------------------------------------
 
 # Check if docker is installed
@@ -236,6 +300,15 @@ http {
     tcp_nodelay on;
     keepalive_timeout 65;
     client_max_body_size 10M;  # Allow larger diagram requests
+${NGINX_CACHE_PATH_BLOCK}
+    # Per-IP abuse limits on render routes; values chosen by DEPLOY_PROFILE.
+    # Zones always emitted (both profiles); per-location directives only under public.
+    # 10m zone ≈ tens of thousands of tracked client IPs.
+    limit_req_zone \$binary_remote_addr zone=render_req:10m rate=${RENDER_RATE};
+    limit_conn_zone \$binary_remote_addr zone=render_conn:10m;
+    limit_req_status 429;
+    limit_conn_status 429;
+    limit_req_log_level warn;
 
     # Security headers
 ${NGINX_SECURITY_HEADERS}
@@ -313,30 +386,38 @@ ${NGINX_SECURITY_HEADERS}
         }
 
         # Kroki API POST requests (diagram-type/format) - exclude /api/ paths
+        # POST render path: limits/timeouts only; NEVER proxy_cache (POST not idempotent).
         location ~* ^/(?!api/)([^/]+)/([^/]+)$ {
             limit_except GET POST {
                 deny all;
             }
+${NGINX_RENDER_LIMITS}
+            client_max_body_size ${RENDER_BODY_LIMIT};
             proxy_pass http://core:${DEFAULT_HTTP_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
-            proxy_connect_timeout 300;
-            proxy_send_timeout 300;
-            proxy_read_timeout 300;
+            proxy_connect_timeout ${RENDER_CONNECT_TIMEOUT};
+            proxy_send_timeout ${RENDER_TIMEOUT};
+            proxy_read_timeout ${RENDER_TIMEOUT};
         }
 
         # Match Kroki API pattern (diagram-type/format/encoded-diagram) - exclude /api/ paths
+        # GET render path: cached (when RENDER_CACHE_ENABLED=true). limit_req runs in
+        # the preaccess phase, so cache HITs also count against the per-IP rate (desired).
         location ~* ^/(?!api/)[^/]+/[^/]+/[^/]+$ {
+${NGINX_RENDER_LIMITS}
+            client_max_body_size ${RENDER_BODY_LIMIT};
             proxy_pass http://core:${DEFAULT_HTTP_PORT};
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
-            proxy_connect_timeout 300;
-            proxy_send_timeout 300;
-            proxy_read_timeout 300;
+            proxy_connect_timeout ${RENDER_CONNECT_TIMEOUT};
+            proxy_send_timeout ${RENDER_TIMEOUT};
+            proxy_read_timeout ${RENDER_TIMEOUT};
+${NGINX_CACHE_LOCATION_BLOCK}
         }
 
         # Fallback for any other paths
@@ -502,9 +583,14 @@ show_help() {
     echo "              prints resolved TLS_MODE, DEPLOY_PROFILE, COMPOSE_PROFILES"
     echo ""
     echo "Deployment parameters (set via .env or environment):"
-    echo "  TLS_MODE          selfsigned (default) | acme"
-    echo "  DEPLOY_PROFILE    private (default) | public"
-    echo "  COMPOSE_PROFILES  companions (default) | empty for core-only"
+    echo "  TLS_MODE             selfsigned (default) | acme"
+    echo "  DEPLOY_PROFILE       private (default) | public"
+    echo "  COMPOSE_PROFILES     companions (default) | empty for core-only"
+    echo "  RENDER_CACHE_ENABLED true (default) | false"
+    echo "  RENDER_CACHE_MAX_SIZE 500m (default)"
+    echo "  RENDER_CACHE_TTL     24h (default)"
+    echo "  RENDER_CACHE_INACTIVE 7d (default)"
+    echo "  RENDER_RATE/BURST/CONN_LIMIT/BODY_LIMIT/TIMEOUT — per-profile render limits"
     echo ""
 }
 
