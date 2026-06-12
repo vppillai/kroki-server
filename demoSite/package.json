@@ -12,7 +12,7 @@
         "url": "https://github.com/vppillai/kroki-server.git"
     },
     "vendored-dependencies": {
-        "_note": "Pinned versions vendored into js/vendor/ as same-origin ESM bundles (PR-4 H4). To regenerate: mkdir -p /tmp/cm-vendor-build && cd /tmp/cm-vendor-build && bun init -y && bun add $(node -e \"const p=require('./package.json');const d=p['vendored-dependencies'];delete d._note;console.log(Object.entries(d).map(([k,v])=>k+'@'+v).join(' '))\") && VENDOR_OUT=$(pwd)/../js/vendor bun run $(pwd)/scripts/build-vendor.mjs",
+        "_note": "Pinned versions vendored into js/vendor/ as same-origin ESM bundles. Regenerate with: bun demoSite/scripts/build-vendor.mjs (see script header). After any import-map change in index.html, update IMPORTMAP_SHA256 in setup-kroki-server.sh — tests/cspImportmapHash.test.js enforces the match.",
         "codemirror": "6.0.1",
         "@codemirror/view": "6.36.5",
         "@codemirror/state": "6.5.2",

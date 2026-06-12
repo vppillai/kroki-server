@@ -11,8 +11,12 @@
     <link rel="stylesheet" href="css/ai-assistant.css">
     <link rel="stylesheet" href="css/auto-save-toggle.css">
     <!-- CodeMirror 6 + pako import map — vendored same-origin ESM bundles.
-         Regenerate with: cd /tmp/cm-vendor-build && bun run build-vendor.mjs
-         Pinned versions are recorded in package.json "vendored-dependencies". -->
+         Regenerate with: bun demoSite/scripts/build-vendor.mjs
+         Pinned versions: package.json "vendored-dependencies".
+         CSP NOTE: this inline import map is hash-allowlisted in script-src.
+         Any edit to the map (even whitespace) requires updating
+         IMPORTMAP_SHA256 in setup-kroki-server.sh;
+         tests/cspImportmapHash.test.js enforces the match. -->
     <script type="importmap">
     {
         "imports": {
