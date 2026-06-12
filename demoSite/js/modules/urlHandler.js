@@ -166,6 +166,9 @@ export function updateUrl() {
 
     if (code.trim() === '') {
         url.searchParams.delete('im');
+        // Persist the removal — previously only the non-empty branch called
+        // replaceState, leaving a stale 'im' parameter in the address bar.
+        window.history.replaceState({}, '', url);
     } else {
         // Import encode function dynamically to avoid circular dependency
         import('./diagramOperations.js').then(module => {

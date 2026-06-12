@@ -5,8 +5,11 @@ Provides static file serving and AI API proxy functionality
 """
 
 import os
+import hashlib
+import hmac
 import json
 import logging
+import secrets
 import requests
 import time
 from flask import Flask, request, jsonify, send_from_directory, send_file, Response, stream_with_context
@@ -69,9 +72,24 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 AI_TIMEOUT = 60  # Default timeout for AI API requests
+AI_TIMEOUT_MAX = int(os.environ.get('AI_TIMEOUT_MAX', 300))  # Hard ceiling for client-requested timeouts
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE', 1048576))  # Kroki backend body limit
+
+# Enforced by Werkzeug even when the client omits Content-Length
+app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_SIZE
+
+# Session tokens bind /api/ai-assist to browsers that actually loaded the app.
+# Set SESSION_SECRET to keep sessions valid across restarts/replicas; otherwise
+# a random per-boot secret is used and reloading the page reissues the cookie.
+SESSION_SECRET = os.environ.get('SESSION_SECRET') or secrets.token_hex(32)
+SESSION_COOKIE_NAME = 'doccode_session'
+
+# Optional hard authentication for /api/ai-assist on public deployments: when
+# set, every AI request must carry this token as a Bearer/X-AI-Access-Token
+# header and the session cookie alone is no longer sufficient.
+AI_ACCESS_TOKEN = os.environ.get('AI_ACCESS_TOKEN', '')
 
 # AI Configuration (Always uses proxy - LiteLLM, OpenRouter, etc.)
 AI_PROXY_URL = os.environ.get("AI_PROXY_URL", "https://openrouter.ai/api/v1")
@@ -147,7 +165,13 @@ def build_ai_payload(model, messages, data):
     token_param = rules.get('token_param', DEFAULT_PARAM_RULES['token_param'])
     exclude_params = rules.get('exclude_params', DEFAULT_PARAM_RULES['exclude_params'])
 
-    max_tokens_value = data.get('max_tokens', AI_MAX_TOKENS)
+    # AI_MAX_TOKENS is a hard server-side ceiling, not just a default: clamp
+    # client values so a request cannot buy arbitrarily large completions.
+    try:
+        max_tokens_value = int(data.get('max_tokens', AI_MAX_TOKENS))
+    except (TypeError, ValueError):
+        max_tokens_value = AI_MAX_TOKENS
+    max_tokens_value = max(1, min(max_tokens_value, AI_MAX_TOKENS))
 
     payload = {
         'model': model,
@@ -156,7 +180,11 @@ def build_ai_payload(model, messages, data):
     }
 
     if 'temperature' not in exclude_params:
-        payload['temperature'] = data.get('temperature', 0.7)
+        try:
+            temperature = float(data.get('temperature', 0.7))
+        except (TypeError, ValueError):
+            temperature = 0.7
+        payload['temperature'] = max(0.0, min(temperature, 2.0))
 
     return payload
 
@@ -356,18 +384,57 @@ def validate_model():
 
 # Removed complex validation endpoint - frontend will handle validation via diagram rendering
 
-def validate_origin(request):
+def validate_origin(request, require=False):
     """Validate request Origin against an exact allowlist.
 
-    Header-less requests (same-origin GETs don't send Origin) are allowed; a
-    present Origin must match exactly — no startswith prefix matching, which
-    previously let "https://localhost.evil.com" slip through.
+    A present Origin must match exactly — no startswith prefix matching, which
+    previously let "https://localhost.evil.com" slip through. Header-less
+    requests are allowed only when require=False: same-origin GETs don't send
+    Origin, but browsers always attach it to POSTs, so state-changing/costly
+    endpoints must pass require=True to shut out non-browser clients that
+    simply omit the header.
     """
     origin = request.headers.get('Origin', '')
-    if origin and origin not in ALLOWED_ORIGINS:
+    if not origin:
+        if require:
+            logger.warning("Rejected request with missing Origin header")
+        return not require
+    if origin not in ALLOWED_ORIGINS:
         logger.warning(f"Rejected request from origin: {origin}")
         return False
     return True
+
+
+def _sign_session(value):
+    return hmac.new(SESSION_SECRET.encode(), value.encode(), hashlib.sha256).hexdigest()
+
+
+def issue_session_token():
+    """Create a signed session token: <nonce>.<hmac(nonce)>."""
+    nonce = secrets.token_urlsafe(16)
+    return f"{nonce}.{_sign_session(nonce)}"
+
+
+def validate_session_token(token):
+    if not token or '.' not in token:
+        return False
+    nonce, signature = token.rsplit('.', 1)
+    return hmac.compare_digest(signature, _sign_session(nonce))
+
+
+def authorize_ai_request(request):
+    """Authenticate a request to the AI relay.
+
+    With AI_ACCESS_TOKEN configured, only the shared token grants access.
+    Otherwise a valid session cookie (issued when the app page is served)
+    is required, which blocks direct non-browser use of the relay.
+    """
+    if AI_ACCESS_TOKEN:
+        auth_header = request.headers.get('Authorization', '')
+        presented = auth_header[7:] if auth_header.startswith('Bearer ') else \
+            request.headers.get('X-AI-Access-Token', '')
+        return hmac.compare_digest(presented, AI_ACCESS_TOKEN)
+    return validate_session_token(request.cookies.get(SESSION_COOKIE_NAME, ''))
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
@@ -378,10 +445,15 @@ def ratelimit_handler(e):
 def ai_assist():
     """AI Assistant API proxy endpoint"""
     try:
-        # Security checks
-        if not validate_origin(request):
+        # Security checks: browsers always send Origin on POST, so require it,
+        # and demand a session cookie (or the shared access token) so the relay
+        # cannot be driven by arbitrary network clients on the server's key.
+        if not validate_origin(request, require=True):
             return jsonify({'error': 'Unauthorized origin'}), 403
-        
+
+        if not authorize_ai_request(request):
+            return jsonify({'error': 'Unauthorized. Please reload the page and try again.'}), 401
+
         if not DEFAULT_AI_CONFIG['enabled']:
             return jsonify({'error': 'AI Assistant is disabled'}), 503
         
@@ -402,7 +474,14 @@ def ai_assist():
         # Extract configuration from request or use defaults
         config = data.get('config', {})
         model = data.get('model', DEFAULT_AI_CONFIG['model'])  # Get model from top-level, not from config
-        timeout = config.get('timeout', DEFAULT_AI_CONFIG['timeout'])
+
+        # Client-supplied timeout must be numeric and is clamped so a request
+        # cannot pin server threads on arbitrarily long upstream connections.
+        try:
+            timeout = float(config.get('timeout', DEFAULT_AI_CONFIG['timeout']))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid timeout value'}), 400
+        timeout = max(1, min(timeout, AI_TIMEOUT_MAX))
         
         # Validate model against allowed models from JSON to prevent model injection
         if model:
@@ -478,7 +557,11 @@ def ai_assist():
                     # "invalid JSON" result.
                     logger.error(f"AI API stream interrupted: {stream_err}")
                     yield 'data: ' + json.dumps({'error': 'The AI stream was interrupted. Please try again.'}) + '\n'
-                logger.info(f"AI API streaming completed in {time.time() - start_time:.2f}s")
+                finally:
+                    # Runs on GeneratorExit too, so a client disconnect releases
+                    # the upstream connection instead of leaking it.
+                    resp.close()
+                    logger.info(f"AI API streaming completed in {time.time() - start_time:.2f}s")
 
             return Response(stream_with_context(generate()), content_type='text/event-stream')
 
@@ -585,19 +668,48 @@ def get_version():
         return jsonify({'error': 'Internal server error'}), 500
 
 # Static file routes
+def _serve_index():
+    """Serve index.html with a fresh AI session cookie.
+
+    nginx proxies "/" straight to "/index.html", so both the root route and
+    the static catch-all must issue the cookie.
+    """
+    response = send_file(os.path.join(STATIC_ROOT, 'index.html'))
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        issue_session_token(),
+        # The test client speaks plain HTTP; Secure stays on everywhere else.
+        secure=not app.config.get('TESTING', False),
+        httponly=True,
+        samesite='Strict',
+    )
+    return response
+
+
 @app.route('/')
 def index():
-    """Serve the main index.html file"""
-    return send_file(os.path.join(STATIC_ROOT, 'index.html'))
+    """Serve the main index.html file and issue the AI session cookie"""
+    return _serve_index()
 
 @app.route('/favicon.ico')
 def favicon():
     """Serve favicon"""
     return send_file(os.path.join(STATIC_ROOT, 'favicon.ico'))
 
+# Server-side files that live next to the static assets but must not be served
+BLOCKED_STATIC_FILES = {'requirements.txt', 'requirements-dev.txt', 'Dockerfile', '.dockerignore'}
+BLOCKED_STATIC_DIRS = {'__pycache__', 'tests'}
+
+
 @app.route('/<path:filename>')
 def static_files(filename):
     """Serve static files"""
+    if (filename in BLOCKED_STATIC_FILES
+            or filename.endswith(('.py', '.pyc'))
+            or filename.split('/')[0] in BLOCKED_STATIC_DIRS):
+        return "File not found", 404
+    if filename == 'index.html':
+        return _serve_index()
     try:
         return send_from_directory(STATIC_ROOT, filename)
     except FileNotFoundError:

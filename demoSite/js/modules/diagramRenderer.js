@@ -122,18 +122,26 @@ export async function updateDiagram() {
         const errorMessage = document.getElementById('errorMessage');
         errorMessage.textContent = `Error: ${error.message}`;
         errorMessage.style.display = 'block';
+        dispatchRenderFailed(error.message);
     }
+}
+
+/** Notify listeners (e.g. AI auto-validation) that the render failed. */
+function dispatchRenderFailed(error) {
+    document.dispatchEvent(new CustomEvent('diagramRenderFailed', { detail: { error } }));
 }
 
 /**
  * Render an image diagram (SVG, PNG, JPEG)
  * @private
  */
-// The blob URL currently shown in #diagram (revoked when replaced) and the
+// The blob URL currently shown in #diagram (revoked when replaced), the
 // AbortController for the active render's image listeners (aborted when a newer
-// render starts, so load/error listeners don't accumulate on #diagram).
+// render starts, so load/error listeners don't accumulate on #diagram), and a
+// generation counter so a slow superseded render can't overwrite a newer one.
 let displayedBlobUrl = null;
 let imageListenerAbort = null;
+let renderGeneration = 0;
 
 async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url, diagramType, outputFormat, code, shouldUsePost, savedZoomState) {
     diagramViewport.style.display = 'block';
@@ -145,6 +153,8 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
     if (imageListenerAbort) imageListenerAbort.abort();
     imageListenerAbort = new AbortController();
     const listenerSignal = imageListenerAbort.signal;
+    const generation = ++renderGeneration;
+    const isStale = () => generation !== renderGeneration;
 
     try {
         let imageUrl;
@@ -172,6 +182,7 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
                 }
 
                 showBanner(errorMessage);
+                dispatchRenderFailed(errorMessage);
                 diagramImg.classList.remove('loading');
 
                 if (!diagramImg.src || diagramImg.src === '') {
@@ -195,12 +206,28 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
             imageUrl = createTrackedBlobUrl(blob);
         }
 
+        // A newer render started while we awaited the fetch/POST — drop this
+        // result so the stale image can't overwrite the latest one.
+        if (isStale()) {
+            if (typeof imageUrl === 'string' && imageUrl.startsWith('blob:')) {
+                revokeBlobUrl(imageUrl);
+            }
+            return;
+        }
+
         // Preload image to get dimensions
         const tempImg = new Image();
         tempImg.onload = function () {
+            if (isStale()) {
+                if (typeof imageUrl === 'string' && imageUrl.startsWith('blob:') && imageUrl !== displayedBlobUrl) {
+                    revokeBlobUrl(imageUrl);
+                }
+                return;
+            }
             const actualImageErrorHandler = function () {
                 diagramImg.classList.remove('loading');
                 showBanner('Failed to load diagram image');
+                dispatchRenderFailed('Failed to load diagram image');
                 // Revoke the failed render's blob URL (it won't be displayed).
                 if (typeof imageUrl === 'string' && imageUrl.startsWith('blob:') && imageUrl !== displayedBlobUrl) {
                     revokeBlobUrl(imageUrl);
@@ -265,6 +292,7 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
         tempImg.onerror = function () {
             diagramImg.classList.remove('loading');
             showBanner('Failed to load image data');
+            if (!isStale()) dispatchRenderFailed('Failed to load image data');
         };
 
         tempImg.src = imageUrl;
@@ -273,6 +301,7 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
     } catch (networkError) {
         diagramImg.classList.remove('loading');
         showBanner(`Network error: ${networkError.message}`);
+        if (!isStale()) dispatchRenderFailed(`Network error: ${networkError.message}`);
         updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
     }
 }
