@@ -366,6 +366,21 @@ cd kroki-server
 ./setup-kroki-server.sh restart
 ```
 
+### Dev server vs. production (gunicorn)
+
+The DocCode container runs **gunicorn** (gthread worker, `GUNICORN_WORKERS × GUNICORN_THREADS` concurrency) — not the Flask dev server. For bare local development outside Docker, `python demoSite/server.py` still works (single Werkzeug process), but must not be exposed publicly.
+
+Tune the production app server via `.env`:
+
+```bash
+GUNICORN_WORKERS=2        # processes (default: 2)
+GUNICORN_THREADS=8        # threads per worker (default: 8)
+GUNICORN_GRACEFUL_TIMEOUT=30  # drain window on SIGTERM (seconds)
+GUNICORN_LOG_LEVEL=info   # gunicorn log verbosity
+```
+
+See `demoSite/gunicorn.conf.py` for all tunable parameters and their rationale.
+
 ## License & Attribution
 
 - **License**: MIT License
