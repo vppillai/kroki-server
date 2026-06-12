@@ -38,6 +38,46 @@ window.ConfigUIModels = {
             }
 
             const data = await response.json();
+
+            // BYOK branch: server is not in relay mode — show custom-only UI
+            if (data.mode && data.mode !== 'relay') {
+                modelSelect.innerHTML = '';
+                const customOption = document.createElement('option');
+                customOption.value = 'custom';
+                customOption.textContent = 'Custom Model';
+                customOption.selected = true;
+                modelSelect.appendChild(customOption);
+
+                if (configManager.get('ai.model') !== 'custom') {
+                    configManager.set('ai.model', 'custom');
+                }
+
+                const customField = document.getElementById('custom-model-field');
+                if (customField) customField.style.display = '';
+
+                const customApiToggle = document.getElementById('ai-use-custom-api');
+                if (customApiToggle) {
+                    customApiToggle.checked = true;
+                    customApiToggle.disabled = true;
+                    // Persist the state since programmatic .checked fires no change event
+                    configManager.set('ai.useCustomAPI', true);
+                }
+
+                const desc = document.getElementById('custom-api-description');
+                if (desc) {
+                    desc.textContent = 'This server does not provide a backend AI proxy. ' +
+                        'Enter your own OpenAI-compatible endpoint and API key; ' +
+                        'requests go directly from your browser to the provider.';
+                }
+
+                if (modelDescription) {
+                    modelDescription.textContent = 'No server-side models — enter your model name below (e.g. gpt-4o-mini)';
+                }
+
+                this.updateBackendServiceInfo(data);
+                return;
+            }
+
             this.populateModelSelect(modelSelect, data, configManager);
 
             if (modelDescription) {

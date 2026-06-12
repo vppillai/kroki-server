@@ -47,6 +47,10 @@ class AIAssistant {
         // Configuration
         this.configManager = configManager;
 
+        // Server-advertised AI mode ('relay' | 'byok' | 'off'); set by applyServerMode()
+        this.serverAIMode = null;
+        this.byokOnboardingNeeded = false;
+
         // Event listener references for cleanup
         this._boundListeners = [];
 
@@ -262,11 +266,26 @@ class AIAssistant {
     }
 
     openChat() {
+        // Guard: if server mode is 'off', do not open (button should be hidden anyway)
+        if (this.serverAIMode === 'off') return;
+
         this.isOpen = true;
         this.assistButton.style.display = 'none';
         this.chatWindow.style.display = 'block';
         this.positionChatWindow();
         this.updateModelIndicator();
+
+        // BYOK onboarding: show once on first open when no key is configured
+        if (this.byokOnboardingNeeded) {
+            this.byokOnboardingNeeded = false;
+            this.addMessage('system',
+                'This server does not provide an AI backend. To use the assistant, ' +
+                'add your own OpenAI-compatible endpoint and API key in the ' +
+                '<button onclick="window.aiAssistant?.openSettings()">AI Settings</button>. ' +
+                'Your key stays only in your browser — it is never sent to our server.',
+                true);
+        }
+
         this.chatInput.focus();
         this.scrollToBottom();
     }
@@ -274,7 +293,10 @@ class AIAssistant {
     closeChat() {
         this.isOpen = false;
         this.chatWindow.style.display = 'none';
-        this.assistButton.style.display = 'flex';
+        // Guard: do not re-show the button when mode is 'off' (it is already hidden)
+        if (this.serverAIMode !== 'off') {
+            this.assistButton.style.display = 'flex';
+        }
         this.clearChatHistory();
         this.clearMessageHistory();
     }
@@ -293,6 +315,7 @@ class AIAssistant {
     }
 
     minimizeChat() {
+        if (this.serverAIMode === 'off') return;
         this.isOpen = false;
         this.chatWindow.style.display = 'none';
         this.assistButton.style.display = 'flex';
@@ -533,14 +556,21 @@ class AIAssistant {
             return;
         }
 
-        try {
-            const isValidModel = await window.AIAssistantAPI.validateModel(selectedModel);
-            if (!isValidModel) {
-                this.addMessage('system', `Model "${selectedModel}" is not available. Please select a different model in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.`, true);
-                return;
+        // BYOK model-validation fix: skip server allowlist check in custom mode —
+        // AVAILABLE_MODELS is empty in byok mode and would block every send.
+        if (!aiConfig.useCustomAPI) {
+            try {
+                const isValidModel = await window.AIAssistantAPI.validateModel(selectedModel);
+                if (!isValidModel) {
+                    // H2: escape user-controlled selectedModel before rawHtml=true injection
+                    const esc = s => String(s).replace(/[&<>"']/g, c =>
+                        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                    this.addMessage('system', `Model "${esc(selectedModel)}" is not available. Please open <button onclick="window.aiAssistant?.openSettings()">settings</button> to select a different model.`, true);
+                    return;
+                }
+            } catch (error) {
+                console.warn('Model validation failed:', error);
             }
-        } catch (error) {
-            console.warn('Model validation failed:', error);
         }
 
         try {
@@ -648,6 +678,12 @@ class AIAssistant {
             }
         } catch (error) {
             if (!this.isRequestInProgress) return;
+
+            // Quota errors must not be retried — render the specific UI state immediately.
+            if (error.quotaCode) {
+                this._renderQuotaMessage(error.quotaCode, error.retryAfter);
+                return;
+            }
 
             if (this.retryAttempts < aiConfig.maxRetryAttempts) {
                 if (!this.isRequestInProgress) return;
@@ -973,6 +1009,76 @@ class AIAssistant {
         if (!modelName) return 'Unknown';
         const parts = modelName.split('/');
         return parts.length > 1 ? parts.slice(1).join('/') : modelName;
+    }
+
+    /**
+     * Apply the server-advertised AI mode with all critique fixes.
+     * Called from main.js after /api/config resolves.
+     * @param {'relay'|'byok'|'off'} mode
+     */
+    applyServerMode(mode) {
+        this.serverAIMode = mode;
+
+        if (mode === 'off') {
+            // closeChat() re-shows the button; call it BEFORE hiding so the guard
+            // in closeChat() suppresses the re-show.
+            if (this.isOpen) this.closeChat();
+            if (this.assistButton) this.assistButton.style.display = 'none';
+            return;
+        }
+
+        if (mode === 'byok' && this.configManager) {
+            // Relay is off server-side; direct API is the only working path.
+            // Always force useCustomAPI=true and re-run toggleDependentFields so
+            // the dependent endpoint/key inputs become enabled (programmatic
+            // .checked fires no change event — state-sync critique fix).
+            this.configManager.set('ai.useCustomAPI', true);
+            if (window.configUI && typeof window.configUI.toggleDependentFields === 'function') {
+                const cb = document.getElementById('ai-use-custom-api');
+                if (cb) cb.checked = true;
+                window.configUI.toggleDependentFields();
+            }
+            // Queue the one-time onboarding message (shown in openChat)
+            if (!this.configManager.get('ai.apiKey')) {
+                this.byokOnboardingNeeded = true;
+            }
+        }
+    }
+
+    /**
+     * Render a quota-exhausted system message for relay 429 responses.
+     * @param {string} code - 'free_quota_exhausted' | 'per_ip_quota'
+     * @param {string|null} retryAfter
+     */
+    _renderQuotaMessage(code, retryAfter) {
+        if (code === 'free_quota_exhausted') {
+            // Show the shared-pool copy with a button that pre-fills OpenRouter
+            this.addMessage('system',
+                '<strong>The shared free AI quota for this demo is used up for today.</strong><br>' +
+                'This demo runs on OpenRouter\'s free tier, which everyone here shares. ' +
+                'It resets daily — or you can keep going right now with your own free key:<br>' +
+                '1. Sign up at <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a> (email or Google — no credit card).<br>' +
+                '2. Create a key under <strong>Keys</strong>, and in <strong>Settings → Privacy</strong>, enable free endpoints ("training/logging") so <code>:free</code> models work.<br>' +
+                '3. <button onclick="window.aiAssistant?._openOpenRouterSettings()">Open AI Settings</button> and paste your key under "Use my own API key".<br>' +
+                'Your key stays in your browser — it is never sent to our server.<br>' +
+                'You\'ll get your own 50 free requests/day. Everything else in DocCode works without AI.',
+                true);
+        } else if (code === 'per_ip_quota') {
+            this.addMessage('system',
+                'You\'ve hit this demo\'s per-user AI limit for today. ' +
+                'Add your own free OpenRouter key in <button onclick="window.aiAssistant?.openSettings()">AI Settings</button> to continue without limits.',
+                true);
+        }
+    }
+
+    /**
+     * Open the custom-API settings panel pre-filled with the OpenRouter endpoint.
+     */
+    _openOpenRouterSettings() {
+        if (this.configManager) {
+            this.configManager.set('ai.endpoint', 'https://openrouter.ai/api/v1');
+        }
+        this.openSettings();
     }
 
     /**

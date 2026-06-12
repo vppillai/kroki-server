@@ -314,7 +314,7 @@ window.ConfigUITemplates = {
                             <span class="config-checkbox-mark"></span>
                             <span class="config-checkbox-label">Use Direct API (Override Backend Proxy)</span>
                         </label>
-                        <div class="config-description">Enable to use direct API calls from frontend. By default, the backend proxy is used (recommended).</div>
+                        <div class="config-description" id="custom-api-description">Enable to use direct API calls from frontend. By default, the backend proxy is used (recommended).</div>
                     </div>
                     <div class="config-field" data-depends="ai.useCustomAPI">
                         <label class="config-label">AI API URL</label>
@@ -337,6 +337,11 @@ window.ConfigUITemplates = {
                         </div>
                         </form>
                         <div class="config-description">Your direct API key</div>
+                        <div class="config-description config-note">
+                            🔒 Stored only in this browser (localStorage) and sent only to the AI API URL above —
+                            never to the DocCode server.
+                            <a href="/docs/byok-privacy.md" target="_blank" rel="noopener">How to verify</a>.
+                        </div>
                     </div>
                 </div>
             </div>
