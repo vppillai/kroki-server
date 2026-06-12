@@ -51,8 +51,13 @@ fi
 # PR-4 (compose-footprint) enables the companions profile by default.
 export COMPOSE_PROFILES="${COMPOSE_PROFILES-companions}"
 
-# TLS mode: selfsigned (default, closed-network) or acme (PR-6).
+# TLS mode: selfsigned (default, closed-network) or acme (PR-7).
 TLS_MODE="${TLS_MODE:-selfsigned}"
+
+# ACME/Let's Encrypt paths and options (only used when TLS_MODE=acme).
+LETSENCRYPT_DIR="${SCRIPT_DIR}/letsencrypt"
+CERTBOT_WEBROOT_DIR="${SCRIPT_DIR}/certbot-webroot"
+ACME_HTTP_PORT="${ACME_HTTP_PORT:-80}"
 
 # Deployment profile: private (default, closed-network) or public (PR-5).
 DEPLOY_PROFILE="${DEPLOY_PROFILE:-private}"
@@ -80,6 +85,15 @@ NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection \"1; mode=block\";
     add_header X-Frame-Options SAMEORIGIN;
     add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
+# ACME mode: append HSTS to the shared fragment so it is inherited everywhere
+# (http-level add_header is inherited only when a location/server defines none;
+# the shared fragment is restated inside every location that adds its own
+# add_header, so HSTS is covered everywhere in acme mode). Initial max-age=86400
+# (1 day) for rollback safety — raise to 31536000 a week after launch.
+if [ "$TLS_MODE" = "acme" ]; then
+    NGINX_SECURITY_HEADERS="${NGINX_SECURITY_HEADERS}
+    add_header Strict-Transport-Security \"max-age=86400\" always;"
+fi
 
 # --- Render-plane profile: cache + abuse limits (PR-6) ----------------------
 # DEPLOY_PROFILE=private (default): behavior-preserving for closed networks —
@@ -187,8 +201,10 @@ check_dependencies() {
 
     # DOCKER_COMPOSE always carries its -f file list so every subcommand
     # (start/stop/restart/clean/logs/status) sees the same file set.
-    # PR-6 (tls-acme) will append -f docker-compose.acme.yml here when TLS_MODE=acme.
     DOCKER_COMPOSE="$DOCKER_COMPOSE -f $DOCKER_COMPOSE_FILE"
+    if [ "$TLS_MODE" = "acme" ]; then
+        DOCKER_COMPOSE="$DOCKER_COMPOSE -f ${SCRIPT_DIR}/docker-compose.acme.yml"
+    fi
 }
 
 # Function to generate ECDSA self-signed SSL certs or use existing ones
@@ -233,6 +249,63 @@ generate_certs() {
     else
         echo "SSL certificate already exists."
     fi
+}
+
+# Validate ACME configuration: called from start/restart when TLS_MODE=acme.
+# Requirements: literal ^HOSTNAME= in .env (never trust bash builtin HOSTNAME —
+# bash sets it unconditionally to the machine hostname); HOSTNAME must be a
+# public FQDN (not localhost, not dotless); ACME_EMAIL must be set.
+validate_acme_config() {
+    # Require a literal HOSTNAME= line in .env — the bash builtin can shadow it
+    if [ ! -f "${SCRIPT_DIR}/.env" ] || ! grep -q '^HOSTNAME=' "${SCRIPT_DIR}/.env"; then
+        echo "Error: TLS_MODE=acme requires HOSTNAME to be set explicitly in .env (not just the shell environment)."
+        echo "  Add a line like: HOSTNAME=demo.example.com"
+        exit 1
+    fi
+    if [ "${DEFAULT_HOSTNAME}" = "localhost" ] || ! echo "${DEFAULT_HOSTNAME}" | grep -q '\.'; then
+        echo "Error: TLS_MODE=acme requires HOSTNAME to be a public DNS name (got '${DEFAULT_HOSTNAME}')."
+        echo "  HOSTNAME must contain at least one dot and must not be 'localhost'."
+        exit 1
+    fi
+    if [ -z "${ACME_EMAIL:-}" ]; then
+        echo "Error: TLS_MODE=acme requires ACME_EMAIL to be set in .env."
+        exit 1
+    fi
+    if [ "${DEFAULT_HTTPS_PORT}" != "443" ]; then
+        echo "Warning: TLS_MODE=acme expects HTTPS_PORT=443 for public ACME; the HTTP->HTTPS redirect assumes the standard port."
+        echo "  Current HTTPS_PORT=${DEFAULT_HTTPS_PORT}. Proceeding, but browsers may not hit the redirect correctly."
+    fi
+}
+
+# Issue a Let's Encrypt certificate via certbot standalone (first issuance only).
+# Skipped when the certificate already exists (avoid hitting LE duplicate-cert limits).
+# ECDSA key type is mandatory: the nginx cipher list is ECDSA-only (ECDHE-ECDSA-*);
+# an RSA cert would fail every TLS handshake.
+ensure_acme_cert() {
+    mkdir -p "$LETSENCRYPT_DIR" "$CERTBOT_WEBROOT_DIR"
+    if [ -f "${LETSENCRYPT_DIR}/live/${DEFAULT_HOSTNAME}/fullchain.pem" ]; then
+        echo "ACME certificate for ${DEFAULT_HOSTNAME} already present — skipping issuance."
+        return 0
+    fi
+    echo "Issuing Let's Encrypt certificate for ${DEFAULT_HOSTNAME} (standalone, host port ${ACME_HTTP_PORT})..."
+    echo "  Note: nginx cannot start until the cert exists; certbot binds port ${ACME_HTTP_PORT} directly."
+    # Stop our own nginx if it is already running so certbot can bind the port
+    $DOCKER_COMPOSE stop nginx >/dev/null 2>&1 || true
+    local staging_flag=""
+    if [ -n "${ACME_STAGING:-}" ] && [ "${ACME_STAGING}" != "0" ]; then
+        staging_flag="--staging"
+        echo "  ACME_STAGING=1 — using Let's Encrypt STAGING CA (untrusted cert, generous limits)."
+    fi
+    docker run --rm -p "${ACME_HTTP_PORT}:80" \
+        -v "${LETSENCRYPT_DIR}:/etc/letsencrypt" \
+        -v "${CERTBOT_WEBROOT_DIR}:/var/www/certbot" \
+        certbot/certbot:v4.0.0 certonly --standalone \
+        --key-type ecdsa --elliptic-curve secp256r1 \
+        -d "${DEFAULT_HOSTNAME}" \
+        --email "${ACME_EMAIL}" \
+        --agree-tos --no-eff-email --non-interactive \
+        ${staging_flag}
+    echo "Certificate issued successfully."
 }
 
 # Function to build demo site
@@ -284,6 +357,38 @@ ensure_kroki_core() {
 # Function to create Nginx config
 create_nginx_config() {
     echo "Creating Nginx configuration..."
+    # Compute TLS-mode-dependent locals BEFORE the heredoc.
+    # In acme mode: cert paths point into ./letsencrypt/live/<hostname>/;
+    # the ACME_HTTP_SERVER fragment adds the :8080 HTTP-01 challenge listener.
+    # In selfsigned mode: paths and fragment are identical to main's output
+    # (byte-for-byte regression guarantee).
+    local ssl_cert="/etc/nginx/certs/nginx.crt"
+    local ssl_key="/etc/nginx/certs/nginx.key"
+    local acme_http_server=""
+    if [ "$TLS_MODE" = "acme" ]; then
+        ssl_cert="/etc/letsencrypt/live/${DEFAULT_HOSTNAME}/fullchain.pem"
+        ssl_key="/etc/letsencrypt/live/${DEFAULT_HOSTNAME}/privkey.pem"
+        # Note: \$host and \$request_uri below are nginx runtime variables;
+        # they are escaped here so they pass through the heredoc unexpanded
+        # and reach nginx.conf as literal $host / $request_uri.
+        acme_http_server="
+    # ACME HTTP-01 challenge listener + HTTP->HTTPS redirect.
+    # Certbot renewal webroot requests are served from /var/www/certbot
+    # (mounted from ./certbot-webroot by docker-compose.acme.yml).
+    server {
+        listen 0.0.0.0:8080;
+        server_name ${DEFAULT_HOSTNAME};
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 301 https://\$host\$request_uri;
+        }
+    }
+"
+    fi
     cat > "$NGINX_CONF" <<EOF
 events {
     worker_connections 1024;
@@ -319,13 +424,21 @@ ${NGINX_SECURITY_HEADERS}
     ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384';
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
+EOF
+    # Conditionally inject the ACME HTTP-01 server block BEFORE the HTTPS server.
+    # In selfsigned mode acme_http_server is empty and nothing is appended here,
+    # preserving byte-identical output with the pre-acme baseline.
+    if [ -n "$acme_http_server" ]; then
+        printf '%s' "$acme_http_server" >> "$NGINX_CONF"
+    fi
+    cat >> "$NGINX_CONF" <<EOF
 
     server {
         listen 0.0.0.0:8443 ssl;
         server_name ${DEFAULT_HOSTNAME};
 
-        ssl_certificate /etc/nginx/certs/nginx.crt;
-        ssl_certificate_key /etc/nginx/certs/nginx.key;
+        ssl_certificate ${ssl_cert};
+        ssl_certificate_key ${ssl_key};
 
         # Root path (serves the demo site index)
         location = / {
@@ -450,6 +563,20 @@ check_services() {
         sleep $sleep_time
         attempt=$((attempt + 1))
     done
+
+    # Hairpin-NAT fallback for acme mode: some cloud providers do not loop the
+    # public IP back to the same host (no hairpin/NAT loopback). If the public
+    # hostname check failed, retry via 127.0.0.1 with --resolve so TLS SNI
+    # still matches the real hostname.
+    if [ "$TLS_MODE" = "acme" ]; then
+        echo "Public hostname check failed — trying hairpin-NAT fallback via 127.0.0.1..."
+        if curl -k -s -o /dev/null -w "%{http_code}" \
+            --resolve "${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT}:127.0.0.1" \
+            "https://${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT}" | grep -q "200"; then
+            echo "Services are up and running (reachable via 127.0.0.1 — hairpin-NAT not available on this host)!"
+            return 0
+        fi
+    fi
 
     echo "Error: Services did not start properly. Check logs with '$0 logs'"
     return 1
@@ -592,6 +719,12 @@ show_help() {
     echo "  RENDER_CACHE_INACTIVE 7d (default)"
     echo "  RENDER_RATE/BURST/CONN_LIMIT/BODY_LIMIT/TIMEOUT — per-profile render limits"
     echo ""
+    echo "ACME/Let's Encrypt parameters (TLS_MODE=acme only):"
+    echo "  ACME_EMAIL           Contact email for Let's Encrypt (required)"
+    echo "  ACME_STAGING         Set to 1 to use the LE staging CA (test first!)"
+    echo "  ACME_HTTP_PORT       Host port for HTTP-01 challenge/redirect (default: 80)"
+    echo "  CERT_ALERT_WEBHOOK   Optional webhook URL for scripts/check-cert-expiry.sh"
+    echo ""
 }
 
 # Main logic
@@ -607,7 +740,12 @@ fi
 
 case "$COMMAND" in
     start)
-        generate_certs
+        if [ "$TLS_MODE" = "acme" ]; then
+            validate_acme_config
+            ensure_acme_cert
+        else
+            generate_certs
+        fi
         create_nginx_config
         build_demo_site
         ensure_kroki_core
@@ -643,13 +781,30 @@ case "$COMMAND" in
         echo "Removing generated files..."
         rm -rf "$CERTS_DIR"
         rm -f "$NGINX_CONF"
+        # ./letsencrypt is intentionally NOT removed: Let's Encrypt enforces a
+        # duplicate-certificate limit of 5 certs/week for the same name set.
+        # Re-issuing after every clean would exhaust this quota quickly.
+        # Delete ./letsencrypt manually only when you genuinely need a fresh cert.
+        # WARNING: never run 'git clean -xdf' in a production checkout — it would
+        # delete ./letsencrypt alongside other untracked files.
+        if [ -d "${LETSENCRYPT_DIR}" ]; then
+            echo "Preserving ./letsencrypt (Let's Encrypt rate limits) — delete manually if you really mean it."
+        fi
+        if [ -d "${CERTBOT_WEBROOT_DIR}" ]; then
+            echo "Preserving ./certbot-webroot — delete manually if needed."
+        fi
         echo "Cleaned up Docker containers, images, and generated files."
         ;;
     restart)
         echo "Restarting services with Docker Compose..."
         $DOCKER_COMPOSE --profile '*' down --remove-orphans
         build_demo_site
-        generate_certs
+        if [ "$TLS_MODE" = "acme" ]; then
+            validate_acme_config
+            ensure_acme_cert
+        else
+            generate_certs
+        fi
         create_nginx_config
         ensure_kroki_core
         echo "Starting services with Docker Compose..."
