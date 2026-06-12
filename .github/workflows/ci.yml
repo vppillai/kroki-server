@@ -18,9 +18,62 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: ShellCheck
-        uses: ludeeus/action-shellcheck@2.0.0
-        with:
-          scandir: './setup-kroki-server.sh'
+        # Lint setup-kroki-server.sh and any scripts in scripts/ (future ops
+        # scripts land there). build-kroki-core.sh is intentionally excluded —
+        # it is a separate build tool not covered by this PR.
+        run: |
+          FILES="setup-kroki-server.sh"
+          if compgen -G "scripts/*.sh" > /dev/null 2>&1; then
+            FILES="$FILES scripts/*.sh"
+          fi
+          # shellcheck disable=SC2086
+          shellcheck $FILES
+
+  nginx-config:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: default
+            env: {}
+          - name: public
+            env:
+              DEPLOY_PROFILE: public
+          - name: public-acme
+            env:
+              DEPLOY_PROFILE: public
+              TLS_MODE: acme
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Generate nginx.conf (${{ matrix.name }})
+        env:
+          DEPLOY_PROFILE: ${{ matrix.env.DEPLOY_PROFILE || '' }}
+          TLS_MODE: ${{ matrix.env.TLS_MODE || '' }}
+        run: |
+          chmod +x ./setup-kroki-server.sh
+          ./setup-kroki-server.sh genconfig
+
+      - name: Generate dummy ECDSA cert/key
+        run: |
+          mkdir -p /tmp/nginx-test-certs
+          openssl ecparam -name prime256v1 -genkey -noout -out /tmp/nginx-test-certs/nginx.key
+          openssl req -new -key /tmp/nginx-test-certs/nginx.key \
+            -out /tmp/nginx-test-certs/nginx.csr -subj "/CN=localhost"
+          openssl x509 -req -days 1 \
+            -in /tmp/nginx-test-certs/nginx.csr \
+            -signkey /tmp/nginx-test-certs/nginx.key \
+            -out /tmp/nginx-test-certs/nginx.crt
+          rm /tmp/nginx-test-certs/nginx.csr
+
+      - name: Validate nginx.conf with nginx -t (${{ matrix.name }})
+        run: |
+          docker run --rm \
+            --add-host demosite:127.0.0.1 \
+            --add-host core:127.0.0.1 \
+            -v "$(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro" \
+            -v "/tmp/nginx-test-certs:/etc/nginx/certs:ro" \
+            nginx:1.28-alpine nginx -t
 
   unit-tests:
     runs-on: ubuntu-latest
