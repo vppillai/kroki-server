@@ -35,7 +35,8 @@ import { processUrlParameters } from './modules/urlHandler.js';
 import {
     updateFormatDropdown,
     updateDiagram,
-    initializeDiagramTypeDropdown
+    initializeDiagramTypeDropdown,
+    applyDisabledDiagramTypes
 } from './modules/diagramOperations.js';
 
 // UI features
@@ -278,6 +279,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(config => {
             if (config.kroki && config.kroki.maxBodySize && window.configManager) {
                 window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
+            }
+            if (config.kroki && Array.isArray(config.kroki.disabledDiagramTypes)) {
+                applyDisabledDiagramTypes(config.kroki.disabledDiagramTypes);
             }
             // Deliver server AI mode to the assistant so the UI reflects relay/byok/off
             if (config.ai && window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {

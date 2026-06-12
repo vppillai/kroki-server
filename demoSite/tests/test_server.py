@@ -424,3 +424,51 @@ def test_server_does_not_log_canary_key(client, server, upstream, monkeypatch, c
         post_ai(client, body=body)
     for record in caplog.records:
         assert 'sk-CANARY' not in record.getMessage()
+
+
+# --- DISABLED_DIAGRAM_TYPES / /api/config ----------------------------------------
+
+
+def test_config_disabled_diagram_types_empty_by_default(client, server, monkeypatch):
+    """/api/config returns an empty disabledDiagramTypes list when unset."""
+    monkeypatch.setattr(server, 'DISABLED_DIAGRAM_TYPES', [])
+    resp = client.get('/api/config')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['kroki']['disabledDiagramTypes'] == []
+
+
+def test_config_disabled_diagram_types_parsed(client, server, monkeypatch):
+    """DISABLED_DIAGRAM_TYPES is normalised (stripped, lowercased) and exposed."""
+    monkeypatch.setattr(
+        server,
+        'DISABLED_DIAGRAM_TYPES',
+        ['bpmn', 'excalidraw', 'diagramsnet'],
+    )
+    resp = client.get('/api/config')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['kroki']['disabledDiagramTypes'] == ['bpmn', 'excalidraw', 'diagramsnet']
+
+
+def test_disabled_diagram_types_normalisation():
+    """The module-level parsing strips whitespace, lowercases, and drops empties."""
+    import importlib
+    import os
+    import sys
+    # Reload server with the env var set to a dirty string.
+    os.environ['DISABLED_DIAGRAM_TYPES'] = 'bpmn, Excalidraw,,diagramsnet '
+    # Remove cached module so it re-parses env at import time.
+    for key in list(sys.modules.keys()):
+        if key == 'server':
+            del sys.modules[key]
+    try:
+        import server as fresh_server
+        assert fresh_server.DISABLED_DIAGRAM_TYPES == ['bpmn', 'excalidraw', 'diagramsnet']
+    finally:
+        os.environ.pop('DISABLED_DIAGRAM_TYPES', None)
+        # Restore original module reference so other tests keep working.
+        for key in list(sys.modules.keys()):
+            if key == 'server':
+                del sys.modules[key]
+        import server  # noqa: F401 — re-import canonical module

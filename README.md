@@ -182,6 +182,40 @@ Users can also configure AI credentials directly in the DocCode interface throug
 - **Code Assistance**: "Fix the syntax errors in my diagram"
 - **Explanations**: "Explain what this diagram represents"
 
+## Deployment Footprint
+
+DocCode ships two footprints controlled by `COMPOSE_PROFILES` in `.env`.
+See `docs/public-hosting-plan-2026-06-12.md` for full sizing rationale.
+
+| Config | Containers | Idle RAM | Loaded RAM | Image disk |
+|---|---|---|---|---|
+| **Full set** (default) | core + mermaid + bpmn + excalidraw + diagramsnet + demosite + nginx | ~0.9–1.7 GB | 2.5–3.5 GB+ (uncapped) | ~10.2 GB |
+| **Trimmed public** | core + mermaid + demosite + nginx | ~0.4–0.8 GB | capped ~2.9 GB (sum of limits) | ~5.6 GB |
+
+### Choosing a footprint
+
+**Full set (default — no action needed for self-hosters):**
+```
+COMPOSE_PROFILES=companions   # bpmn + excalidraw + diagramsnet included
+```
+
+**Trimmed public (core + mermaid only — saves ~4.7 GB image pulls and ~0.5–1 GB idle RAM):**
+```
+COMPOSE_PROFILES=             # empty = trimmed
+DISABLED_DIAGRAM_TYPES=bpmn,excalidraw,diagramsnet   # hides them from the UI dropdown
+# Uncomment the resource-limit block in .env to cap RAM on a 4 GB box
+```
+
+After editing `.env`, apply with `./setup-kroki-server.sh restart`.
+
+> **Note for users bypassing the script:** if your `.env` predates the `COMPOSE_PROFILES`
+> variable, running `docker compose up` directly will silently drop the three companion
+> services. Add `COMPOSE_PROFILES=companions` to your `.env` to restore the full set.
+> The setup script sets this default automatically.
+
+> **Docker Compose version required:** `>= 2.24.0` (for `--profile '*'` teardown and
+> `deploy.resources.limits` support). Check with `docker compose version`.
+
 ## Using DocCode
 
 ### Basic Diagram Creation

@@ -179,6 +179,33 @@ export function updateImageLink() {
 }
 
 /**
+ * Remove server-disabled diagram types from the Type dropdown.
+ * Called once after /api/config resolves; idempotent.
+ *
+ * @param {string[]} disabledTypes - diagram type names to remove (case-insensitive)
+ * @param {HTMLSelectElement|null} [dropdownEl] - dropdown element; defaults to
+ *   document.getElementById('diagramType'). Pass explicitly for unit testing.
+ */
+export function applyDisabledDiagramTypes(disabledTypes, dropdownEl = null) {
+    if (!Array.isArray(disabledTypes) || disabledTypes.length === 0) return;
+    const dropdown = dropdownEl ?? (typeof document !== 'undefined' ? document.getElementById('diagramType') : null);
+    if (!dropdown) return;
+    const disabled = new Set(disabledTypes.map(t => String(t).toLowerCase()));
+    let selectionRemoved = false;
+    Array.from(dropdown.options).forEach(opt => {
+        if (disabled.has(opt.value.toLowerCase())) {
+            if (opt.value === dropdown.value) selectionRemoved = true;
+            opt.remove();
+        }
+    });
+    if (selectionRemoved) {
+        const plantumlOpt = dropdown.querySelector('option[value="plantuml"]');
+        dropdown.value = plantumlOpt ? 'plantuml' : (dropdown.options[0]?.value ?? '');
+        updateFormatDropdown();
+    }
+}
+
+/**
  * Initialize diagram type dropdown
  */
 export function initializeDiagramTypeDropdown() {
