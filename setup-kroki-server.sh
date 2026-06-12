@@ -57,14 +57,29 @@ TLS_MODE="${TLS_MODE:-selfsigned}"
 # Deployment profile: private (default, closed-network) or public (PR-5).
 DEPLOY_PROFILE="${DEPLOY_PROFILE:-private}"
 
-# NGINX_SECURITY_HEADERS — the three baseline security headers.
+# Draw.io embed origin for the CSP frame-src directive, derived from the
+# deployment's DRAWIO_SERVER_URL so custom draw.io servers keep working.
+DRAWIO_ORIGIN=$(echo "${DRAWIO_SERVER_URL:-https://embed.diagrams.net/}" | sed -E 's#^(https?://[^/]+).*#\1#')
+
+# SHA-256 of the inline import map's exact text content in demoSite/index.html.
+# Inline import maps are CSP script elements: without this hash (or
+# 'unsafe-inline'), script-src 'self' blocks the import map and the editor
+# fails to load. The hash is whitespace-exact; tests/cspImportmapHash.test.js
+# recomputes it from index.html and fails CI on drift.
+IMPORTMAP_SHA256="sha256-LvNDiZbbhmyHUBohi9wADi3l/thqDrW+o+NEgB+bZVY="
+
+# NGINX_SECURITY_HEADERS — baseline security headers + CSP.
 # Rule: emitted at http level AND must be restated verbatim inside every
 # location that declares its own add_header (nginx cancels http-level
 # add_header inheritance per location). Never add a bare add_header in a
 # location — always include ${NGINX_SECURITY_HEADERS} alongside it.
-NGINX_SECURITY_HEADERS='    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Frame-Options SAMEORIGIN;'
+# CSP notes: script-src is the key-theft guard (same-origin + the import-map
+# hash only); connect-src 'self' https: deliberately allows BYOK posts to any
+# HTTPS endpoint; frame-src allows the configured draw.io embed.
+NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection \"1; mode=block\";
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
 
 # ---------------------------------------------------------------------------
 

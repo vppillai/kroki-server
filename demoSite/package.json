@@ -11,7 +11,8 @@
         "type": "git",
         "url": "https://github.com/vppillai/kroki-server.git"
     },
-    "cdn-dependencies": {
+    "vendored-dependencies": {
+        "_note": "Pinned versions vendored into js/vendor/ as same-origin ESM bundles. Regenerate with: bun demoSite/scripts/build-vendor.mjs (see script header). After any import-map change in index.html, update IMPORTMAP_SHA256 in setup-kroki-server.sh — tests/cspImportmapHash.test.js enforces the match.",
         "codemirror": "6.0.1",
         "@codemirror/view": "6.36.5",
         "@codemirror/state": "6.5.2",
