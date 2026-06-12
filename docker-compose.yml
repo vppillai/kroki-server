@@ -19,6 +19,16 @@ services:
       - "8000"
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${CORE_CPU_LIMIT:-0}"
+          memory: "${CORE_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   mermaid:
     restart: unless-stopped
@@ -27,30 +37,73 @@ services:
       - "8002"
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${MERMAID_CPU_LIMIT:-0}"
+          memory: "${MERMAID_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   bpmn:
     restart: unless-stopped
     image: yuzutech/kroki-bpmn:0.30.1
+    profiles: ["companions", "bpmn"]
     expose:
       - "8003"
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${BPMN_CPU_LIMIT:-0}"
+          memory: "${BPMN_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   excalidraw:
     restart: unless-stopped
     image: yuzutech/kroki-excalidraw:0.30.1
+    profiles: ["companions", "excalidraw"]
     expose:
       - "8004"
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${EXCALIDRAW_CPU_LIMIT:-0}"
+          memory: "${EXCALIDRAW_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   diagramsnet:
     restart: unless-stopped
     image: yuzutech/kroki-diagramsnet:0.30.1
+    profiles: ["companions", "diagramsnet"]
     expose:
       - "8005"
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${DIAGRAMSNET_CPU_LIMIT:-0}"
+          memory: "${DIAGRAMSNET_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   demosite:
     restart: unless-stopped
@@ -64,6 +117,16 @@ services:
       - .env
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${DEMOSITE_CPU_LIMIT:-0}"
+          memory: "${DEMOSITE_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     restart: unless-stopped
@@ -78,6 +141,16 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - kroki_network
+    deploy:
+      resources:
+        limits:
+          cpus: "${NGINX_CPU_LIMIT:-0}"
+          memory: "${NGINX_MEM_LIMIT:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   kroki_network:

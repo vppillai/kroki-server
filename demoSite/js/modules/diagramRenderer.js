@@ -120,9 +120,16 @@ export async function updateDiagram() {
         loadingMessage.style.display = 'none';
         loadingMessage.classList.remove('loading-pulse');
         const errorMessage = document.getElementById('errorMessage');
-        errorMessage.textContent = `Error: ${error.message}`;
+        // Rewrite raw 503 upstream text (e.g. "Connection refused: /127.0.0.1:800x")
+        // into a user-friendly message; keep the raw text in console for operators.
+        let displayMessage = error.message;
+        if (error.status === 503) {
+            console.warn('Render 503 raw:', error.message);
+            displayMessage = `The "${diagramType}" renderer is not available on this server (HTTP 503). It may be disabled in this deployment.`;
+        }
+        errorMessage.textContent = `Error: ${displayMessage}`;
         errorMessage.style.display = 'block';
-        dispatchRenderFailed(error.message);
+        dispatchRenderFailed(displayMessage);
     }
 }
 
@@ -169,16 +176,22 @@ async function renderImageDiagram(diagramImg, diagramViewport, zoomControls, url
         } else {
             const response = await fetch(url);
             if (!response.ok) {
-                let errorMessage = `HTTP ${response.status}`;
-                try {
-                    const errorText = await response.text();
-                    if (errorText && errorText.trim()) {
-                        errorMessage += `: ${errorText}`;
-                    } else {
+                let errorMessage;
+                if (response.status === 503) {
+                    try { console.warn('Render 503 raw:', await response.text()); } catch { /* ignore */ }
+                    errorMessage = `The "${diagramType}" renderer is not available on this server (HTTP 503). It may be disabled in this deployment.`;
+                } else {
+                    errorMessage = `HTTP ${response.status}`;
+                    try {
+                        const errorText = await response.text();
+                        if (errorText && errorText.trim()) {
+                            errorMessage += `: ${errorText}`;
+                        } else {
+                            errorMessage += `: ${response.statusText || 'Unknown error'}`;
+                        }
+                    } catch {
                         errorMessage += `: ${response.statusText || 'Unknown error'}`;
                     }
-                } catch {
-                    errorMessage += `: ${response.statusText || 'Unknown error'}`;
                 }
 
                 showBanner(errorMessage);

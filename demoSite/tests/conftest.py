@@ -22,6 +22,7 @@ os.environ.pop('AI_ACCESS_TOKEN', None)
 os.environ.pop('AI_MODEL_ALLOWLIST', None)
 os.environ.pop('AI_MODEL_FALLBACKS', None)
 os.environ.pop('AI_DAILY_LIMIT_PER_IP', None)
+os.environ.pop('DISABLED_DIAGRAM_TYPES', None)
 
 import pytest
 

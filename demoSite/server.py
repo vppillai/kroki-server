@@ -77,6 +77,14 @@ AI_TIMEOUT_MAX = int(os.environ.get('AI_TIMEOUT_MAX', 300))  # Hard ceiling for 
 AI_MAX_TOKENS = 16000  # Token limit for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE', 1048576))  # Kroki backend body limit
+# Comma-separated diagram types disabled on this deployment (e.g. "bpmn,excalidraw,diagramsnet").
+# Delivered to this container via the existing env_file: .env on demosite (docker-compose.yml);
+# no compose change needed, but a container recreate (script restart) is required after editing.
+DISABLED_DIAGRAM_TYPES = [
+    t.strip().lower()
+    for t in os.environ.get('DISABLED_DIAGRAM_TYPES', '').split(',')
+    if t.strip()
+]
 
 # Enforced by Werkzeug even when the client omits Content-Length
 app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_SIZE
@@ -807,7 +815,8 @@ def get_config():
             'server_url': os.environ.get('DRAWIO_SERVER_URL', 'https://embed.diagrams.net/')
         },
         'kroki': {
-            'maxBodySize': KROKI_MAX_BODY_SIZE
+            'maxBodySize': KROKI_MAX_BODY_SIZE,
+            'disabledDiagramTypes': DISABLED_DIAGRAM_TYPES
         }
     }
     return jsonify(config)
