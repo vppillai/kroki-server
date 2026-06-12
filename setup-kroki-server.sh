@@ -64,7 +64,8 @@ DEPLOY_PROFILE="${DEPLOY_PROFILE:-private}"
 # location — always include ${NGINX_SECURITY_HEADERS} alongside it.
 NGINX_SECURITY_HEADERS='    add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
-    add_header X-Frame-Options SAMEORIGIN;'
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header Content-Security-Policy "default-src '"'"'self'"'"'; script-src '"'"'self'"'"'; style-src '"'"'self'"'"' '"'"'unsafe-inline'"'"'; img-src '"'"'self'"'"' data: blob:; connect-src '"'"'self'"'"' https:; object-src '"'"'none'"'"'; base-uri '"'"'self'"'"'; frame-ancestors '"'"'self'"'"'" always;'
 
 # ---------------------------------------------------------------------------
 
