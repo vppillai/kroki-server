@@ -668,9 +668,12 @@ def get_version():
         return jsonify({'error': 'Internal server error'}), 500
 
 # Static file routes
-@app.route('/')
-def index():
-    """Serve the main index.html file and issue the AI session cookie"""
+def _serve_index():
+    """Serve index.html with a fresh AI session cookie.
+
+    nginx proxies "/" straight to "/index.html", so both the root route and
+    the static catch-all must issue the cookie.
+    """
     response = send_file(os.path.join(STATIC_ROOT, 'index.html'))
     response.set_cookie(
         SESSION_COOKIE_NAME,
@@ -680,6 +683,12 @@ def index():
         samesite='Strict',
     )
     return response
+
+
+@app.route('/')
+def index():
+    """Serve the main index.html file and issue the AI session cookie"""
+    return _serve_index()
 
 @app.route('/favicon.ico')
 def favicon():
@@ -698,6 +707,8 @@ def static_files(filename):
             or filename.endswith(('.py', '.pyc'))
             or filename.split('/')[0] in BLOCKED_STATIC_DIRS):
         return "File not found", 404
+    if filename == 'index.html':
+        return _serve_index()
     try:
         return send_from_directory(STATIC_ROOT, filename)
     except FileNotFoundError:

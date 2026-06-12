@@ -45,6 +45,16 @@ def test_index_sets_signed_session_cookie(client, server):
     assert server.validate_session_token(cookie.value)
 
 
+def test_index_html_path_sets_session_cookie(client, server):
+    """nginx proxies / to /index.html, so the catch-all route must issue the
+    cookie too — otherwise production browsers never get a session."""
+    resp = client.get('/index.html')
+    assert resp.status_code == 200
+    cookie = client.get_cookie('doccode_session')
+    assert cookie is not None
+    assert server.validate_session_token(cookie.value)
+
+
 def test_tampered_session_token_is_rejected(server):
     token = server.issue_session_token()
     nonce, sig = token.rsplit('.', 1)

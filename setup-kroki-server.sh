@@ -240,6 +240,14 @@ http {
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto https;
+
+            # AI responses stream as SSE: disable buffering so tokens reach the
+            # browser as they arrive, and allow long-running completions.
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 300;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
         }
 
         # Kroki API POST requests (diagram-type/format) - exclude /api/ paths

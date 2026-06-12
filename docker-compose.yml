@@ -1,5 +1,6 @@
 services:
   core:
+    restart: unless-stopped
     # Kroki core built from main for GoAT support (GoAT is not in any released
     # image yet). Published to GHCR by .github/workflows/build-kroki-core.yml, so
     # `docker-compose up` just pulls it. To build locally instead (offline / no
@@ -20,6 +21,7 @@ services:
       - kroki_network
 
   mermaid:
+    restart: unless-stopped
     image: yuzutech/kroki-mermaid:0.30.1
     expose:
       - "8002"
@@ -27,6 +29,7 @@ services:
       - kroki_network
 
   bpmn:
+    restart: unless-stopped
     image: yuzutech/kroki-bpmn:0.30.1
     expose:
       - "8003"
@@ -34,6 +37,7 @@ services:
       - kroki_network
 
   excalidraw:
+    restart: unless-stopped
     image: yuzutech/kroki-excalidraw:0.30.1
     expose:
       - "8004"
@@ -41,6 +45,7 @@ services:
       - kroki_network
 
   diagramsnet:
+    restart: unless-stopped
     image: yuzutech/kroki-diagramsnet:0.30.1
     expose:
       - "8005"
@@ -48,6 +53,7 @@ services:
       - kroki_network
 
   demosite:
+    restart: unless-stopped
     image: kroki-demosite:latest
     expose:
       - "${DEMOSITE_CONTAINER_PORT:-8006}"
@@ -59,9 +65,11 @@ services:
       - kroki_network
 
   nginx:
-    image: nginx
+    restart: unless-stopped
+    image: nginx:1.28-alpine
     depends_on:
       - core
+      - demosite
     ports:
       - "${HTTPS_PORT:-8443}:8443"
     volumes:
