@@ -46,7 +46,7 @@ jobs:
         run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
       - name: Checkout Kroki source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: yuzutech/kroki
           ref: ${{ env.KROKI_REF }}
