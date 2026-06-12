@@ -678,7 +678,8 @@ def _serve_index():
     response.set_cookie(
         SESSION_COOKIE_NAME,
         issue_session_token(),
-        secure=True,
+        # The test client speaks plain HTTP; Secure stays on everywhere else.
+        secure=not app.config.get('TESTING', False),
         httponly=True,
         samesite='Strict',
     )

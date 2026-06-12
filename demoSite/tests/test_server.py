@@ -55,6 +55,14 @@ def test_index_html_path_sets_session_cookie(client, server):
     assert server.validate_session_token(cookie.value)
 
 
+def test_session_cookie_attributes(client):
+    resp = client.get('/')
+    set_cookie = resp.headers.get('Set-Cookie', '')
+    assert 'doccode_session=' in set_cookie
+    assert 'HttpOnly' in set_cookie
+    assert 'SameSite=Strict' in set_cookie
+
+
 def test_tampered_session_token_is_rejected(server):
     token = server.issue_session_token()
     nonce, sig = token.rsplit('.', 1)
