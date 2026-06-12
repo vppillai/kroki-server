@@ -10,37 +10,39 @@
     <link rel="stylesheet" href="css/config.css">
     <link rel="stylesheet" href="css/ai-assistant.css">
     <link rel="stylesheet" href="css/auto-save-toggle.css">
-    <!-- CodeMirror 6 import map (no build step, via esm.sh CDN) -->
+    <!-- CodeMirror 6 + pako import map — vendored same-origin ESM bundles.
+         Regenerate with: cd /tmp/cm-vendor-build && bun run build-vendor.mjs
+         Pinned versions are recorded in package.json "vendored-dependencies". -->
     <script type="importmap">
     {
         "imports": {
-            "codemirror": "https://esm.sh/*codemirror@6.0.1",
-            "@codemirror/view": "https://esm.sh/*@codemirror/view@6.36.5",
-            "@codemirror/state": "https://esm.sh/*@codemirror/state@6.5.2",
-            "@codemirror/search": "https://esm.sh/*@codemirror/search@6.5.10",
-            "@codemirror/commands": "https://esm.sh/*@codemirror/commands@6.8.1",
-            "@codemirror/language": "https://esm.sh/*@codemirror/language@6.11.0",
-            "@codemirror/autocomplete": "https://esm.sh/*@codemirror/autocomplete@6.18.6",
-            "@codemirror/lint": "https://esm.sh/*@codemirror/lint@6.8.5",
-            "@lezer/common": "https://esm.sh/*@lezer/common@1.2.3",
-            "@lezer/highlight": "https://esm.sh/*@lezer/highlight@1.2.1",
-            "@lezer/lr": "https://esm.sh/*@lezer/lr@1.4.2",
-            "style-mod": "https://esm.sh/*style-mod@4.1.2",
-            "w3c-keyname": "https://esm.sh/*w3c-keyname@2.2.8",
-            "crelt": "https://esm.sh/*crelt@1.0.6",
-            "@marijn/find-cluster-break": "https://esm.sh/*@marijn/find-cluster-break@1.0.2",
-            "@codemirror/lang-json": "https://esm.sh/*@codemirror/lang-json@6.0.2",
-            "@codemirror/lang-xml": "https://esm.sh/*@codemirror/lang-xml@6.1.0",
-            "@codemirror/lang-yaml": "https://esm.sh/*@codemirror/lang-yaml@6.1.2",
-            "@lezer/json": "https://esm.sh/*@lezer/json@1.0.3",
-            "@lezer/xml": "https://esm.sh/*@lezer/xml@1.0.6",
-            "@lezer/yaml": "https://esm.sh/*@lezer/yaml@1.0.4",
-            "@codemirror/legacy-modes/mode/verilog": "https://esm.sh/*@codemirror/legacy-modes@6.5.2/mode/verilog",
-            "codemirror-lang-mermaid": "https://esm.sh/*codemirror-lang-mermaid@0.5.0",
-            "@viz-js/lang-dot": "https://esm.sh/*@viz-js/lang-dot@1.0.5",
-            "codemirror-lang-latex": "https://esm.sh/*codemirror-lang-latex@0.2.0",
-            "@codemirror/legacy-modes/mode/clojure": "https://esm.sh/*@codemirror/legacy-modes@6.5.2/mode/clojure",
-            "pako": "https://esm.sh/pako@2.1.0"
+            "codemirror": "/js/vendor/codemirror.js",
+            "@codemirror/view": "/js/vendor/codemirror-view.js",
+            "@codemirror/state": "/js/vendor/codemirror-state.js",
+            "@codemirror/search": "/js/vendor/codemirror-search.js",
+            "@codemirror/commands": "/js/vendor/codemirror-commands.js",
+            "@codemirror/language": "/js/vendor/codemirror-language.js",
+            "@codemirror/autocomplete": "/js/vendor/codemirror-autocomplete.js",
+            "@codemirror/lint": "/js/vendor/codemirror-lint.js",
+            "@lezer/common": "/js/vendor/lezer-common.js",
+            "@lezer/highlight": "/js/vendor/lezer-highlight.js",
+            "@lezer/lr": "/js/vendor/lezer-lr.js",
+            "style-mod": "/js/vendor/style-mod.js",
+            "w3c-keyname": "/js/vendor/w3c-keyname.js",
+            "crelt": "/js/vendor/crelt.js",
+            "@marijn/find-cluster-break": "/js/vendor/marijn-find-cluster-break.js",
+            "@codemirror/lang-json": "/js/vendor/codemirror-lang-json.js",
+            "@codemirror/lang-xml": "/js/vendor/codemirror-lang-xml.js",
+            "@codemirror/lang-yaml": "/js/vendor/codemirror-lang-yaml.js",
+            "@lezer/json": "/js/vendor/lezer-json.js",
+            "@lezer/xml": "/js/vendor/lezer-xml.js",
+            "@lezer/yaml": "/js/vendor/lezer-yaml.js",
+            "@codemirror/legacy-modes/mode/verilog": "/js/vendor/codemirror-legacy-verilog.js",
+            "codemirror-lang-mermaid": "/js/vendor/codemirror-lang-mermaid.js",
+            "@viz-js/lang-dot": "/js/vendor/viz-lang-dot.js",
+            "codemirror-lang-latex": "/js/vendor/codemirror-lang-latex.js",
+            "@codemirror/legacy-modes/mode/clojure": "/js/vendor/codemirror-legacy-clojure.js",
+            "pako": "/js/vendor/pako.js"
         }
     }
     </script>
