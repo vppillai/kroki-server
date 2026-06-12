@@ -40,6 +40,34 @@ else
     echo "No .env file found, using default configuration"
 fi
 
+# ---------------------------------------------------------------------------
+# Deployment parameter block — ONE insertion point for all future params.
+# This block runs unconditionally after .env loading (never inside a branch).
+# Future PRs add their params here in the order listed below.
+# ---------------------------------------------------------------------------
+
+# Compose profiles: non-colon form is deliberate — empty string (COMPOSE_PROFILES="")
+# means "core stack only" and must be distinguishable from unset.
+# PR-4 (compose-footprint) enables the companions profile by default.
+export COMPOSE_PROFILES="${COMPOSE_PROFILES-companions}"
+
+# TLS mode: selfsigned (default, closed-network) or acme (PR-6).
+TLS_MODE="${TLS_MODE:-selfsigned}"
+
+# Deployment profile: private (default, closed-network) or public (PR-5).
+DEPLOY_PROFILE="${DEPLOY_PROFILE:-private}"
+
+# NGINX_SECURITY_HEADERS — the three baseline security headers.
+# Rule: emitted at http level AND must be restated verbatim inside every
+# location that declares its own add_header (nginx cancels http-level
+# add_header inheritance per location). Never add a bare add_header in a
+# location — always include ${NGINX_SECURITY_HEADERS} alongside it.
+NGINX_SECURITY_HEADERS='    add_header X-Content-Type-Options nosniff;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Frame-Options SAMEORIGIN;'
+
+# ---------------------------------------------------------------------------
+
 # Check if docker is installed
 check_dependencies() {
     echo "Checking dependencies..."
@@ -48,19 +76,40 @@ check_dependencies() {
         exit 1
     fi
 
-    # Check for docker-compose or docker compose
-    if ! command -v docker-compose &> /dev/null; then
-        if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    # Prefer Docker Compose v2 plugin; enforce >= 2.24.0 (required for
+    # --profile '*', overlay merge, and deploy.resources.limits used in
+    # later PRs). Legacy v1 docker-compose is not supported — a clear
+    # actionable error is shown instead of a silent fallback.
+    if docker compose version &> /dev/null 2>&1; then
+        _compose_version=$(docker compose version --short 2>/dev/null || docker compose version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        _compose_version="${_compose_version#v}"  # some builds emit a leading 'v'
+        _major=$(echo "$_compose_version" | cut -d. -f1)
+        _minor=$(echo "$_compose_version" | cut -d. -f2)
+        if [ "$_major" -gt 2 ] || { [ "$_major" -eq 2 ] && [ "$_minor" -ge 24 ]; }; then
             DOCKER_COMPOSE="docker compose"
-            echo "Using: docker compose"
+            echo "Using: docker compose v${_compose_version}"
         else
-            echo "Error: Neither docker-compose nor docker compose plugin found. Please install Docker Compose."
+            echo "Error: docker compose v${_compose_version} is too old."
+            echo "  Upgrade to Docker Compose >= 2.24.0 (needed for --profile '*',"
+            echo "  overlay merge, and deploy.resources.limits)."
+            echo "  See: https://docs.docker.com/compose/install/"
             exit 1
         fi
+    elif command -v docker-compose &> /dev/null; then
+        echo "Error: Legacy docker-compose v1 is not supported."
+        echo "  Install the Docker Compose v2 plugin (>= 2.24.0) instead."
+        echo "  See: https://docs.docker.com/compose/install/"
+        exit 1
     else
-        DOCKER_COMPOSE="docker-compose"
-        echo "Using: docker-compose"
+        echo "Error: Docker Compose not found. Please install Docker Compose >= 2.24.0."
+        echo "  See: https://docs.docker.com/compose/install/"
+        exit 1
     fi
+
+    # DOCKER_COMPOSE always carries its -f file list so every subcommand
+    # (start/stop/restart/clean/logs/status) sees the same file set.
+    # PR-6 (tls-acme) will append -f docker-compose.acme.yml here when TLS_MODE=acme.
+    DOCKER_COMPOSE="$DOCKER_COMPOSE -f $DOCKER_COMPOSE_FILE"
 }
 
 # Function to generate ECDSA self-signed SSL certs or use existing ones
@@ -174,9 +223,7 @@ http {
     client_max_body_size 10M;  # Allow larger diagram requests
 
     # Security headers
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header X-Frame-Options SAMEORIGIN;
+${NGINX_SECURITY_HEADERS}
 
     # SSL Configuration
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -420,7 +467,7 @@ show_help() {
     echo "╔════════════════════════════════════════════════════════════════════╗"
     echo "║                     Kroki Server Management                        ║"
     echo "╚════════════════════════════════════════════════════════════════════╝"
-    echo "Usage: $0 [options] {start|stop|restart|status|logs|clean|health}"
+    echo "Usage: $0 [options] {start|stop|restart|status|logs|clean|health|genconfig}"
     echo ""
     echo "Options:"
     echo "  --hostname <name>  Set the hostname for SSL certificate and Nginx config"
@@ -429,21 +476,33 @@ show_help() {
     echo "  --help             Show this help message"
     echo ""
     echo "Commands:"
-    echo "  start    - Start the Kroki server"
-    echo "  stop     - Stop all services"
-    echo "  restart  - Restart all services"
-    echo "  status   - Show status of services"
-    echo "  logs     - Show logs from all services"
-    echo "  clean    - Remove all containers, images, and generated files"
-    echo "  health   - Run health checks on all configured hostname/port combinations"
+    echo "  start     - Start the Kroki server"
+    echo "  stop      - Stop all services"
+    echo "  restart   - Restart all services"
+    echo "  status    - Show status of services"
+    echo "  logs      - Show logs from all services"
+    echo "  clean     - Remove all containers, images, and generated files"
+    echo "  health    - Run health checks on all configured hostname/port combinations"
+    echo "  genconfig - Generate nginx.conf only (no docker/cert/stack operations);"
+    echo "              prints resolved TLS_MODE, DEPLOY_PROFILE, COMPOSE_PROFILES"
+    echo ""
+    echo "Deployment parameters (set via .env or environment):"
+    echo "  TLS_MODE          selfsigned (default) | acme"
+    echo "  DEPLOY_PROFILE    private (default) | public"
+    echo "  COMPOSE_PROFILES  companions (default) | empty for core-only"
     echo ""
 }
 
 # Main logic
-check_dependencies
 
 # Parse command-line arguments first
 parse_args "$@"
+
+# genconfig is a config-only entry point (used by CI) — it must work without
+# docker/compose installed, so dependency checks are skipped for it.
+if [ "$COMMAND" != "genconfig" ]; then
+    check_dependencies
+fi
 
 case "$COMMAND" in
     start)
@@ -454,7 +513,7 @@ case "$COMMAND" in
         echo "Starting services with Docker Compose..."
 
         if [ -f "$DOCKER_COMPOSE_FILE" ]; then
-            $DOCKER_COMPOSE -f "$DOCKER_COMPOSE_FILE" up -d
+            $DOCKER_COMPOSE up -d
             echo "Waiting for services to start..."
             sleep 5
             check_services
@@ -472,14 +531,12 @@ case "$COMMAND" in
         ;;
     stop)
         echo "Stopping services with Docker Compose..."
-        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE --profile '*' down --remove-orphans
         echo "Services stopped."
         ;;
     clean)
         echo "Cleaning up Docker containers and images..."
-        $DOCKER_COMPOSE down --rmi all
-        echo "Removing Docker volumes..."
-        docker volume prune -f
+        $DOCKER_COMPOSE --profile '*' down --rmi all -v --remove-orphans
         echo "Removing Docker networks..."
         docker network prune -f
         echo "Removing generated files..."
@@ -489,7 +546,7 @@ case "$COMMAND" in
         ;;
     restart)
         echo "Restarting services with Docker Compose..."
-        $DOCKER_COMPOSE down
+        $DOCKER_COMPOSE --profile '*' down --remove-orphans
         build_demo_site
         generate_certs
         create_nginx_config
@@ -516,6 +573,14 @@ case "$COMMAND" in
     health)
         echo "Running health checks on all configured endpoints..."
         health_check_all
+        ;;
+    genconfig)
+        # Generate nginx.conf only — no docker checks, no cert generation,
+        # no stack operations. Safe to run in CI without any running stack.
+        echo "TLS_MODE=${TLS_MODE}" >&2
+        echo "DEPLOY_PROFILE=${DEPLOY_PROFILE}" >&2
+        echo "COMPOSE_PROFILES=${COMPOSE_PROFILES}" >&2
+        create_nginx_config
         ;;
     *)
         show_help
