@@ -10,6 +10,8 @@ services:
     image: ${KROKI_CORE_IMAGE:-ghcr.io/vppillai/kroki-core:goat}
     environment:
       - KROKI_MAX_URI_LENGTH=8192
+      - KROKI_SAFE_MODE=${KROKI_SAFE_MODE:-secure}
+      - KROKI_BODY_LIMIT=${KROKI_BODY_LIMIT:-10485760}
       - KROKI_MERMAID_HOST=mermaid
       - KROKI_BPMN_HOST=bpmn
       - KROKI_EXCALIDRAW_HOST=excalidraw
@@ -139,6 +141,7 @@ services:
     volumes:
       - ./nginx-certs:/etc/nginx/certs:ro
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_cache:/var/cache/nginx/kroki
     networks:
       - kroki_network
     deploy:
@@ -151,6 +154,9 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  nginx_cache:
 
 networks:
   kroki_network:
