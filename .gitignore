@@ -28,3 +28,10 @@ __pycache__/
 # Local environment (may contain secrets) — do not commit
 .env
 !.env.example
+
+# Let's Encrypt state (TLS_MODE=acme) — preserved across deploys, never commit.
+# WARNING: never run 'git clean -xdf' in the production checkout — it would
+# delete ./letsencrypt alongside other untracked files, burning Let's Encrypt
+# duplicate-certificate quota (5 identical-name-set certs/week).
+letsencrypt/
+certbot-webroot/
