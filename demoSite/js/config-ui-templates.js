@@ -323,7 +323,7 @@ window.ConfigUITemplates = {
                     </div>
                     <div class="config-field" data-depends="ai.useCustomAPI">
                         <label class="config-label">API Key</label>
-                        <form autocomplete="off" onsubmit="return false;" style="display:contents;">
+                        <form autocomplete="off" id="ai-api-key-form" style="display:contents;">
                         <div class="password-input-container">
                             <input type="password" class="config-input" data-config="ai.apiKey" placeholder="sk-..." id="ai-api-key-input" name="ai-api-key" autocomplete="off">
                             <button type="button" class="password-toggle-btn" id="api-key-toggle" aria-label="Toggle password visibility">
@@ -509,7 +509,7 @@ window.ConfigUITemplates = {
                 <div class="config-group">
                     <div class="about-header">
                         <div class="about-logo">
-                            <img src="/favicon.ico" alt="DocCode" class="about-favicon">
+                            <img src="favicon.ico" alt="DocCode" class="about-favicon">
                         </div>
                         <div class="about-title">
                             <h5 id="about-app-name">DocCode - The Kroki Server Frontend</h5>
