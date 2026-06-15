@@ -119,13 +119,16 @@ html = html.replace(
     '<script src="lite-config.js"></script>\n    $1'
 );
 
-// 3b. Rewrite absolute /js/vendor/ paths to relative js/vendor/ in the importmap
-//     Work only inside the importmap block to avoid touching other content.
+// 3b. Rewrite absolute /js/vendor/ paths to relative ./js/vendor/ in the importmap.
+//     Import-map addresses MUST be a URL or begin with /, ./, or ../ — a bare
+//     "js/vendor/x.js" is parsed as a bare specifier and ignored by the browser,
+//     breaking module resolution. The leading ./ makes the map resolve correctly
+//     under any base path (e.g. the /kroki-server/ project-pages subpath).
 html = html.replace(
     /(<script type="importmap">)([\s\S]*?)(<\/script>)/,
     (_, open, content, close) => {
-        const relative = content.replaceAll('"/js/vendor/', '"js/vendor/');
-        return `${open}${relative}${close}`;
+        const rel = content.replaceAll('"/js/vendor/', '"./js/vendor/');
+        return `${open}${rel}${close}`;
     }
 );
 
@@ -142,7 +145,8 @@ const importmapHash = `sha256-${sha256base64(importmapText)}`;
 const csp = [
     `default-src 'self'`,
     `script-src 'self' '${importmapHash}'`,
-    `style-src 'self' 'unsafe-inline'`,
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+    `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data: blob:`,
     `connect-src 'self' https:`,
     `frame-src 'self' https://embed.diagrams.net`,
@@ -218,8 +222,8 @@ if (builtHtml.includes('"/js/vendor/')) {
     console.error('ERROR: _site/index.html still contains absolute /js/vendor/ paths');
     process.exit(1);
 }
-if (!builtHtml.includes('"js/vendor/')) {
-    console.error('ERROR: _site/index.html importmap does not contain relative js/vendor/ paths');
+if (!builtHtml.includes('"./js/vendor/')) {
+    console.error('ERROR: _site/index.html importmap does not contain relative ./js/vendor/ paths');
     process.exit(1);
 }
 

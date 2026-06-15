@@ -62,9 +62,9 @@ test('meta CSP hash matches SHA-256 of the rewritten importmap', () => {
 });
 
 // (ii) importmap uses relative paths -----------------------------------------
-test('importmap in _site/index.html uses relative js/vendor/ paths', () => {
+test('importmap in _site/index.html uses relative ./js/vendor/ paths', () => {
     expect(html).not.toContain('"/js/vendor/');
-    expect(html).toContain('"js/vendor/');
+    expect(html).toContain('"./js/vendor/');
 });
 
 // (iii) lite-config.js script tag appears before the importmap ---------------
