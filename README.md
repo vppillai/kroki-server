@@ -32,6 +32,22 @@ database, all user state stays in the browser.
 The default `./setup-kroki-server.sh start` is the closed-network mode — safe for
 trusted networks out of the box, not hardened for the public internet.
 
+### DocCode Lite (hosted static demo)
+
+DocCode Lite is a zero-infrastructure static build of the DocCode editor that
+runs entirely in the browser:
+
+- **Diagram rendering** — sent to the public [kroki.io](https://kroki.io) API (no self-hosted renderer needed).
+- **AI assistant** — BYOK-only mode. You must provide your own OpenAI-compatible API key in Settings before chatting. **The key is stored only in your browser and is never sent to the DocCode servers** — in BYOK mode all AI requests go directly from your browser to the endpoint you configure.
+- **No shared AI relay** — the free-tier OpenRouter relay requires the full self-hosted stack.
+
+**Auto-deploy on every release:** GitHub Actions (`.github/workflows/pages.yml`) builds `_site/` via `bun scripts/build-lite.mjs` and deploys to GitHub Pages on each published release.
+
+**One-time setup (maintainer, done once):**
+Go to the repo's **Settings → Pages → Source** and set it to **"GitHub Actions"**. Without this the deploy job returns a 422 error.
+
+After that, every `git tag` + GitHub release automatically publishes the latest Lite build.
+
 ---
 
 ## Quick Start

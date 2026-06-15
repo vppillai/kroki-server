@@ -1,0 +1,61 @@
+# DocCode Lite — GitHub Pages auto-deploy
+#
+# ONE-TIME manual prerequisite (per repo, done once by a maintainer):
+#   GitHub repo → Settings → Pages → Source: "GitHub Actions"
+#   Without this the deploy job will fail with a 422 "Pages not enabled" error.
+#
+# This workflow runs automatically on every published release and can also be
+# triggered manually via the "Run workflow" button (workflow_dispatch).
+#
+# What it does:
+#   build  — checks out the repo, runs `bun scripts/build-lite.mjs` → _site/,
+#            then uploads _site/ as a Pages artifact.
+#   deploy — downloads the artifact and deploys it to GitHub Pages.
+#
+# DocCode Lite is a static editor + kroki.io rendering + BYOK-only AI.
+# No shared AI relay is included — that requires the full self-hosted stack.
+
+name: Deploy DocCode Lite to GitHub Pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Build DocCode Lite
+        run: bun scripts/build-lite.mjs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

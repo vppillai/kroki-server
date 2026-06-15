@@ -389,6 +389,21 @@ class ConfigUI {
     // ========================================
 
     async loadAboutInfo() {
+        // Lite mode: /api/version is unavailable; synthesise from window.__DOCCODE_LITE__.
+        if (window.__DOCCODE_LITE__) {
+            const lite = window.__DOCCODE_LITE__;
+            document.getElementById('about-app-name').textContent = 'DocCode Lite — Diagram Editor';
+            document.getElementById('about-version').textContent = lite.version || 'Lite';
+            document.getElementById('about-author').textContent = 'Vysakh P Pillai';
+            document.getElementById('about-description').textContent =
+                'Static build — diagrams rendered via kroki.io, AI in BYOK mode (key stays in your browser).';
+            document.getElementById('about-build-date').textContent = 'See GitHub releases';
+            document.getElementById('about-server-info').textContent = 'kroki.io (public API)';
+            document.getElementById('about-ai-info').textContent = 'BYOK — bring your own API key';
+            document.getElementById('about-features').textContent =
+                'Diagram editing, kroki.io rendering, BYOK AI (key never sent to DocCode servers)';
+            return;
+        }
         try {
             const response = await fetch('/api/version');
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
