@@ -35,3 +35,7 @@ __pycache__/
 # duplicate-certificate quota (5 identical-name-set certs/week).
 letsencrypt/
 certbot-webroot/
+
+# DocCode Lite static build output — built fresh by CI on every release.
+# Do NOT commit; the workflow runs `bun scripts/build-lite.mjs` → _site/.
+_site/
