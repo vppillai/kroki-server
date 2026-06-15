@@ -101,6 +101,17 @@ class AIAssistant {
         this.chatWindow.querySelector('.ai-chat-settings').addEventListener('click', () => this.openSettings());
         this.chatWindow.querySelector('.ai-model-indicator').addEventListener('click', () => this.openAISettings());
 
+        // Delegated handler for buttons injected into system messages via innerHTML.
+        // The strict CSP (script-src has no 'unsafe-inline') blocks inline onclick=
+        // attributes, so message buttons declare data-ai-action and are wired here.
+        this.chatMessages.addEventListener('click', (e) => {
+            const el = e.target.closest('[data-ai-action]');
+            if (!el) return;
+            const action = el.getAttribute('data-ai-action');
+            if (action === 'open-settings') this.openSettings();
+            else if (action === 'open-openrouter-settings') this._openOpenRouterSettings();
+        });
+
         this.chatSend.addEventListener('click', () => {
             if (this.isRequestInProgress) {
                 this.cancelRequest();
@@ -281,7 +292,7 @@ class AIAssistant {
             this.addMessage('system',
                 'This server does not provide an AI backend. To use the assistant, ' +
                 'add your own OpenAI-compatible endpoint and API key in the ' +
-                '<button onclick="window.aiAssistant?.openSettings()">AI Settings</button>. ' +
+                '<button data-ai-action="open-settings">AI Settings</button>. ' +
                 'Your key stays only in your browser — it is never sent to our server.',
                 true);
         }
@@ -547,12 +558,12 @@ class AIAssistant {
 
         const selectedModel = aiConfig.model === 'custom' ? aiConfig.customModel : aiConfig.model;
         if (!selectedModel) {
-            this.addMessage('system', 'No AI model selected. Please choose a model in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
+            this.addMessage('system', 'No AI model selected. Please choose a model in the <button data-ai-action="open-settings">settings</button>.', true);
             return;
         }
 
         if (aiConfig.useCustomAPI && (!aiConfig.endpoint || !aiConfig.apiKey)) {
-            this.addMessage('system', 'Direct API configuration is incomplete. Please set up your API endpoint and key in the <button onclick="window.aiAssistant?.openSettings()">settings</button>.', true);
+            this.addMessage('system', 'Direct API configuration is incomplete. Please set up your API endpoint and key in the <button data-ai-action="open-settings">settings</button>.', true);
             return;
         }
 
@@ -565,7 +576,7 @@ class AIAssistant {
                     // H2: escape user-controlled selectedModel before rawHtml=true injection
                     const esc = s => String(s).replace(/[&<>"']/g, c =>
                         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-                    this.addMessage('system', `Model "${esc(selectedModel)}" is not available. Please open <button onclick="window.aiAssistant?.openSettings()">settings</button> to select a different model.`, true);
+                    this.addMessage('system', `Model "${esc(selectedModel)}" is not available. Please open <button data-ai-action="open-settings">settings</button> to select a different model.`, true);
                     return;
                 }
             } catch (error) {
@@ -699,7 +710,7 @@ class AIAssistant {
                 await this.makeAIRequest(messages, diagramType, originalCode, aiConfig, originalUserPrompt);
             } else {
                 const errorMessage = error.message.toLowerCase().includes('configuration')
-                    ? `${error.message} Check your <button onclick="window.aiAssistant?.openSettings()">AI settings</button>.`
+                    ? `${error.message} Check your <button data-ai-action="open-settings">AI settings</button>.`
                     : `${error.message}`;
                 const hasHtml = errorMessage.includes('<button');
                 // Message shown here is final — rethrowing would surface the same
@@ -1059,14 +1070,14 @@ class AIAssistant {
                 'It resets daily — or you can keep going right now with your own free key:<br>' +
                 '1. Sign up at <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a> (email or Google — no credit card).<br>' +
                 '2. Create a key under <strong>Keys</strong>, and in <strong>Settings → Privacy</strong>, enable free endpoints ("training/logging") so <code>:free</code> models work.<br>' +
-                '3. <button onclick="window.aiAssistant?._openOpenRouterSettings()">Open AI Settings</button> and paste your key under "Use my own API key".<br>' +
+                '3. <button data-ai-action="open-openrouter-settings">Open AI Settings</button> and paste your key under "Use my own API key".<br>' +
                 'Your key stays in your browser — it is never sent to our server.<br>' +
                 'You\'ll get your own 50 free requests/day. Everything else in DocCode works without AI.',
                 true);
         } else if (code === 'per_ip_quota') {
             this.addMessage('system',
                 'You\'ve hit this demo\'s per-user AI limit for today. ' +
-                'Add your own free OpenRouter key in <button onclick="window.aiAssistant?.openSettings()">AI Settings</button> to continue without limits.',
+                'Add your own free OpenRouter key in <button data-ai-action="open-settings">AI Settings</button> to continue without limits.',
                 true);
         }
     }

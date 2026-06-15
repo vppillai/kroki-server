@@ -25,6 +25,11 @@ class DrawioIntegration {
      * Load configuration from backend
      */
     async loadConfig() {
+        // Lite (static) build: no /api/config endpoint — use the default embed URL.
+        if (window.__DOCCODE_LITE__) {
+            this.updateServerInfo();
+            return;
+        }
         try {
             const response = await fetch('/api/config');
             const config = await response.json();

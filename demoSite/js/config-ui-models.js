@@ -26,18 +26,24 @@ window.ConfigUIModels = {
         }
 
         try {
-            const response = await fetch('/api/available-models', {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Origin': window.location.origin
+            let data;
+            if (window.__DOCCODE_LITE__) {
+                // Lite (static) build: no /api/available-models endpoint — force BYOK UI.
+                data = { mode: 'byok' };
+            } else {
+                const response = await fetch('/api/available-models', {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-            });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                data = await response.json();
             }
-
-            const data = await response.json();
 
             // BYOK branch: server is not in relay mode — show custom-only UI
             if (data.mode && data.mode !== 'relay') {

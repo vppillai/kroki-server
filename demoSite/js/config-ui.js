@@ -82,6 +82,11 @@ class ConfigUI {
 
         this.setupAIConfigLogic();
         this.setupPasswordToggle();
+
+        // Prevent Enter in the API-key field from submitting/reloading the page.
+        // The strict CSP blocks the inline onsubmit handler, so wire it here.
+        const keyForm = document.getElementById('ai-api-key-form');
+        if (keyForm) keyForm.addEventListener('submit', (e) => e.preventDefault());
     }
 
     setupAIConfigLogic() {
