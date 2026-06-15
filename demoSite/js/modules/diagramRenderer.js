@@ -74,7 +74,10 @@ export async function updateDiagram() {
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         const port = window.location.port ? `:${window.location.port}` : '';
-        const url = `${protocol}//${hostname}${port}/${diagramType}/${outputFormat}/${encodedDiagram}${diagramOptionsQuery(diagramType)}`;
+        const liteBase = window.__DOCCODE_LITE__ && window.__DOCCODE_LITE__.krokiBase
+            ? window.__DOCCODE_LITE__.krokiBase.replace(/\/+$/, '')
+            : `${protocol}//${hostname}${port}`;
+        const url = `${liteBase}/${diagramType}/${outputFormat}/${encodedDiagram}${diagramOptionsQuery(diagramType)}`;
 
         const shouldUsePost = alwaysUsePost || url.length > urlLengthThreshold;
 

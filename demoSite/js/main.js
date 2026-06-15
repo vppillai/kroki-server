@@ -272,29 +272,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
     initializeConfigurationSystem();
 
-    // Fetch server config (sets editor.maxTextSize from the Kroki backend limit),
-    // THEN do the first render so the size limit is correct on first paint.
-    fetch('/api/config')
-        .then(r => r.json())
-        .then(config => {
-            if (config.kroki && config.kroki.maxBodySize && window.configManager) {
-                window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
-            }
-            if (config.kroki && Array.isArray(config.kroki.disabledDiagramTypes)) {
-                applyDisabledDiagramTypes(config.kroki.disabledDiagramTypes);
-            }
-            // Deliver server AI mode to the assistant so the UI reflects relay/byok/off
-            if (config.ai && window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {
-                const mode = config.ai.mode || (config.ai.enabled ? 'relay' : 'off');
-                window.aiAssistant.applyServerMode(mode);
-            }
-        })
-        .catch(() => { /* server config unavailable, use default */ })
-        .finally(() => {
-            if (state.autoRefreshEnabled) {
-                updateDiagram();
-            }
-        });
+    // Lite mode: skip /api/config fetch entirely and apply hook values directly.
+    if (window.__DOCCODE_LITE__) {
+        const liteMode = window.__DOCCODE_LITE__.aiMode || 'byok';
+        if (window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {
+            window.aiAssistant.applyServerMode(liteMode);
+        }
+        if (state.autoRefreshEnabled) {
+            updateDiagram();
+        }
+    } else {
+        // Fetch server config (sets editor.maxTextSize from the Kroki backend limit),
+        // THEN do the first render so the size limit is correct on first paint.
+        fetch('/api/config')
+            .then(r => r.json())
+            .then(config => {
+                if (config.kroki && config.kroki.maxBodySize && window.configManager) {
+                    window.configManager.set('editor.maxTextSize', config.kroki.maxBodySize);
+                }
+                if (config.kroki && Array.isArray(config.kroki.disabledDiagramTypes)) {
+                    applyDisabledDiagramTypes(config.kroki.disabledDiagramTypes);
+                }
+                // Deliver server AI mode to the assistant so the UI reflects relay/byok/off
+                if (config.ai && window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {
+                    const mode = config.ai.mode || (config.ai.enabled ? 'relay' : 'off');
+                    window.aiAssistant.applyServerMode(mode);
+                }
+            })
+            .catch(() => { /* server config unavailable, use default */ })
+            .finally(() => {
+                if (state.autoRefreshEnabled) {
+                    updateDiagram();
+                }
+            });
+    }
 });
 
 /**
