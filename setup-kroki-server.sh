@@ -51,13 +51,21 @@ fi
 # PR-4 (compose-footprint) enables the companions profile by default.
 export COMPOSE_PROFILES="${COMPOSE_PROFILES-companions}"
 
-# TLS mode: selfsigned (default, closed-network) or acme (PR-7).
+# TLS mode: selfsigned (default, closed-network), acme (Let's Encrypt via
+# certbot), or acmevaultpki (a Vault PKI ACME directory via acme.sh baked into a
+# custom nginx image — see docker-compose.acmevaultpki.yml / nginx-acme/).
 TLS_MODE="${TLS_MODE:-selfsigned}"
 
 # ACME/Let's Encrypt paths and options (only used when TLS_MODE=acme).
 LETSENCRYPT_DIR="${SCRIPT_DIR}/letsencrypt"
 CERTBOT_WEBROOT_DIR="${SCRIPT_DIR}/certbot-webroot"
 ACME_HTTP_PORT="${ACME_HTTP_PORT:-80}"
+
+# Vault PKI ACME options (only used when TLS_MODE=acmevaultpki). ACME_DIRECTORY_URL
+# and ACME_CONTACT are required (validated in validate_acmevaultpki_config); they
+# are passed to the nginx container's acme.sh via docker-compose.acmevaultpki.yml.
+# ACME_KEY_LENGTH defaults to ec-256 to match the ECDSA-only ssl_ciphers below.
+ACME_KEY_LENGTH="${ACME_KEY_LENGTH:-ec-256}"
 
 # Deployment profile: private (default, closed-network) or public (PR-5).
 DEPLOY_PROFILE="${DEPLOY_PROFILE:-private}"
@@ -90,7 +98,7 @@ NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
 # the shared fragment is restated inside every location that adds its own
 # add_header, so HSTS is covered everywhere in acme mode). Initial max-age=86400
 # (1 day) for rollback safety — raise to 31536000 a week after launch.
-if [ "$TLS_MODE" = "acme" ]; then
+if [ "$TLS_MODE" = "acme" ] || [ "$TLS_MODE" = "acmevaultpki" ]; then
     NGINX_SECURITY_HEADERS="${NGINX_SECURITY_HEADERS}
     add_header Strict-Transport-Security \"max-age=86400\" always;"
 fi
@@ -204,6 +212,8 @@ check_dependencies() {
     DOCKER_COMPOSE="$DOCKER_COMPOSE -f $DOCKER_COMPOSE_FILE"
     if [ "$TLS_MODE" = "acme" ]; then
         DOCKER_COMPOSE="$DOCKER_COMPOSE -f ${SCRIPT_DIR}/docker-compose.acme.yml"
+    elif [ "$TLS_MODE" = "acmevaultpki" ]; then
+        DOCKER_COMPOSE="$DOCKER_COMPOSE -f ${SCRIPT_DIR}/docker-compose.acmevaultpki.yml"
     fi
 }
 
@@ -308,6 +318,39 @@ ensure_acme_cert() {
     echo "Certificate issued successfully."
 }
 
+# Validate Vault PKI ACME configuration: called from start/restart when
+# TLS_MODE=acmevaultpki. Issuance itself happens inside the nginx container
+# (acme.sh), so there is no host-side certbot step — we only sanity-check that
+# the required inputs are present before building/starting the stack.
+validate_acmevaultpki_config() {
+    # Require a literal HOSTNAME= line in .env — the bash builtin can shadow it
+    # (same rationale as the Let's Encrypt acme mode).
+    if [ ! -f "${SCRIPT_DIR}/.env" ] || ! grep -q '^HOSTNAME=' "${SCRIPT_DIR}/.env"; then
+        echo "Error: TLS_MODE=acmevaultpki requires HOSTNAME to be set explicitly in .env (not just the shell environment)."
+        echo "  Add a line like: HOSTNAME=kroki.it.example.com"
+        exit 1
+    fi
+    if [ "${DEFAULT_HOSTNAME}" = "localhost" ] || ! echo "${DEFAULT_HOSTNAME}" | grep -q '\.'; then
+        echo "Error: TLS_MODE=acmevaultpki requires HOSTNAME to be a DNS name (got '${DEFAULT_HOSTNAME}')."
+        echo "  HOSTNAME must contain at least one dot and must not be 'localhost'."
+        exit 1
+    fi
+    if [ -z "${ACME_DIRECTORY_URL:-}" ]; then
+        echo "Error: TLS_MODE=acmevaultpki requires ACME_DIRECTORY_URL to be set in .env."
+        echo "  Example: ACME_DIRECTORY_URL=https://vault.example.com/v1/pki_int/acme/directory"
+        exit 1
+    fi
+    if [ -z "${ACME_CONTACT:-}" ]; then
+        echo "Error: TLS_MODE=acmevaultpki requires ACME_CONTACT to be set in .env."
+        echo "  Example: ACME_CONTACT=it@example.com"
+        exit 1
+    fi
+    if [ "${DEFAULT_HTTPS_PORT}" != "443" ]; then
+        echo "Warning: TLS_MODE=acmevaultpki expects HTTPS_PORT=443; the HTTP->HTTPS redirect assumes the standard port."
+        echo "  Current HTTPS_PORT=${DEFAULT_HTTPS_PORT}. Proceeding, but the redirect may point clients at the wrong port."
+    fi
+}
+
 # Function to build demo site
 build_demo_site() {
     echo "Building demo site container..."
@@ -365,22 +408,32 @@ create_nginx_config() {
     local ssl_cert="/etc/nginx/certs/nginx.crt"
     local ssl_key="/etc/nginx/certs/nginx.key"
     local acme_http_server=""
+    # Webroot served by the :8080 HTTP-01 listener. certbot (acme mode) writes to
+    # /var/www/certbot; acme.sh (acmevaultpki mode) writes to /acme/webroot. In
+    # acmevaultpki mode the cert paths stay at /etc/nginx/certs/nginx.{crt,key}
+    # (acme.sh installs there over the ECDSA bootstrap cert), so the SSL block is
+    # byte-identical to selfsigned mode.
+    local acme_webroot=""
     if [ "$TLS_MODE" = "acme" ]; then
         ssl_cert="/etc/letsencrypt/live/${DEFAULT_HOSTNAME}/fullchain.pem"
         ssl_key="/etc/letsencrypt/live/${DEFAULT_HOSTNAME}/privkey.pem"
+        acme_webroot="/var/www/certbot"
+    elif [ "$TLS_MODE" = "acmevaultpki" ]; then
+        acme_webroot="/acme/webroot"
+    fi
+    if [ -n "$acme_webroot" ]; then
         # Note: \$host and \$request_uri below are nginx runtime variables;
         # they are escaped here so they pass through the heredoc unexpanded
         # and reach nginx.conf as literal $host / $request_uri.
         acme_http_server="
     # ACME HTTP-01 challenge listener + HTTP->HTTPS redirect.
-    # Certbot renewal webroot requests are served from /var/www/certbot
-    # (mounted from ./certbot-webroot by docker-compose.acme.yml).
+    # Renewal webroot requests are served from ${acme_webroot}.
     server {
         listen 0.0.0.0:8080;
         server_name ${DEFAULT_HOSTNAME};
 
         location /.well-known/acme-challenge/ {
-            root /var/www/certbot;
+            root ${acme_webroot};
         }
 
         location / {
@@ -568,7 +621,7 @@ check_services() {
     # public IP back to the same host (no hairpin/NAT loopback). If the public
     # hostname check failed, retry via 127.0.0.1 with --resolve so TLS SNI
     # still matches the real hostname.
-    if [ "$TLS_MODE" = "acme" ]; then
+    if [ "$TLS_MODE" = "acme" ] || [ "$TLS_MODE" = "acmevaultpki" ]; then
         echo "Public hostname check failed — trying hairpin-NAT fallback via 127.0.0.1..."
         if curl -k -s -o /dev/null -w "%{http_code}" \
             --resolve "${DEFAULT_HOSTNAME}:${DEFAULT_HTTPS_PORT}:127.0.0.1" \
@@ -710,7 +763,7 @@ show_help() {
     echo "              prints resolved TLS_MODE, DEPLOY_PROFILE, COMPOSE_PROFILES"
     echo ""
     echo "Deployment parameters (set via .env or environment):"
-    echo "  TLS_MODE             selfsigned (default) | acme"
+    echo "  TLS_MODE             selfsigned (default) | acme | acmevaultpki"
     echo "  DEPLOY_PROFILE       private (default) | public"
     echo "  COMPOSE_PROFILES     companions (default) | empty for core-only"
     echo "  RENDER_CACHE_ENABLED true (default) | false"
@@ -724,6 +777,12 @@ show_help() {
     echo "  ACME_STAGING         Set to 1 to use the LE staging CA (test first!)"
     echo "  ACME_HTTP_PORT       Host port for HTTP-01 challenge/redirect (default: 80)"
     echo "  CERT_ALERT_WEBHOOK   Optional webhook URL for scripts/check-cert-expiry.sh"
+    echo ""
+    echo "Vault PKI ACME parameters (TLS_MODE=acmevaultpki only):"
+    echo "  ACME_DIRECTORY_URL   Vault PKI ACME directory URL (required)"
+    echo "  ACME_CONTACT         Contact email for the ACME account (required)"
+    echo "  ACME_KEY_LENGTH      Cert key type (default: ec-256, matches ssl_ciphers)"
+    echo "  ACME_HTTP_PORT       Host port for HTTP-01 challenge/redirect (default: 80)"
     echo ""
 }
 
@@ -743,12 +802,20 @@ case "$COMMAND" in
         if [ "$TLS_MODE" = "acme" ]; then
             validate_acme_config
             ensure_acme_cert
+        elif [ "$TLS_MODE" = "acmevaultpki" ]; then
+            # Issuance happens inside the nginx container (acme.sh); no host-side
+            # cert step. The custom nginx image is (re)built just before 'up'.
+            validate_acmevaultpki_config
         else
             generate_certs
         fi
         create_nginx_config
         build_demo_site
         ensure_kroki_core
+        if [ "$TLS_MODE" = "acmevaultpki" ]; then
+            echo "Building custom nginx image with acme.sh (Vault PKI)..."
+            $DOCKER_COMPOSE build nginx
+        fi
         echo "Starting services with Docker Compose..."
 
         if [ -f "$DOCKER_COMPOSE_FILE" ]; then
@@ -802,11 +869,17 @@ case "$COMMAND" in
         if [ "$TLS_MODE" = "acme" ]; then
             validate_acme_config
             ensure_acme_cert
+        elif [ "$TLS_MODE" = "acmevaultpki" ]; then
+            validate_acmevaultpki_config
         else
             generate_certs
         fi
         create_nginx_config
         ensure_kroki_core
+        if [ "$TLS_MODE" = "acmevaultpki" ]; then
+            echo "Building custom nginx image with acme.sh (Vault PKI)..."
+            $DOCKER_COMPOSE build nginx
+        fi
         echo "Starting services with Docker Compose..."
         $DOCKER_COMPOSE up -d
         sleep 5

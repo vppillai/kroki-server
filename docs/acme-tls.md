@@ -116,3 +116,98 @@ Always stop the stack before switching `TLS_MODE` between `acme` and
 Switching while the stack is running leaves the certbot container as an orphan
 (compose only warns). The `--remove-orphans` flag in `restart` and `stop` cleans
 these up automatically.
+
+---
+
+# Real TLS with a Vault PKI ACME directory (TLS_MODE=acmevaultpki)
+
+Use this mode to obtain the nginx certificate from a **HashiCorp Vault PKI ACME
+directory** (a common pattern for internal corporate CAs) instead of Let's
+Encrypt. Unlike the `acme` mode (which uses a host-side certbot sidecar),
+issuance and renewal happen **entirely inside the nginx container** via
+[`acme.sh`](https://github.com/acmesh-official/acme.sh), baked into a custom
+image built from `./nginx-acme`.
+
+Add these lines to your `.env`:
+
+```bash
+HOSTNAME=kroki.it.example.com   # DNS name the cert is issued for
+HTTPS_PORT=443
+TLS_MODE=acmevaultpki
+ACME_DIRECTORY_URL=https://vault.it.aws.tenstorrent.com/v1/pki_int/acme/directory
+ACME_CONTACT=it@tenstorrent.com
+```
+
+Then:
+
+```bash
+./setup-kroki-server.sh start
+```
+
+## How it works
+
+1. **Custom image** — `setup-kroki-server.sh start` builds `kroki-nginx-acme`
+   from `nginx-acme/Dockerfile` (stock `nginx:1.28-alpine` + `acme.sh`) and the
+   `docker-compose.acmevaultpki.yml` overlay is layered on the base compose file.
+2. **Bootstrap** — the container's entrypoint drops an **ECDSA self-signed**
+   placeholder cert into `/etc/nginx/certs/nginx.{crt,key}` so nginx can start
+   and serve the HTTP-01 challenge on port 80 (→ container `:8080`). ECDSA is
+   mandatory: the rendered `nginx.conf` uses an ECDSA-only cipher list, so an
+   RSA cert would fail every handshake.
+3. **Issuance** — once nginx is up, `acme.sh` registers an account against
+   `ACME_DIRECTORY_URL` and issues the real cert in **webroot mode**
+   (`/acme/webroot`, served by the `:8080` listener), then installs it over the
+   bootstrap cert and reloads nginx.
+4. **Renewal** — `acme.sh --cron` runs daily inside the container and reloads
+   nginx when the cert is renewed. Cert state and the issued cert live on the
+   `nginx_acme_data` and `nginx_acme_certs` named volumes, so they survive
+   restarts.
+
+## Prerequisites
+
+1. **DNS** — `HOSTNAME` resolves to this box from wherever the Vault ACME server
+   performs the HTTP-01 validation callback.
+2. **Ports** — host ports `80` (HTTP-01) and `HTTPS_PORT` are reachable.
+3. **Trust** — the container connects to `ACME_DIRECTORY_URL` over HTTPS, so the
+   Vault endpoint's certificate must be trusted by the image's CA bundle. If
+   Vault presents a cert from a private root, that root must chain to a publicly
+   trusted CA (as is the case for the example URL above).
+4. **Key type** — the default `ACME_KEY_LENGTH=ec-256` matches the ECDSA-only
+   `ssl_ciphers`. Your Vault PKI role must permit issuing EC (P-256) certs. If it
+   only issues RSA, set `ACME_KEY_LENGTH=2048` **and** widen `ssl_ciphers` in
+   `setup-kroki-server.sh`, otherwise TLS handshakes will fail.
+
+## Verifying
+
+```bash
+# Watch issuance in the nginx container logs:
+./setup-kroki-server.sh logs   # look for "[entrypoint] Issuing certificate for ..."
+
+# Confirm the served cert's issuer is your Vault PKI (not the bootstrap self-sign):
+curl -vk https://kroki.it.example.com/ 2>&1 | grep -i "issuer"
+```
+
+## Troubleshooting
+
+- **Still serving the self-signed bootstrap cert** — issuance failed (check the
+  logs). Common causes: the HTTP-01 callback can't reach `:80`, DNS doesn't
+  resolve to this box, or the Vault role rejected the key type. The container
+  keeps the bootstrap cert and retries on the daily cron.
+- **Rebuild the image after editing `nginx-acme/`** — `restart` and `start`
+  run `docker compose build nginx` automatically before `up`.
+
+## Switching modes
+
+Stop the stack before switching `TLS_MODE` (the same orphan-cleanup note as
+above applies — `restart`/`stop` pass `--remove-orphans`):
+
+```bash
+./setup-kroki-server.sh stop
+# edit TLS_MODE in .env
+./setup-kroki-server.sh start
+```
+
+`./setup-kroki-server.sh clean` removes the `nginx_acme_certs` / `nginx_acme_data`
+volumes (via `down -v`); the cert is simply re-issued on the next start. Vault
+PKI internal CAs generally do not impose Let's Encrypt-style duplicate-cert rate
+limits, so this is safe.
