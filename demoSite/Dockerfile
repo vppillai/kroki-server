@@ -1,5 +1,5 @@
 # Use a specific Python version for better reproducibility
-FROM python:3.12-alpine3.19
+FROM python:3.13-alpine3.19
 
 # Set environment variables
 ENV PORT=8006 \
