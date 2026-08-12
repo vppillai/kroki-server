@@ -39,7 +39,7 @@ jobs:
             latest
             
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v7
         with:
           context: ./demoSite
           push: true
