@@ -84,7 +84,7 @@ IMPORTMAP_SHA256="sha256-LvNDiZbbhmyHUBohi9wADi3l/thqDrW+o+NEgB+bZVY="
 NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection \"1; mode=block\";
     add_header X-Frame-Options SAMEORIGIN;
-    add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
+    add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
 # ACME mode: append HSTS to the shared fragment so it is inherited everywhere
 # (http-level add_header is inherited only when a location/server defines none;
 # the shared fragment is restated inside every location that adds its own
