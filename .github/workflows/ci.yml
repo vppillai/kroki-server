@@ -43,6 +43,10 @@ jobs:
             env:
               DEPLOY_PROFILE: public
               TLS_MODE: acme
+          - name: public-acmevaultpki
+            env:
+              DEPLOY_PROFILE: public
+              TLS_MODE: acmevaultpki
     steps:
       - uses: actions/checkout@v6
 
@@ -52,6 +56,10 @@ jobs:
           TLS_MODE: ${{ matrix.env.TLS_MODE || '' }}
         run: |
           chmod +x ./setup-kroki-server.sh
+          # Write a real .env so TLS_MODE/DEPLOY_PROFILE take effect: the script
+          # sources .env (which overrides exported env vars), so passing them via
+          # the environment alone is not enough to exercise each mode.
+          printf 'TLS_MODE=%s\nDEPLOY_PROFILE=%s\n' "${TLS_MODE}" "${DEPLOY_PROFILE}" > .env
           ./setup-kroki-server.sh genconfig
 
       - name: Generate dummy ECDSA cert/key
@@ -65,6 +73,12 @@ jobs:
             -signkey /tmp/nginx-test-certs/nginx.key \
             -out /tmp/nginx-test-certs/nginx.crt
           rm /tmp/nginx-test-certs/nginx.csr
+          # acme mode points ssl_certificate at /etc/letsencrypt/live/localhost/;
+          # acmevaultpki + selfsigned use /etc/nginx/certs. Provide certs at both
+          # so nginx -t (which loads the cert files) passes for every mode.
+          mkdir -p /tmp/letsencrypt/live/localhost
+          cp /tmp/nginx-test-certs/nginx.crt /tmp/letsencrypt/live/localhost/fullchain.pem
+          cp /tmp/nginx-test-certs/nginx.key /tmp/letsencrypt/live/localhost/privkey.pem
 
       - name: Validate nginx.conf with nginx -t (${{ matrix.name }})
         run: |
@@ -73,6 +87,7 @@ jobs:
             --add-host core:127.0.0.1 \
             -v "$(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro" \
             -v "/tmp/nginx-test-certs:/etc/nginx/certs:ro" \
+            -v "/tmp/letsencrypt:/etc/letsencrypt:ro" \
             nginx:1.28-alpine nginx -t
 
   unit-tests:
