@@ -142,7 +142,7 @@ function initializeAutoRefresh() {
 
     if (manualRefreshBtn) {
         manualRefreshBtn.addEventListener('click', handleManualRefresh);
-        manualRefreshBtn.title = 'Refresh diagram (Ctrl+Enter)';
+        manualRefreshBtn.title = 'Refresh diagram (Ctrl/Cmd+Enter)';
     }
 
     // Keyboard shortcut for manual refresh
@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Deliver server AI mode to the assistant so the UI reflects relay/byok/off
                 if (config.ai && window.aiAssistant && typeof window.aiAssistant.applyServerMode === 'function') {
                     const mode = config.ai.mode || (config.ai.enabled ? 'relay' : 'off');
+                    window.aiAssistant.serverDefaultModel = config.ai.model || '';
                     window.aiAssistant.applyServerMode(mode);
                 }
             })

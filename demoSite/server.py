@@ -18,12 +18,11 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    import os
 
     # Try to load from parent directory first (top-level .env), then current directory
     parent_env = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
@@ -70,13 +69,26 @@ ALLOWED_ORIGINS = {
 # limiter keys on the real client IP (nginx sets X-Forwarded-For).
 CORS(app, resources={r"/api/*": {"origins": list(ALLOWED_ORIGINS)}})
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
-limiter = Limiter(get_remote_address, app=app, default_limits=[])
+def _rate_limit_key():
+    """Rate-limit key: the per-browser session cookie, falling back to the IP.
+
+    Behind an L4 (SNI) proxy every client shares the proxy's address, so a
+    pure per-IP key turned the AI limits into one company-wide bucket. The
+    session cookie is issued per browser when the page is served, giving a
+    per-user bucket without needing PROXY protocol on the front proxy.
+    """
+    return request.cookies.get(SESSION_COOKIE_NAME) or get_remote_address()
+
+
+limiter = Limiter(_rate_limit_key, app=app, default_limits=[])
 
 AI_TIMEOUT = 60  # Default timeout for AI API requests
 AI_TIMEOUT_MAX = int(os.environ.get('AI_TIMEOUT_MAX', 300))  # Hard ceiling for client-requested timeouts
-AI_MAX_TOKENS = 16000  # Token limit for AI responses
+AI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS') or 16000)  # Hard ceiling for AI responses
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
-KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE', 1048576))  # Kroki backend body limit
+# Editor size warning threshold; defaults to the Kroki core body limit so the
+# UI does not warn about diagrams the backend accepts.
+KROKI_MAX_BODY_SIZE = int(os.environ.get('KROKI_MAX_BODY_SIZE') or os.environ.get('KROKI_BODY_LIMIT') or 10485760)
 # Comma-separated diagram types disabled on this deployment (e.g. "bpmn,excalidraw,diagramsnet").
 # Delivered to this container via the existing env_file: .env on demosite (docker-compose.yml);
 # no compose change needed, but a container recreate (script restart) is required after editing.
@@ -635,7 +647,7 @@ def ai_assist():
 
         # Extract configuration from request or use defaults
         config = data.get('config', {})
-        model = data.get('model', DEFAULT_AI_CONFIG['model'])  # Get model from top-level, not from config
+        model = data.get('model') or DEFAULT_AI_CONFIG['model']  # empty/missing -> server default
 
         # Client-supplied timeout must be numeric and is clamped so a request
         # cannot pin server threads on arbitrarily long upstream connections.
@@ -826,7 +838,7 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'ai_enabled': AI_MODE == 'relay',
         'ai_mode': AI_MODE,
     })

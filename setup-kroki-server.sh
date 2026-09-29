@@ -23,6 +23,9 @@ if [ ! -f "${SCRIPT_DIR}/.env" ] && [ -f "${SCRIPT_DIR}/.env.example" ]; then
 fi
 
 # Load configuration from .env file if it exists
+# Bash pre-sets HOSTNAME to the machine name; drop it so only an explicit
+# HOSTNAME= line in .env (or --hostname) can define the server name.
+unset HOSTNAME
 if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a
     # shellcheck source=/dev/null
@@ -390,6 +393,8 @@ create_nginx_config() {
 "
     fi
     cat > "$NGINX_CONF" <<EOF
+worker_processes auto;
+
 events {
     worker_connections 1024;
 }
@@ -398,6 +403,7 @@ http {
     # Include basic MIME types
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
+    server_tokens off;
 
     # Performance settings
     sendfile on;
@@ -405,6 +411,23 @@ http {
     tcp_nodelay on;
     keepalive_timeout 65;
     client_max_body_size 10M;  # Allow larger diagram requests
+
+    # Compress text assets and SVG renders (Kroki SVGs are often 50-500 KB).
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied any;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+
+    # Keep upstream connections open instead of a new TCP handshake per request.
+    upstream demosite_upstream {
+        server demosite:${DEMOSITE_CONTAINER_PORT};
+        keepalive 16;
+    }
+    upstream core_upstream {
+        server core:${DEFAULT_HTTP_PORT};
+        keepalive 16;
+    }
 ${NGINX_CACHE_PATH_BLOCK}
     # Per-IP abuse limits on render routes; values chosen by DEPLOY_PROFILE.
     # Zones always emitted (both profiles); per-location directives only under public.
@@ -440,22 +463,23 @@ EOF
         ssl_certificate ${ssl_cert};
         ssl_certificate_key ${ssl_key};
 
+        # Shared proxy settings, inherited by every location below (a location
+        # that sets any proxy_set_header of its own would drop these, so none do).
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
         # Root path (serves the demo site index)
         location = / {
-            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}/index.html;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://demosite_upstream/index.html;
         }
 
         # Static resources in static directories
         location ~* ^/(css|js|examples)/ {
-            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}\$uri;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://demosite_upstream\$uri;
 
             # Revalidate via ETag instead of hard-caching. These assets are
             # un-versioned (no content hash in the filename), so a 1-day cache
@@ -467,11 +491,7 @@ EOF
 
         # Static files at root level
         location ~* ^/[^/]+\.(html|ico|svg|png|jpg|jpeg|gif)$ {
-            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT}\$uri;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://demosite_upstream\$uri;
 
             # Revalidate via ETag instead of hard-caching. These assets are
             # un-versioned (no content hash in the filename), so a 1-day cache
@@ -483,19 +503,15 @@ EOF
 
         # Demo site API endpoints (must come before Kroki patterns)
         location /api/ {
-            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT};
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://demosite_upstream;
+            # Flask caps API bodies at 1 MB; reject earlier at the edge.
+            client_max_body_size 1m;
 
             # AI responses stream as SSE: disable buffering so tokens reach the
             # browser as they arrive, and allow long-running completions.
             proxy_buffering off;
             proxy_cache off;
             proxy_read_timeout 300;
-            proxy_http_version 1.1;
-            proxy_set_header Connection "";
         }
 
         # Kroki API POST requests (diagram-type/format) - exclude /api/ paths
@@ -506,11 +522,7 @@ EOF
             }
 ${NGINX_RENDER_LIMITS}
             client_max_body_size ${RENDER_BODY_LIMIT};
-            proxy_pass http://core:${DEFAULT_HTTP_PORT};
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://core_upstream;
             proxy_connect_timeout ${RENDER_CONNECT_TIMEOUT};
             proxy_send_timeout ${RENDER_TIMEOUT};
             proxy_read_timeout ${RENDER_TIMEOUT};
@@ -522,11 +534,7 @@ ${NGINX_RENDER_LIMITS}
         location ~* ^/(?!api/)[^/]+/[^/]+/[^/]+$ {
 ${NGINX_RENDER_LIMITS}
             client_max_body_size ${RENDER_BODY_LIMIT};
-            proxy_pass http://core:${DEFAULT_HTTP_PORT};
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://core_upstream;
             proxy_connect_timeout ${RENDER_CONNECT_TIMEOUT};
             proxy_send_timeout ${RENDER_TIMEOUT};
             proxy_read_timeout ${RENDER_TIMEOUT};
@@ -535,11 +543,7 @@ ${NGINX_CACHE_LOCATION_BLOCK}
 
         # Fallback for any other paths
         location / {
-            proxy_pass http://demosite:${DEMOSITE_CONTAINER_PORT};
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto https;
+            proxy_pass http://demosite_upstream;
         }
     }
 }
@@ -660,7 +664,7 @@ parse_args() {
         key="$1"
         case $key in
             --hostname)
-                HOSTNAME="$2"
+                HOSTNAME_OVERRIDE="$2"
                 shift 2
                 ;;
             --cert)
@@ -731,6 +735,11 @@ show_help() {
 
 # Parse command-line arguments first
 parse_args "$@"
+# --hostname overrides .env for certs, server_name and the origin allowlist.
+if [ -n "${HOSTNAME_OVERRIDE:-}" ]; then
+    DEFAULT_HOSTNAME="$HOSTNAME_OVERRIDE"
+    export HOSTNAME="$HOSTNAME_OVERRIDE"
+fi
 
 # genconfig is a config-only entry point (used by CI) — it must work without
 # docker/compose installed, so dependency checks are skipped for it.

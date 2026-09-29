@@ -10,6 +10,7 @@
 
 import { state, updateZoomState } from './state.js';
 import { DOUBLE_CLICK_THRESHOLD_MS, ZOOM_FIT_PADDING_PX } from './constants.js';
+import { isTypingContext } from './keyboard.js';
 
 // ========================================
 // ZOOM AND PAN INITIALIZATION
@@ -335,6 +336,25 @@ export function initializeZoomPan() {
 
     // Reset zoom button
     resetZoomBtn.addEventListener('click', resetZoom);
+
+    // Keyboard: Ctrl/Cmd + '+' / '-' / '0' (as listed in Help). Ignored while
+    // typing so editor shortcuts and browser zoom in text fields still work.
+    document.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey || isTypingContext(e.target)) return;
+        const viewportRect = viewport.getBoundingClientRect();
+        const centerX = viewportRect.left + viewportRect.width / 2;
+        const centerY = viewportRect.top + viewportRect.height / 2;
+        if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            zoomAt(centerX, centerY, state.zoomState.scaleStep);
+        } else if (e.key === '-') {
+            e.preventDefault();
+            zoomAt(centerX, centerY, -state.zoomState.scaleStep);
+        } else if (e.key === '0') {
+            e.preventDefault();
+            resetZoom();
+        }
+    });
 
     // ========================================
     // PUBLIC API

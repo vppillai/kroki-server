@@ -90,7 +90,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Server unit tests
         working-directory: ./demoSite
@@ -117,7 +117,7 @@ jobs:
           ./setup-kroki-server.sh start
           sleep 30
           # Use the HTTPS_PORT from .env file (default 8443)
-          HTTPS_PORT=$(grep HTTPS_PORT .env | cut -d '=' -f2 | tr -d ' ' || echo "8443")
+          HTTPS_PORT=$(grep '^HTTPS_PORT=' .env | cut -d '=' -f2 | tr -d ' ' || echo "8443")
           curl -k -s -o /dev/null -w "%{http_code}" https://localhost:${HTTPS_PORT} | grep -q "200"
           ./setup-kroki-server.sh stop
   demo-site-container:
