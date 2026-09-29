@@ -1,4 +1,6 @@
 import { extractDiagramJson } from './modules/aiResponseParser.js';
+import { state } from './modules/state.js';
+import { updateDiagram } from './modules/diagramRenderer.js';
 import { buildMessages, DEFAULT_HISTORY_CAP } from './modules/aiMessages.js';
 /**
  * AI Assistant Module for Kroki Diagram Editor
@@ -333,6 +335,14 @@ class AIAssistant {
     }
 
     positionChatWindow() {
+        // On small screens responsive.css turns the chat into a full-screen
+        // sheet; inline left/top from this method would offset it and cause
+        // horizontal overflow, so leave positioning to the stylesheet.
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            this.chatWindow.style.left = '';
+            this.chatWindow.style.top = '';
+            return;
+        }
         const diagramContainer = document.getElementById('diagram-container');
         if (!diagramContainer) return;
         const containerRect = diagramContainer.getBoundingClientRect();
@@ -729,7 +739,7 @@ class AIAssistant {
      * 'diagramRenderFailed' (error), or timeout (caller falls back to DOM
      * heuristics). Must be called BEFORE triggering the render.
      */
-    waitForRenderOutcome(timeoutMs = 5000) {
+    waitForRenderOutcome(timeoutMs = 60000) {
         return new Promise((resolve) => {
             let timer = null;
             const finish = (outcome) => {
@@ -755,10 +765,13 @@ class AIAssistant {
             // render. Wait for the render outcome event instead.
             const renderOutcome = this.waitForRenderOutcome();
             this.updateDiagramCode(diagramCode);
+            // The 'input' event only schedules a render when auto-refresh is
+            // on; otherwise nothing would ever settle, so render explicitly.
+            if (!state.autoRefreshEnabled) updateDiagram();
             const outcome = await renderOutcome;
             const validationResult = outcome.settled
                 ? { success: outcome.success, error: outcome.error }
-                : this.checkDiagramValidation();
+                : { success: false, error: 'Diagram render timed out' };
 
             if (!validationResult.success) {
                 if (codeTextarea) {
@@ -771,35 +784,6 @@ class AIAssistant {
         } catch (error) {
             return { success: false, error: `Validation process failed: ${error.message}` };
         }
-    }
-
-    checkDiagramValidation() {
-        const errorElements = document.querySelectorAll('.error, .error-message, [class*="error"]');
-        const hasVisibleErrors = Array.from(errorElements).some(el =>
-            el.offsetParent !== null && el.textContent.trim() !== '' &&
-            !el.textContent.toLowerCase().includes('no errors')
-        );
-        if (hasVisibleErrors) return { success: false, error: 'Diagram contains syntax errors visible in the UI' };
-
-        const diagramImage = document.querySelector('#diagram-img, .diagram-image, [id*="diagram"] img');
-        if (diagramImage) {
-            const imgSrc = diagramImage.src;
-            if (imgSrc.includes('error') || imgSrc.includes('invalid') ||
-                diagramImage.naturalWidth <= 1 || diagramImage.naturalHeight <= 1) {
-                return { success: false, error: 'Diagram image failed to load properly' };
-            }
-        }
-
-        try {
-            if (window.encodeKrokiDiagram) {
-                const codeTextarea = document.getElementById('code');
-                window.encodeKrokiDiagram(codeTextarea ? codeTextarea.value : '');
-            }
-        } catch {
-            return { success: false, error: 'Diagram code encoding failed' };
-        }
-
-        return { success: true, error: null };
     }
 
     // ========================================
@@ -932,7 +916,7 @@ class AIAssistant {
                     useCustomAPI: aiConfig.useCustomAPI !== undefined ? aiConfig.useCustomAPI : false,
                     endpoint: aiConfig.endpoint || '',
                     apiKey: aiConfig.apiKey || '',
-                    model: aiConfig.model || 'openai/gpt-4o',
+                    model: aiConfig.model || '',
                     customModel: aiConfig.customModel || '',
                     maxRetryAttempts: aiConfig.maxRetryAttempts !== undefined ? aiConfig.maxRetryAttempts : 3,
                     userPromptTemplate: aiConfig.userPromptTemplate || '',
@@ -943,7 +927,7 @@ class AIAssistant {
         }
         return {
             enabled: true, useCustomAPI: false, endpoint: '', apiKey: '',
-            model: 'openai/gpt-4o', customModel: '', maxRetryAttempts: 3,
+            model: '', customModel: '', maxRetryAttempts: 3,
             userPromptTemplate: '', autoValidate: true, timeout: 30
         };
     }
@@ -1000,7 +984,7 @@ class AIAssistant {
 
         try {
             const config = this.getAIConfig();
-            let modelName = config.model || 'openai/gpt-4o';
+            let modelName = config.model || this.serverDefaultModel || 'server default';
             if (config.model === 'custom' && config.customModel) modelName = config.customModel;
 
             const displayName = this.getShortModelName(modelName);

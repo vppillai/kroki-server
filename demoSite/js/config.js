@@ -101,7 +101,7 @@ const DEFAULT_CONFIG = {
         useCustomAPI: false, // Use custom API instead of proxy
         endpoint: '', // Custom API endpoint (optional)
         apiKey: '', // Custom API key (optional)
-        model: 'openai/gpt-4o', // AI model to use (provider/model format for compatibility)
+        model: '', // empty = use the server's default model (AI_MODEL); provider/model format
         customModel: '', // Custom model name when model = 'custom'
         maxRetryAttempts: 3, // Maximum retry attempts for failed requests
         autoValidate: true, // Auto-validate generated code

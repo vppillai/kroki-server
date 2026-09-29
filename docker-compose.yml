@@ -19,6 +19,12 @@ services:
     # Internal only — reachable via nginx (core:8000), never published to the host.
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
     networks:
       - kroki_network
     deploy:
@@ -37,6 +43,12 @@ services:
     image: yuzutech/kroki-mermaid:0.30.1
     expose:
       - "8002"
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8002/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
     networks:
       - kroki_network
     deploy:
@@ -134,8 +146,10 @@ services:
     restart: unless-stopped
     image: nginx:1.28-alpine
     depends_on:
-      - core
-      - demosite
+      core:
+        condition: service_healthy
+      demosite:
+        condition: service_healthy
     ports:
       - "${HTTPS_PORT:-8443}:8443"
     volumes:

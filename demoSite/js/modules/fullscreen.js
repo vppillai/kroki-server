@@ -160,7 +160,9 @@ export function initializeFullscreenMode() {
         // 'f' toggles fullscreen ONLY when the user is not typing into an editable surface.
         if ((e.key === 'f' || e.key === 'F') && !isTypingContext(e.target)) {
             e.preventDefault();
-            if (!isFullscreen) {
+            if (isFullscreen) {
+                exitFullscreen();
+            } else {
                 enterFullscreen();
             }
         }

@@ -118,7 +118,7 @@ window.ConfigUIModels = {
     populateModelSelect(selectElement, data, configManager) {
         selectElement.innerHTML = '';
 
-        const currentModel = configManager.get('ai.model') || data.default_model || 'openai/gpt-4o';
+        const currentModel = configManager.get('ai.model') || data.default_model || '';
 
         const availableModelIds = new Set();
         const models = data.models;
@@ -216,7 +216,7 @@ window.ConfigUIModels = {
         };
 
         selectElement.innerHTML = '';
-        const currentModel = configManager.get('ai.model') || 'openai/gpt-4o';
+        const currentModel = configManager.get('ai.model') || '';
 
         for (const [provider, models] of Object.entries(fallbackModels)) {
             const optgroup = document.createElement('optgroup');

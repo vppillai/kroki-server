@@ -1,22 +1,7 @@
-/* Kroki Demo Site - Modular CSS Import */
-
-/* Import all CSS modules in the correct order */
-@import './variables.css';
-@import './base.css';
-@import './layout.css';
-@import './toolbar.css';
-@import './buttons.css';
-@import './editor.css';
-@import './diagram.css';
-@import './code-history.css';
-@import './theme-toggle.css';
-@import './auto-save-toggle.css';
-@import './modal.css';
-@import './drawio-modal.css';
-@import './fullscreen.css';
-@import './animations.css';
-@import './responsive.css';
-@import './accessibility.css';
+/* Kroki Demo Site - shared overrides.
+   The module stylesheets are linked directly from index.html (in cascade
+   order) instead of @import-ed here: @import chains load serially after this
+   file arrives, which added two render-blocking round trips on first load. */
 
 /* AI Assistant Chat Messages - Preserve Formatting */
 .ai-message.user .ai-message-content {

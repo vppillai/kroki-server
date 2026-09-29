@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" stroke="#2563eb" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+  <title>DocCode</title>
+  <path d="M132 96 V416"/>
+  <path d="M132 96 H236 A160 160 0 0 1 236 416 H132"/>
+  <path d="M212 200 H300"/>
+  <path d="M212 256 H340"/>
+  <path d="M212 312 H300"/>
+</svg>
