@@ -341,6 +341,8 @@ async function renderTextDiagram(diagramViewport, zoomControls, textPreview, url
     textPreview.textContent = textContent;
     textPreview.style.display = 'block';
     updateCurrentDiagramData(textContent);
+    // Settles AI auto-validate, which otherwise waited out its timeout.
+    document.dispatchEvent(new CustomEvent('diagramRendered', { detail: { outputFormat } }));
 }
 
 /**
@@ -381,4 +383,7 @@ function renderPlaceholderDiagram(diagramViewport, zoomControls, placeholderCont
 
     placeholderDownload.download = `diagram.${outputFormat}`;
     updateCurrentDiagramData(shouldUsePost ? `POST:${diagramType}/${outputFormat}` : url);
+    // Download-only formats are not fetched here; report settled so AI
+    // auto-validate does not time out and retry.
+    document.dispatchEvent(new CustomEvent('diagramRendered', { detail: { outputFormat } }));
 }

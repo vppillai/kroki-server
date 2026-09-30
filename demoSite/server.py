@@ -70,14 +70,18 @@ ALLOWED_ORIGINS = {
 CORS(app, resources={r"/api/*": {"origins": list(ALLOWED_ORIGINS)}})
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 def _rate_limit_key():
-    """Rate-limit key: the per-browser session cookie, falling back to the IP.
+    """Rate-limit key: a *validated* per-browser session token, else the IP.
 
     Behind an L4 (SNI) proxy every client shares the proxy's address, so a
-    pure per-IP key turned the AI limits into one company-wide bucket. The
-    session cookie is issued per browser when the page is served, giving a
-    per-user bucket without needing PROXY protocol on the front proxy.
+    pure per-IP key turned the AI limits into one company-wide bucket. Only a
+    token we signed counts, so arbitrary cookie values cannot mint buckets;
+    _serve_index keeps a valid token across reloads so a refresh does not
+    reset the limits. AI_GLOBAL_LIMIT backstops clients that discard cookies.
     """
-    return request.cookies.get(SESSION_COOKIE_NAME) or get_remote_address()
+    token = request.cookies.get(SESSION_COOKIE_NAME, '')
+    if token and validate_session_token(token):
+        return f"session:{token}"
+    return get_remote_address()
 
 
 limiter = Limiter(_rate_limit_key, app=app, default_limits=[])
@@ -85,6 +89,8 @@ limiter = Limiter(_rate_limit_key, app=app, default_limits=[])
 AI_TIMEOUT = 60  # Default timeout for AI API requests
 AI_TIMEOUT_MAX = int(os.environ.get('AI_TIMEOUT_MAX', 300))  # Hard ceiling for client-requested timeouts
 AI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS') or 16000)  # Hard ceiling for AI responses
+# Server-wide cap on /api/ai-assist across all users (per gunicorn worker).
+AI_GLOBAL_LIMIT = os.environ.get('AI_GLOBAL_LIMIT') or '120/minute'
 MAX_REQUEST_SIZE = 1024 * 1024  # 1MB limit for AI requests
 # Editor size warning threshold; defaults to the Kroki core body limit so the
 # UI does not warn about diagrams the backend accepts.
@@ -601,6 +607,7 @@ def _per_ip_limit():
 
 
 @app.route('/api/ai-assist', methods=['POST'])
+@limiter.limit(lambda: AI_GLOBAL_LIMIT, key_func=lambda: 'global')
 @limiter.limit("10/minute")
 @limiter.limit(_per_ip_limit, error_message='per_ip_quota',
                exempt_when=lambda: not AI_DAILY_LIMIT_PER_IP)
@@ -886,6 +893,10 @@ def _serve_index():
     the static catch-all must issue the cookie.
     """
     response = send_file(os.path.join(STATIC_ROOT, 'index.html'))
+    # Keep an existing valid session: reissuing on every load reset the
+    # per-session rate limits on each refresh.
+    if validate_session_token(request.cookies.get(SESSION_COOKIE_NAME, '')):
+        return response
     response.set_cookie(
         SESSION_COOKIE_NAME,
         issue_session_token(),

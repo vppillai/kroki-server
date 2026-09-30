@@ -567,7 +567,9 @@ class AIAssistant {
         }
 
         const selectedModel = aiConfig.model === 'custom' ? aiConfig.customModel : aiConfig.model;
-        if (!selectedModel) {
+        // Relay mode: an empty model means "server default" (AI_MODEL), which
+        // the server resolves itself. Only direct/BYOK calls need a model here.
+        if (!selectedModel && aiConfig.useCustomAPI) {
             this.addMessage('system', 'No AI model selected. Please choose a model in the <button data-ai-action="open-settings">settings</button>.', true);
             return;
         }
@@ -579,7 +581,7 @@ class AIAssistant {
 
         // BYOK model-validation fix: skip server allowlist check in custom mode —
         // AVAILABLE_MODELS is empty in byok mode and would block every send.
-        if (!aiConfig.useCustomAPI) {
+        if (!aiConfig.useCustomAPI && selectedModel) {
             try {
                 const isValidModel = await window.AIAssistantAPI.validateModel(selectedModel);
                 if (!isValidModel) {
