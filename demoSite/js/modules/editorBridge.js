@@ -24,7 +24,9 @@ import { clojure } from '@codemirror/legacy-modes/mode/clojure';
 import { mermaid } from 'codemirror-lang-mermaid';
 import { dot } from '@viz-js/lang-dot';
 import { latex } from 'codemirror-lang-latex';
+import { setDiagnostics, lintGutter } from '@codemirror/lint';
 import { DEFAULT_MAX_TEXT_SIZE } from './constants.js';
+import { errorLineFromMessage } from './errorLines.js';
 
 /** @type {EditorView|null} */
 let view = null;
@@ -264,6 +266,7 @@ export function initializeEditor(mountEl, initialContent) {
         doc: content,
         extensions: [
             EditorView.contentAttributes.of({ 'aria-label': 'Diagram source code' }),
+            lintGutter(),
             lineNumbers(),
             highlightActiveLineGutter(),
             highlightSpecialChars(),
@@ -332,6 +335,26 @@ export function initializeEditor(mountEl, initialContent) {
         state: startState,
         parent: mount,
     });
+
+    // Mark the line a render error points at (Kroki reports it in the
+    // message; see errorLines.js) and clear the mark on the next success.
+    const showRenderError = (message) => {
+        const lineNo = errorLineFromMessage(message);
+        const doc = view.state.doc;
+        const diagnostics = [];
+        if (lineNo) {
+            const line = doc.line(Math.min(lineNo, doc.lines));
+            diagnostics.push({
+                from: line.from,
+                to: line.to,
+                severity: 'error',
+                message: String(message).replace(/^(HTTP \d+:\s*)?(Error \d+:\s*)?/, '').slice(0, 500),
+            });
+        }
+        view.dispatch(setDiagnostics(view.state, diagnostics));
+    };
+    document.addEventListener('diagramRenderFailed', (e) => showRenderError(e.detail?.error));
+    document.addEventListener('diagramRendered', () => view.dispatch(setDiagnostics(view.state, [])));
 
     // ── Compatibility shim on hidden textarea ──
     if (hiddenTextarea) {

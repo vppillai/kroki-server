@@ -34,6 +34,35 @@
          Any edit to the map (even whitespace) requires updating
          IMPORTMAP_SHA256 in setup-kroki-server.sh;
          tests/cspImportmapHash.test.js enforces the match. -->
+    <!-- Fetch the editor libraries in parallel instead of discovering them
+         one import at a time (they are all imported at startup). -->
+    <link rel="modulepreload" href="js/vendor/codemirror.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-view.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-state.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-search.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-commands.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-language.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-autocomplete.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lint.js">
+    <link rel="modulepreload" href="js/vendor/lezer-common.js">
+    <link rel="modulepreload" href="js/vendor/lezer-highlight.js">
+    <link rel="modulepreload" href="js/vendor/lezer-lr.js">
+    <link rel="modulepreload" href="js/vendor/style-mod.js">
+    <link rel="modulepreload" href="js/vendor/w3c-keyname.js">
+    <link rel="modulepreload" href="js/vendor/crelt.js">
+    <link rel="modulepreload" href="js/vendor/marijn-find-cluster-break.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lang-json.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lang-xml.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lang-yaml.js">
+    <link rel="modulepreload" href="js/vendor/lezer-json.js">
+    <link rel="modulepreload" href="js/vendor/lezer-xml.js">
+    <link rel="modulepreload" href="js/vendor/lezer-yaml.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-legacy-verilog.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lang-mermaid.js">
+    <link rel="modulepreload" href="js/vendor/viz-lang-dot.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-lang-latex.js">
+    <link rel="modulepreload" href="js/vendor/codemirror-legacy-clojure.js">
+    <link rel="modulepreload" href="js/vendor/pako.js">
     <script type="importmap">
     {
         "imports": {

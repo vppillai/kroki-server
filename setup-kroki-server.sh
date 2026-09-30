@@ -87,7 +87,7 @@ IMPORTMAP_SHA256="sha256-LvNDiZbbhmyHUBohi9wADi3l/thqDrW+o+NEgB+bZVY="
 NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff always;
     add_header X-Frame-Options SAMEORIGIN always;
     add_header Referrer-Policy strict-origin-when-cross-origin always;
-    add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
+    add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
 # ACME mode: append HSTS to the shared fragment so it is inherited everywhere
 # (http-level add_header is inherited only when a location/server defines none;
 # the shared fragment is restated inside every location that adds its own
@@ -486,6 +486,19 @@ EOF
         # Root path (serves the demo site index)
         location = / {
             proxy_pass http://demosite_upstream/index.html;
+        }
+
+        # Pinned third-party bundles and fonts change only when deliberately
+        # rebuilt: let browsers reuse them for a day instead of revalidating
+        # ~30 files on every visit. ("expires" sets Cache-Control without an
+        # add_header, so the inherited security headers still apply.)
+        location ^~ /js/vendor/ {
+            proxy_pass http://demosite_upstream\$uri;
+            expires 1d;
+        }
+        location ^~ /css/fonts/ {
+            proxy_pass http://demosite_upstream\$uri;
+            expires 30d;
         }
 
         # Static resources in static directories
