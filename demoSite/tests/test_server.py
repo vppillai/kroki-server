@@ -490,3 +490,45 @@ def test_disabled_diagram_types_normalisation():
             if key == 'server':
                 del sys.modules[key]
         import server  # noqa: F401 — re-import canonical module
+
+
+# --- session token expiry -----------------------------------------------------
+
+
+def test_session_token_expires(server):
+    now = 1_800_000_000
+    token = server.issue_session_token(now=now)
+    assert server.session_token_age(token, now=now + 60) == 60
+    assert server.session_token_age(token, now=now + server.SESSION_MAX_AGE + 1) is None
+
+
+def test_tampered_issue_time_is_rejected(server):
+    token = server.issue_session_token(now=1_800_000_000)
+    body, sig = token.rsplit('.', 1)
+    nonce, _ = body.rsplit('~', 1)
+    forged = f"{nonce}~9999999999.{sig}"
+    assert server.session_token_age(forged) is None
+
+
+def test_legacy_token_still_valid_but_refreshed(client, server):
+    import secrets as _s
+    nonce = _s.token_urlsafe(16)
+    legacy = f"{nonce}.{server._sign_session(nonce)}"
+    assert server.validate_session_token(legacy)
+    client.set_cookie('doccode_session', legacy)
+    resp = client.get('/')
+    assert 'doccode_session=' in resp.headers.get('Set-Cookie', '')
+    assert '~' in client.get_cookie('doccode_session').value
+
+
+def test_old_token_refreshed_after_half_life(client, server):
+    old = server.issue_session_token(now=time_now() - server.SESSION_MAX_AGE // 2 - 10)
+    client.set_cookie('doccode_session', old)
+    resp = client.get('/')
+    assert 'doccode_session=' in resp.headers.get('Set-Cookie', '')
+    assert 'Max-Age=' in resp.headers.get('Set-Cookie', '')
+
+
+def time_now():
+    import time as _t
+    return int(_t.time())

@@ -13,6 +13,10 @@ import logging
 import secrets
 import requests
 import time
+import mimetypes
+
+# Self-hosted fonts: Python's mimetypes table lacks woff2 on some platforms.
+mimetypes.add_type('font/woff2', '.woff2')
 from flask import Flask, request, jsonify, send_from_directory, send_file, Response, stream_with_context
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -113,6 +117,9 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_SIZE
 # Set SESSION_SECRET to keep sessions valid across restarts/replicas; otherwise
 # a random per-boot secret is used and reloading the page reissues the cookie.
 SESSION_SECRET = os.environ.get('SESSION_SECRET') or secrets.token_hex(32)
+# Signed session tokens expire after this many seconds (default 7 days); the
+# page silently re-issues one once a token is past half its lifetime.
+SESSION_MAX_AGE = int(os.environ.get('SESSION_MAX_AGE') or 7 * 24 * 3600)
 SESSION_COOKIE_NAME = 'doccode_session'
 
 # Optional hard authentication for /api/ai-assist on public deployments: when
@@ -566,17 +573,42 @@ def _sign_session(value):
     return hmac.new(SESSION_SECRET.encode(), value.encode(), hashlib.sha256).hexdigest()
 
 
-def issue_session_token():
-    """Create a signed session token: <nonce>.<hmac(nonce)>."""
-    nonce = secrets.token_urlsafe(16)
-    return f"{nonce}.{_sign_session(nonce)}"
+def issue_session_token(now=None):
+    """Create a signed session token: <nonce>~<issued-at>.<hmac(nonce~issued-at)>."""
+    issued = int(time.time() if now is None else now)
+    body = f"{secrets.token_urlsafe(16)}~{issued}"
+    return f"{body}.{_sign_session(body)}"
+
+
+def session_token_age(token, now=None):
+    """Seconds since a valid token was issued, or None if the token is invalid
+    or expired. Tokens from before expiry existed (<nonce>.<hmac>, no issue
+    time) report age 0 so open tabs keep working; _serve_index replaces them."""
+    if not token or '.' not in token:
+        return None
+    body, signature = token.rsplit('.', 1)
+    if not hmac.compare_digest(signature, _sign_session(body)):
+        return None
+    if '~' not in body:
+        return 0  # legacy token
+    try:
+        issued = int(body.rsplit('~', 1)[1])
+    except ValueError:
+        return None
+    age = int(time.time() if now is None else now) - issued
+    if age < -300 or age > SESSION_MAX_AGE:  # small allowance for clock skew
+        return None
+    return max(age, 0)
 
 
 def validate_session_token(token):
-    if not token or '.' not in token:
-        return False
-    nonce, signature = token.rsplit('.', 1)
-    return hmac.compare_digest(signature, _sign_session(nonce))
+    return session_token_age(token) is not None
+
+
+def _session_needs_refresh(token):
+    """True when the page should hand out a fresh token."""
+    age = session_token_age(token)
+    return age is None or '~' not in token.rsplit('.', 1)[0] or age > SESSION_MAX_AGE // 2
 
 
 def authorize_ai_request(request):
@@ -896,12 +928,14 @@ def _serve_index():
     """
     response = send_file(os.path.join(STATIC_ROOT, 'index.html'))
     # Keep an existing valid session: reissuing on every load reset the
-    # per-session rate limits on each refresh.
-    if validate_session_token(request.cookies.get(SESSION_COOKIE_NAME, '')):
+    # per-session rate limits on each refresh. Refresh only legacy tokens and
+    # tokens past half their lifetime.
+    if not _session_needs_refresh(request.cookies.get(SESSION_COOKIE_NAME, '')):
         return response
     response.set_cookie(
         SESSION_COOKIE_NAME,
         issue_session_token(),
+        max_age=SESSION_MAX_AGE,
         # The test client speaks plain HTTP; Secure stays on everywhere else.
         secure=not app.config.get('TESTING', False),
         httponly=True,
