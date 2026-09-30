@@ -1,9 +1,10 @@
 /* CSS Variables for consistent theming */
 :root {
-    /* Color palette */
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
-    --primary-active: #1d4ed8;
+    /* Color palette (light theme). #2563eb keeps white button text at
+       5.2:1 (WCAG AA); the previous #3b82f6 was 3.7:1. */
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-active: #1e40af;
     --secondary-color: #6b7280;
     --success-color: #10b981;
     --error-color: #ef4444;
