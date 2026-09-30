@@ -56,13 +56,15 @@ STATIC_ROOT = os.environ.get('STATIC_ROOT', '/app')
 
 # Origins allowed to call the API (exact match). Same-origin browser requests
 # that omit the Origin header are also allowed (see validate_origin()).
+# EXTRA_HOSTNAMES: comma-separated aliases the site is also served on (e.g. a
+# second DNS name on the same certificate); without them the AI relay 403s.
+_SERVED_HOSTNAMES = [HOSTNAME, 'localhost', '127.0.0.1'] + [
+    h.strip() for h in os.environ.get('EXTRA_HOSTNAMES', '').split(',') if h.strip()
+]
 ALLOWED_ORIGINS = {
-    f"https://{HOSTNAME}:{HTTPS_PORT}",
-    f"https://{HOSTNAME}",
-    "https://localhost",
-    f"https://localhost:{HTTPS_PORT}",
-    "https://127.0.0.1",
-    f"https://127.0.0.1:{HTTPS_PORT}",
+    origin
+    for host in _SERVED_HOSTNAMES
+    for origin in (f"https://{host}", f"https://{host}:{HTTPS_PORT}")
 }
 
 # Restrict CORS to the allowlist (was wildcard); trust one proxy hop so the rate

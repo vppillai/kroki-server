@@ -98,14 +98,6 @@ window.ConfigUITemplates = {
                 <h4 class="config-section-title">Editor Settings</h4>
                 <div class="config-group">
                     <div class="config-field">
-                        <label class="config-label">Tab Size</label>
-                        <div class="config-range">
-                            <input type="range" min="1" max="8" class="config-input" data-config="editor.tabSize">
-                            <span class="config-range-value">4</span>
-                        </div>
-                        <div class="config-description">Number of spaces for tab indentation</div>
-                    </div>
-                    <div class="config-field">
                         <label class="config-label">Font Size</label>
                         <div class="config-range">
                             <input type="range" min="10" max="24" class="config-input" data-config="editor.fontSize">
@@ -391,85 +383,6 @@ window.ConfigUITemplates = {
     getAdvancedTabHTML() {
         return `
         <div id="config-tab-advanced" class="config-tab-content">
-            <div class="config-section">
-                <h4 class="config-section-title">File Operations</h4>
-                <div class="config-group">
-                    <div class="config-field">
-                        <label class="config-label">Default Diagram Type</label>
-                        <select class="config-select" data-config="file.defaultDiagramType">
-                            <option value="plantuml">PlantUML</option>
-                            <option value="mermaid">Mermaid</option>
-                            <option value="graphviz">Graphviz</option>
-                            <option value="ditaa">Ditaa</option>
-                        </select>
-                        <div class="config-description">Default diagram type for new files</div>
-                    </div>
-                    <div class="config-field config-field-horizontal">
-                        <label class="config-label config-checkbox">
-                            <input type="checkbox" data-config="file.autoDetectDiagramType">
-                            <span class="config-checkbox-mark"></span>
-                            <span class="config-checkbox-label">Auto-detect Diagram Type</span>
-                        </label>
-                        <div class="config-description">Automatically detect diagram type from content</div>
-                    </div>
-                    <div class="config-field config-field-horizontal">
-                        <label class="config-label config-checkbox">
-                            <input type="checkbox" data-config="file.warnOnUnsavedChanges">
-                            <span class="config-checkbox-mark"></span>
-                            <span class="config-checkbox-label">Warn on Unsaved Changes</span>
-                        </label>
-                        <div class="config-description">Show warning when leaving with unsaved changes</div>
-                    </div>
-                </div>
-            </div>
-            <div class="config-section">
-                <h4 class="config-section-title">User Interface</h4>
-                <div class="config-group">
-                    <div class="config-field">
-                        <label class="config-label">Notification Duration</label>
-                        <div class="config-range">
-                            <input type="range" min="1000" max="10000" step="500" class="config-input" data-config="ui.notificationDuration">
-                            <span class="config-range-value">3000ms</span>
-                        </div>
-                        <div class="config-description">How long to show notifications</div>
-                    </div>
-                    <div class="config-field config-field-horizontal">
-                        <label class="config-label config-checkbox">
-                            <input type="checkbox" data-config="ui.showNotifications">
-                            <span class="config-checkbox-mark"></span>
-                            <span class="config-checkbox-label">Show Notifications</span>
-                        </label>
-                    </div>
-                    <div class="config-field config-field-horizontal">
-                        <label class="config-label config-checkbox">
-                            <input type="checkbox" data-config="ui.enableKeyboardShortcuts">
-                            <span class="config-checkbox-mark"></span>
-                            <span class="config-checkbox-label">Enable Keyboard Shortcuts</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            <div class="config-section">
-                <h4 class="config-section-title">Performance</h4>
-                <div class="config-group">
-                    <div class="config-field config-field-horizontal">
-                        <label class="config-label config-checkbox">
-                            <input type="checkbox" data-config="performance.enableDiagramCaching">
-                            <span class="config-checkbox-mark"></span>
-                            <span class="config-checkbox-label">Enable Diagram Caching</span>
-                        </label>
-                        <div class="config-description">Cache generated diagrams for faster loading</div>
-                    </div>
-                    <div class="config-field">
-                        <label class="config-label">Cache Size</label>
-                        <div class="config-range">
-                            <input type="range" min="10" max="100" step="5" class="config-input" data-config="performance.maxCacheSize">
-                            <span class="config-range-value">50</span>
-                        </div>
-                        <div class="config-description">Maximum number of cached diagrams</div>
-                    </div>
-                </div>
-            </div>
             <div class="config-section">
                 <h4 class="config-section-title">Kroki API</h4>
                 <div class="config-group">

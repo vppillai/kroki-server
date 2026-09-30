@@ -22,9 +22,11 @@
         overflow: visible;
     }
 
+    /* !important: the desktop splitter stores its width inline (e.g. 33%),
+       which would otherwise keep the editor narrow in the stacked layout. */
     .editor,
     .preview {
-        width: 100%;
+        width: 100% !important;
         height: auto;
         border-right: none;
     }
@@ -54,6 +56,20 @@
 
     .toolbar-section {
         flex-wrap: wrap;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    /* Preview toolbar: wrap onto a second row instead of running off-screen,
+       and keep the copy buttons icon-only. */
+    .preview-toolbar {
+        flex-wrap: wrap;
+        height: auto;
+        row-gap: var(--spacing-sm);
+    }
+
+    .preview-toolbar .btn-label {
+        display: none;
     }
 
     /* AI chat becomes a full-screen sheet (the fixed 400px window overflows). */

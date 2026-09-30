@@ -43,7 +43,7 @@ export const ThemeManager = {
      */
     init() {
         // Load saved theme or default to light
-        this.currentTheme = localStorage.getItem('kroki-theme') || 'light';
+        this.currentTheme = localStorage.getItem('kroki-theme') || 'auto';
         this.applyTheme(this.currentTheme);
         this.setupToggleButton();
     },

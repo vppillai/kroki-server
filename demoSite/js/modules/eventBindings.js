@@ -16,6 +16,8 @@ import { markFileAsModified, stopFileMonitoring } from './fileOperations.js';
 import { updateUrl, clearUrlParameters } from './urlHandler.js';
 import { show, hide } from './dom.js';
 import { isTypingContext } from './keyboard.js';
+import { showToast } from './errors.js';
+import { saveDraft } from './draft.js';
 
 /**
  * Bind all event listeners.
@@ -44,6 +46,7 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
             }
 
             debounceUpdateDiagram();
+            if (!e.programmatic && state.userHasEditedContent) saveDraft();
 
             if (!shouldUsePostForCurrentDiagram()) {
                 updateUrl();
@@ -97,6 +100,52 @@ export function bindEvents({ updateDrawioButtonVisibility }) {
 
     const downloadBtn = document.getElementById('downloadButton');
     if (downloadBtn) downloadBtn.addEventListener('click', downloadDiagram);
+
+    // Copy a link that reopens this diagram in the editor (?im=...).
+    const shareLinkBtn = document.getElementById('copy-share-link-btn');
+    if (shareLinkBtn) {
+        shareLinkBtn.addEventListener('click', async () => {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.get('im')) {
+                showToast('This diagram is too large to share as a link — use Save As instead', 'info', 4000);
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url.toString());
+                showToast('Link copied', 'success');
+            } catch (err) {
+                showToast(`Could not copy link: ${err.message}`, 'info', 4000);
+            }
+        });
+    }
+
+    // Copy the rendered diagram as a PNG (works for SVG and PNG output).
+    const copyImageBtn = document.getElementById('copy-image-btn');
+    if (copyImageBtn) {
+        copyImageBtn.addEventListener('click', async () => {
+            const img = document.getElementById('diagram');
+            if (!img || !img.naturalWidth || img.offsetParent === null) {
+                showToast('Nothing to copy — render an SVG or PNG diagram first', 'info', 4000);
+                return;
+            }
+            try {
+                const scale = Math.min(2, 8192 / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.naturalWidth * scale);
+                canvas.height = Math.round(img.naturalHeight * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const blob = await new Promise((resolve, reject) =>
+                    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('encoding failed'))), 'image/png'));
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                showToast('Image copied', 'success');
+            } catch (err) {
+                showToast(`Could not copy image: ${err.message}`, 'info', 4000);
+            }
+        });
+    }
 
     const copyLinkBtn = document.getElementById('copy-link-btn');
     if (copyLinkBtn) {
