@@ -135,8 +135,9 @@ For a public deployment, see:
 - **[docs/production-deployment.md](docs/production-deployment.md)** — threat model,
   quick recipe, and reference for every knob: `TLS_MODE`, `DEPLOY_PROFILE`,
   `RENDER_CACHE_ENABLED`, `COMPOSE_PROFILES`, AI posture, `GUNICORN_*`, sizing
-- **[docs/acme-tls.md](docs/acme-tls.md)** — real TLS via Let's Encrypt (staging-first
-  procedure, renewal mechanics, rollback)
+- **[docs/acme-tls.md](docs/acme-tls.md)** — real TLS via Let's Encrypt
+  (`acme`, staging-first procedure, renewal, rollback) or a HashiCorp Vault PKI
+  ACME directory (`acmevaultpki`, cert issued/renewed in-container via acme.sh)
 - **[docs/public-demo-hosting-runbook.md](docs/public-demo-hosting-runbook.md)** —
   Hetzner provisioning, DNS, OpenRouter relay setup, monitoring, abuse response
 

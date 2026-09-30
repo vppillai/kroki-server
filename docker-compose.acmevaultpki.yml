@@ -1,0 +1,40 @@
+# Vault PKI ACME overlay — applied automatically by setup-kroki-server.sh when
+# TLS_MODE=acmevaultpki. Never used in the default self-signed setup or the
+# Let's Encrypt acme mode (docker-compose.acme.yml).
+#
+# Unlike the certbot-based acme mode, issuance + renewal happen INSIDE the nginx
+# container via acme.sh (built into ./nginx-acme). The cert is obtained from a
+# HashiCorp Vault PKI ACME directory using an HTTP-01 webroot challenge.
+#
+# Compose v2 merge semantics (uniqueness key = target/mount path):
+#   - ports APPEND: base publishes ${HTTPS_PORT:-8443}:8443; this adds 80:8080
+#     for the HTTP-01 challenge + HTTP->HTTPS redirect.
+#   - the /etc/nginx/certs volume OVERRIDES the base read-only bind mount with a
+#     writable named volume, so acme.sh can install the issued cert there. The
+#     rendered nginx.conf still points at /etc/nginx/certs/nginx.{crt,key}.
+#   - /acme (acme.sh state + webroot) is appended as a new named volume.
+#   - image/build: the nginx service is rebuilt from ./nginx-acme (acme.sh baked
+#     in) and retagged, replacing the stock nginx:1.28-alpine from the base file.
+#   - relative paths (build context) resolve against the base docker-compose.yml.
+
+services:
+  nginx:
+    build: ./nginx-acme
+    image: kroki-nginx-acme:latest
+    ports:
+      - "${ACME_HTTP_PORT:-80}:8080"
+    environment:
+      # FQDN is the DNS name the cert is issued for. HOSTNAME is exported from
+      # .env by setup-kroki-server.sh (the bash builtin is deliberately ignored,
+      # same caveat as the Let's Encrypt acme mode).
+      - FQDN=${HOSTNAME}
+      - ACME_DIRECTORY_URL=${ACME_DIRECTORY_URL}
+      - ACME_CONTACT=${ACME_CONTACT}
+      - ACME_KEY_LENGTH=${ACME_KEY_LENGTH:-ec-256}
+    volumes:
+      - nginx_acme_certs:/etc/nginx/certs
+      - nginx_acme_data:/acme
+
+volumes:
+  nginx_acme_certs:
+  nginx_acme_data:
