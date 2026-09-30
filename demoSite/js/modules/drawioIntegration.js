@@ -67,9 +67,13 @@ class DrawioIntegration {
     setupEventHandlers() {
         // PostMessage listener for Draw.io communication
         window.addEventListener('message', (event) => {
-            // PostMessage communication active
-
-            // Very permissive for now - like the reference implementation
+            // Only accept messages from the configured draw.io origin, sent by
+            // our own iframe. Previously any window could post draw.io XML and
+            // overwrite the editor.
+            let drawioOrigin;
+            try { drawioOrigin = new URL(this.drawioServerUrl).origin; } catch { return; }
+            if (event.origin !== drawioOrigin) return;
+            if (this.iframe && event.source !== this.iframe.contentWindow) return;
             this.handleDrawioMessage(event.data);
         }, false);
 

@@ -15,6 +15,8 @@ import {
     updateUserHasEditedContent as setUserHasEditedContent
 } from './state.js';
 import { formatCompatibility } from './constants.js';
+import { loadDraft } from './draft.js';
+import { showToast } from './errors.js';
 
 // ========================================
 // URL PARAMETER PARSING
@@ -54,6 +56,16 @@ export function getUrlParameters() {
  */
 export function processUrlParameters() {
     const params = getUrlParameters();
+
+    // Opened without a diagram in the URL: bring back the last draft, if any.
+    if (!params.im && !params.diag) {
+        const draft = loadDraft();
+        if (draft && formatCompatibility[draft.diag]) {
+            params.diag = draft.diag;
+            params.fmt = draft.fmt;
+            params.draftCode = draft.code;
+        }
+    }
 
     // Set diagram type if specified in URL
     if (params.diag && formatCompatibility[params.diag]) {
@@ -96,6 +108,14 @@ function continueProcessing(params, diagramModule) {
     } else {
         document.getElementById('outputFormat').value = params.fmt;
         setCurrentOutputFormat(params.fmt);
+    }
+
+    // Restored draft (see processUrlParameters)
+    if (params.draftCode) {
+        document.getElementById('code').value = params.draftCode;
+        setUserHasEditedContent(true);
+        showToast('Restored your last draft', 'success', 3000);
+        return;
     }
 
     // Set diagram code if encoded content is provided

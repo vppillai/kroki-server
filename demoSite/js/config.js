@@ -29,7 +29,7 @@
  */
 const DEFAULT_CONFIG = {
     // Theme and UI preferences
-    theme: 'light', // 'light', 'dark', 'auto'
+    theme: 'auto', // 'light', 'dark', 'auto'
     autoRefresh: true,
 
     // Editor behavior

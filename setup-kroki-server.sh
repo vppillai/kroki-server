@@ -84,9 +84,9 @@ IMPORTMAP_SHA256="sha256-LvNDiZbbhmyHUBohi9wADi3l/thqDrW+o+NEgB+bZVY="
 # CSP notes: script-src is the key-theft guard (same-origin + the import-map
 # hash only); connect-src 'self' https: deliberately allows BYOK posts to any
 # HTTPS endpoint; frame-src allows the configured draw.io embed.
-NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection \"1; mode=block\";
-    add_header X-Frame-Options SAMEORIGIN;
+NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
     add_header Content-Security-Policy \"default-src 'self'; script-src 'self' '${IMPORTMAP_SHA256}'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https:; frame-src 'self' ${DRAWIO_ORIGIN}; object-src 'none'; base-uri 'self'; frame-ancestors 'self'\" always;"
 # ACME mode: append HSTS to the shared fragment so it is inherited everywhere
 # (http-level add_header is inherited only when a location/server defines none;
@@ -96,6 +96,12 @@ NGINX_SECURITY_HEADERS="    add_header X-Content-Type-Options nosniff;
 if [ "$TLS_MODE" = "acme" ]; then
     NGINX_SECURITY_HEADERS="${NGINX_SECURITY_HEADERS}
     add_header Strict-Transport-Security \"max-age=86400\" always;"
+elif [ "${DEFAULT_HOSTNAME:-localhost}" != "localhost" ] && [ "${HSTS_ENABLED:-true}" = "true" ]; then
+    # Self-signed / corporate-CA deployments on a real hostname: HSTS too
+    # (never for localhost, where a sticky HSTS entry breaks other local apps).
+    # No includeSubDomains: sibling hosts are not ours to pin.
+    NGINX_SECURITY_HEADERS="${NGINX_SECURITY_HEADERS}
+    add_header Strict-Transport-Security \"max-age=31536000\" always;"
 fi
 
 # --- Render-plane profile: cache + abuse limits (PR-6) ----------------------
@@ -424,6 +430,9 @@ http {
     upstream demosite_upstream {
         server demosite:${DEMOSITE_CONTAINER_PORT};
         keepalive 16;
+        # Below gunicorn's 5 s keepalive so nginx never reuses a socket
+        # gunicorn is closing (that race surfaces as a rare 502 on POST).
+        keepalive_timeout 4s;
     }
     upstream core_upstream {
         server core:${DEFAULT_HTTP_PORT};
@@ -445,7 +454,8 @@ ${NGINX_SECURITY_HEADERS}
     # SSL Configuration
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384';
+    # ECDSA and RSA suites: an RSA certificate had no TLS 1.2 cipher at all.
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
 EOF

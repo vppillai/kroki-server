@@ -263,6 +263,7 @@ export function initializeEditor(mountEl, initialContent) {
     const startState = EditorState.create({
         doc: content,
         extensions: [
+            EditorView.contentAttributes.of({ 'aria-label': 'Diagram source code' }),
             lineNumbers(),
             highlightActiveLineGutter(),
             highlightSpecialChars(),

@@ -339,8 +339,18 @@ export function initializeZoomPan() {
 
     // Keyboard: Ctrl/Cmd + '+' / '-' / '0' (as listed in Help). Ignored while
     // typing so editor shortcuts and browser zoom in text fields still work.
+    // Scoped to the preview (focused, hovered, or fullscreen) so Ctrl/Cmd +/-
+    // still zooms the page everywhere else (browser zoom is an a11y need).
+    let pointerOverViewport = false;
+    viewport.addEventListener('pointerenter', () => { pointerOverViewport = true; });
+    viewport.addEventListener('pointerleave', () => { pointerOverViewport = false; });
     document.addEventListener('keydown', (e) => {
         if (!(e.ctrlKey || e.metaKey) || e.altKey || isTypingContext(e.target)) return;
+        const previewActive = viewport.contains(document.activeElement) || pointerOverViewport ||
+            document.body.classList.contains('fullscreen-mode') || !!document.fullscreenElement;
+        const modalOpen = [...document.querySelectorAll('[role="dialog"], #config-modal')]
+            .some((el) => el.getClientRects().length > 0);
+        if (!previewActive || modalOpen) return;
         const viewportRect = viewport.getBoundingClientRect();
         const centerX = viewportRect.left + viewportRect.width / 2;
         const centerY = viewportRect.top + viewportRect.height / 2;

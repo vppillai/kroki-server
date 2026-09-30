@@ -14,6 +14,19 @@ import { fetchDiagramViaPost } from './diagramApi.js';
 import { decodeKrokiDiagram, updateDiagram } from './diagramOperations.js';
 
 /**
+ * Base name for exported files: the open file's name without extension, or
+ * "<diagram-type>-<yyyymmdd-hhmm>" for unsaved work.
+ */
+export function exportBaseName() {
+    const open = state.currentFile && state.currentFile.isOpen && state.currentFile.name;
+    if (open) return String(open).replace(/\.[^./]+$/, '') || 'diagram';
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    return `${state.currentDiagramType || 'diagram'}-${stamp}`;
+}
+
+/**
  * Download current diagram to user's device.
  * Creates appropriate download based on output format (text blob or direct URL).
  */
@@ -22,7 +35,7 @@ export function downloadDiagram() {
 
     const displayType = formatDisplayTypes[state.currentOutputFormat] || 'download';
     const format = state.currentOutputFormat.toLowerCase();
-    const filename = `diagram.${format}`;
+    const filename = `${exportBaseName()}.${format}`;
 
     const a = document.createElement('a');
 
