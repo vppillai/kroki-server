@@ -55,6 +55,24 @@ def test_index_html_path_sets_session_cookie(client, server):
     assert server.validate_session_token(cookie.value)
 
 
+def test_index_keeps_existing_valid_session(client):
+    """Reloading must not mint a new token (that reset the rate limits)."""
+    client.get('/')
+    first = client.get_cookie('doccode_session').value
+    resp = client.get('/')
+    assert 'doccode_session' not in resp.headers.get('Set-Cookie', '')
+    assert client.get_cookie('doccode_session').value == first
+
+
+def test_rate_limit_key_uses_only_validated_tokens(app, server):
+    good = server.issue_session_token()
+    with app.test_request_context('/', headers={'Cookie': f'doccode_session={good}'}):
+        assert server._rate_limit_key() == f'session:{good}'
+    with app.test_request_context('/', headers={'Cookie': 'doccode_session=forged.value'},
+                                  environ_base={'REMOTE_ADDR': '10.1.2.3'}):
+        assert server._rate_limit_key() == '10.1.2.3'
+
+
 def test_session_cookie_attributes(client):
     resp = client.get('/')
     set_cookie = resp.headers.get('Set-Cookie', '')

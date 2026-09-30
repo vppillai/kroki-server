@@ -417,7 +417,8 @@ http {
     gzip_vary on;
     gzip_min_length 1024;
     gzip_proxied any;
-    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+    # text/javascript: Flask/Python >=3.12 serves .js with it.
+    gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
 
     # Keep upstream connections open instead of a new TCP handshake per request.
     upstream demosite_upstream {
